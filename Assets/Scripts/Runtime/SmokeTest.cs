@@ -96,7 +96,7 @@ public class SmokeTest : MonoBehaviour
             Debug.Log(string.Format(System.Globalization.CultureInfo.InvariantCulture, "TQ,{0:0.00},{1:0.000},{2:0.000},{3:0.000},{4:0.00},{5:0.0},{6:0.0},{7:0},{8:0},{9:0},{10:0}",
                 t, ayF, car.FL.alphaRelaxed * Mathf.Rad2Deg, car.FR.alphaRelaxed * Mathf.Rad2Deg, car.columnTorque, car.roadTorqueL, car.roadTorqueR, car.FL.force.y, car.FR.force.y, car.FL.Fz, car.FR.Fz));
         }
-        float tEnd = sc == "skidpad" ? 160f : sc == "accel" ? 60f : sc == "topspeed" ? 150f : sc == "laguna" ? lagEnd : sc == "lagunagrass" ? 400f : sc == "lagunakerb" ? 90f : sc == "bumpstart" ? 60f : sc == "lagunaoff" ? 200f : sc == "powerstep" ? 220f : sc == "lagunatherm" ? 900f : sc == "thermslide" ? 200f : 70f;
+        float tEnd = sc == "skidpad" ? 160f : sc == "accel" ? 60f : sc == "topspeed" ? 150f : sc == "laguna" ? lagEnd : sc == "lagunagrass" ? 400f : sc == "lagunakerb" ? 90f : sc == "bumpstart" ? 60f : sc == "lagunaoff" ? 200f : sc == "powerstep" ? 220f : sc == "lagunatherm" ? 900f : sc == "thermslide" ? 200f : sc.StartsWith("gp") ? 40f : 70f;
         if (sc == "lagunakerb" && (t > tEnd || phase == 99) && !quitting) KerbReport();
         if (sc == "laguna" && t > tEnd && !quitting) LagunaReport();
         if (sc == "laguna" && phase == 99 && !quitting) LagunaReport();
@@ -399,6 +399,50 @@ public class SmokeTest : MonoBehaviour
             "LAGUNA RESULT {0} drove {1:0} m in {2:0.0} s (track s reached {3} m, laps {4}), vmax {5:0} km/h, all-4-wheels-grounded {6:0.0}% (longest gap {7:0} ms), max beyond edge {8:0.00} m, min body-origin clearance {9:0.00} m, min (car y - centreline z) {10:0.00} m {11}",
             lagFail ? "FAIL" : "PASS", lagDist, t - 4f, lagIdx * 2, lagLaps, lagMaxV * 3.6f, 100f * (lagSamples - lagUngrounded) / Mathf.Max(1, lagSamples), lagMaxUngroundedRun * Time.fixedDeltaTime * 1000f, lagMaxOff, lagMinClear, lagWorstY, lagWhy));
     }
+    // ---- gamepad steering assist comparison (-gpassist 0 = direct: stick = lock fraction at CarParams.steerRate, 1 = GamepadSteering defaults) ----
+    // Scripted "loose" gamepad driver: a path/heading controller whose output is exaggerated x3 and saturated (players push the stick
+    // too far), plus seeded sample-and-hold noise (+-0.25 at 8 Hz). The same driver and seed for both modes.
+    //   gplane: 80 km/h, 3.5 m lane change at phase t 1 s, back at 5 s.   gpoversteer: 90 km/h, gentle turn-in + handbrake pull (-gphb ms, default 300), then recover the original heading.
+    GamepadSteering gpA; System.Random gpRng; float gpNoise, gpNoiseT, gpY0, gpH0, gpMaxBeta, gpMaxR, gpErr2, gpDs2, gpPrevSteer, gpRecT = -1f; int gpN, gpRev; float gpPrevD; bool gpSpin, gpDone;
+    static int GpArg(string n, int d) { var a = System.Environment.GetCommandLineArgs(); int i = System.Array.IndexOf(a, n); return i >= 0 && i + 1 < a.Length && int.TryParse(a[i + 1], out var x) ? x : d; }
+    bool GpAssistOn() { var a = System.Environment.GetCommandLineArgs(); int i = System.Array.IndexOf(a, "-gpassist"); return i < 0 || a[i + 1] != "0"; }
+    void GpRun(float v)
+    {
+        float dt = Time.fixedDeltaTime, kmh = v * 3.6f, vTgt = (sc == "gplane" ? 80f : 90f) / 3.6f;
+        SpeedCtl(vTgt, v);
+        if (gpRng == null) { gpRng = new System.Random(GpArg("-gpseed", 12345)); gpA = new GamepadSteering(new GamepadSteerSettings()); gpA.s.countersteer = GpArg("-gpcs", 20) * 0.1f; gpA.s.casterFollow = GpArg("-gpcf", 30) * 0.01f; }   // ablation: -gpcs x10, -gpcf %
+        Vector3 fw = Vector3.ProjectOnPlane(car.transform.forward, Vector3.up).normalized;
+        if (phase == 0)
+        {   // straight at speed (heading-hold, exact)
+            car.steer = 0f; gpA.roadDeg = 0f; gpA.filtered = 0f;
+            if (kmh > vTgt * 3.6f - 1f && phaseT > 10f) { gpY0 = rb.position.x; gpH0 = Mathf.Atan2(fw.x, fw.z); Next(1); }
+            return;
+        }
+        float head = Mathf.DeltaAngle(gpH0 * Mathf.Rad2Deg, Mathf.Atan2(fw.x, fw.z) * Mathf.Rad2Deg);   // deg, + right
+        float yRef = sc == "gplane" ? (phaseT > 1f && phaseT < 5f ? 3.5f : 0f) : 0f, y = rb.position.x - gpY0;   // start heading is +z (lateral = +x right)
+        float r = rb.angularVelocity.y * Mathf.Rad2Deg;
+        float u = 0.25f * (yRef - y) - 0.08f * head - 0.02f * r;   // ideal stick (fraction)
+        if (sc == "gpoversteer" && phaseT < 0.8f) { u = 0.15f; car.handbrake = phaseT > 0.2f && phaseT < 0.2f + GpArg("-gphb", 300) * 0.001f; car.throttle = 0f; }   // gentle turn-in + handbrake pull (-gphb ms, default 300): rear steps out, then recover the heading
+        if ((gpNoiseT -= dt) <= 0f) { gpNoiseT = 0.125f; gpNoise = (float)(gpRng.NextDouble() * 2.0 - 1.0) * 0.25f; }
+        float stick = Mathf.Clamp(3f * u + gpNoise, -1f, 1f);
+        var ctx = GamepadSteering.Context(car); float lockDeg = car.p.MeanLockDeg;
+        if (GpAssistOn()) car.steer = gpA.Step(dt, stick, ctx);
+        else car.steer = Mathf.MoveTowards(car.steer, stick * lockDeg, car.p.steerRate * dt);
+        // metrics
+        Vector3 vel = rb.velocity; float beta = Mathf.Atan2(Vector3.Dot(vel, car.transform.right), Vector3.Dot(vel, car.transform.forward)) * Mathf.Rad2Deg;
+        gpMaxBeta = Mathf.Max(gpMaxBeta, Mathf.Abs(beta)); gpMaxR = Mathf.Max(gpMaxR, Mathf.Abs(r)); if (Mathf.Abs(beta) > 30f) gpSpin = true;
+        gpErr2 += (yRef - y) * (yRef - y); float ds = (car.steer - gpPrevSteer) / dt; gpDs2 += ds * ds; float d = car.steer - gpPrevSteer;
+        if (d * gpPrevD < 0f && Mathf.Abs(d) > 1e-3f) gpRev++; if (Mathf.Abs(d) > 1e-3f) gpPrevD = d; gpPrevSteer = car.steer; gpN++;
+        if (sc == "gpoversteer" && phaseT > 1f && gpRecT < 0f && Mathf.Abs(r) < 3f && Mathf.Abs(beta) < 2f && Mathf.Abs(head) < 20f) gpRecT = phaseT;
+        if ((phaseT > 10f || gpSpin) && !gpDone)
+        {
+            gpDone = true;
+            Debug.Log(string.Format(System.Globalization.CultureInfo.InvariantCulture,
+                "GPSTEER RESULT {0} seed=" + GpArg("-gpseed", 12345) + " hb=" + GpArg("-gphb", 300) + " cs=" + GpArg("-gpcs", 20) + " cf=" + GpArg("-gpcf", 30) + " assist={1} spin={2} rmsLatErr={3:0.00} m maxBeta={4:0.0} deg maxYawRate={5:0.0} deg/s rmsSteerRate={6:0.0} deg/s steerReversals={7} recovered_t={8:0.00} s finalHeading={9:0.0} deg",
+                sc, GpAssistOn() ? 1 : 0, gpSpin, Mathf.Sqrt(gpErr2 / gpN), gpMaxBeta, gpMaxR, Mathf.Sqrt(gpDs2 / gpN), gpRev, gpRecT, head));
+            phase = 99;
+        }
+    }
     void Run(float v)
     {
         float kmh = v * 3.6f;
@@ -415,6 +459,7 @@ public class SmokeTest : MonoBehaviour
                 car.autoClutch = false; car.throttle = 0f;
                 if (t > 6f && car.dt.gear != 0) car.dt.SelectGear(0);
                 car.engine.starter = t > 6.5f && t < 8f; if (t > 11f) Next(99); return;
+            case "gplane": case "gpoversteer": GpRun(v); return;
             case "laguna": LagunaDrive(v); return;
             case "lagunatherm": car.p.tireThermal = true; LagunaDrive(v); if (t >= thNext) { thNext = t + 10f; ThermLog($"t {t:0}"); } return;   // 3 brisk laps, thermal model on
             case "thermslide":   // thermal model on: 60 s sliding on the 40 m circle (target 45 mph, above the ~40 mph limit), then 120 s straight at 62 mph

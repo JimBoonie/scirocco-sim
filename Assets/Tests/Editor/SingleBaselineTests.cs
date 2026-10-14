@@ -37,7 +37,7 @@ public class SingleBaselineTests
         string json = JsonUtility.ToJson(old);
         string path = System.IO.Path.Combine(Application.temporaryCachePath, "sb_old_bindings.json"); System.IO.File.WriteAllText(path, json);
         var q = InputMapper.LoadOrDefault(path);
-        Assert.AreEqual(6, q.version); Assert.AreEqual(0, q.Get(InAction.RetiredProfileToggle).Count, "profile toggle bindings removed");
+        Assert.AreEqual(7, q.version); Assert.AreEqual(0, q.Get(InAction.RetiredProfileToggle).Count, "profile toggle bindings removed");
         Assert.AreEqual(26f, q.coldPsiFront); Assert.AreEqual("LagunaSeca", q.track, "other saved settings kept");
         Assert.Greater(q.Get(InAction.Reset).Count, 0); Assert.Greater(q.Get(InAction.MenuUp).Count, 0);
         Assert.AreEqual(0, InputMapper.Defaults().Get(InAction.RetiredProfileToggle).Count, "no default binding");

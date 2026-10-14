@@ -45,7 +45,11 @@ public class VrPanel : MonoBehaviour
         if (router && router.menuOpen)
         {
             if (repaint) { RenderTexture.active = menuRT; GL.Clear(true, true, new Color(0.1f, 0.1f, 0.12f, 1f)); }
-            router.DrawMenu(); if (repaint) RenderTexture.active = prev;
+            Vector2 sp = default; bool mouse = VrMouse.Enabled(VrManager.Active || forced, true) && VrMouse.TryScreenPos(out sp);
+            Vector2 mp = default; if (mouse) { mp = VrMouse.MapToPanel(sp, Screen.width, Screen.height, TexW, TexH, UiScale); Event.current.mousePosition = mp; }   // IMGUI hover/click/drag hit-test in panel space
+            router.DrawMenu();
+            if (mouse) { Event.current.mousePosition = mp; VrMouse.DrawCursor(mp); }   // cursor on top, inside the menu texture
+            if (repaint) RenderTexture.active = prev;
         }
         else if (showHud && hud)
         {
@@ -55,4 +59,42 @@ public class VrPanel : MonoBehaviour
         GUI.matrix = m0; UiSurface.W = UiSurface.H = 0;
     }
     void OnDestroy() { if (hudRT) hudRT.Release(); if (menuRT) menuRT.Release(); }
+}
+
+// In-headset mouse pointer for the VR menu panel (iRacing-style): the OS cursor is not visible in the headset, so the desktop mouse
+// position is mapped proportionally onto the menu texture (whole game window -> whole panel), a cursor is drawn into the texture,
+// and IMGUI events get the mapped position so hover / click / slider drag / scroll work. Only while XR (or -vrpanels) is active and
+// the menu is open (VrPanel only draws the menu then). The settings menu is IMGUI, so IMGUI's own event handling is the "UI event system" here.
+public static class VrMouse
+{
+    public static bool Enabled(bool xrActive, bool menuOpen) => xrActive && menuOpen;
+    public static bool TryScreenPos(out Vector2 p)
+    {
+        var m = UnityEngine.InputSystem.Mouse.current; p = default; if (m == null) return false;
+        p = m.position.ReadValue(); return true;   // Input System: pixels, origin bottom-left of the game window
+    }
+    /// screen pixel (bottom-left origin) -> IMGUI logical position inside the menu texture (top-left origin, divided by the UI scale)
+    public static Vector2 MapToPanel(Vector2 screen, float screenW, float screenH, float texW, float texH, float uiScale)
+    {
+        float u = Mathf.Clamp01(screen.x / Mathf.Max(1f, screenW)), v = Mathf.Clamp01(screen.y / Mathf.Max(1f, screenH));
+        return new Vector2(u * texW / uiScale, (1f - v) * texH / uiScale);
+    }
+    static Texture2D tex;
+    public static Texture2D CursorTexture()
+    {   // 16x24 arrow, white with black outline (generated: no asset to import)
+        if (tex) return tex;
+        const int W = 16, H = 24; tex = new Texture2D(W, H, TextureFormat.RGBA32, false) { filterMode = FilterMode.Point, hideFlags = HideFlags.DontSave };
+        for (int y = 0; y < H; y++) for (int x = 0; x < W; x++)
+        {
+            int r = y; bool inside = x <= r * 0.6f && r < 17 || (r >= 17 && x >= 4 && x <= 7 && r < 23 && x <= (r - 17) * 0.5f + 7);
+            bool edge = inside && (x == 0 || x >= r * 0.6f - 1f && r < 17 || r == 16 || r == 22);
+            tex.SetPixel(x, H - 1 - y, inside ? (edge ? Color.black : Color.white) : Color.clear);
+        }
+        tex.Apply(); return tex;
+    }
+    public static void DrawCursor(Vector2 p)
+    {
+        if (Event.current.type != EventType.Repaint) return;
+        var t = CursorTexture(); var d = GUI.depth; GUI.DrawTexture(new Rect(p.x, p.y, t.width, t.height), t); GUI.depth = d;
+    }
 }

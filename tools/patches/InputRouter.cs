@@ -47,8 +47,10 @@ public class InputRouter : MonoBehaviour
         bool interlockOk = !map.profile.starterInterlock || car.dt.gear == 0 || car.ClutchFullyIn;
         car.engine.starter = map.Held(InAction.Starter) && interlockOk;
         hintNeutral = car.dt.gear == 0 && car.throttle > 0.05f;
-        car.handwheelDeg = map.StepSteer(Time.deltaTime, p.handwheelLockDeg, p.steerRate, p.steeringRatio);
-        car.steer = car.handwheelDeg / p.steeringRatio;                       // column -> rack -> road wheel: fixed 17.32:1 (S)
+        if (map.assist == null) { map.assist = new GamepadSteering(map.profile.gamepadSteer); map.meanToHandwheel = m => SteeringLinkage.HandwheelForMean(car.p, m); }
+        map.assistCtx = GamepadSteering.Context(car);
+        car.handwheelDeg = map.StepSteer(Time.deltaTime, p.handwheelLockDeg, p.steerRate, SteeringLinkage.CentreRatio(p));
+        car.handwheelInput = true;                                            // column -> pinion -> rack -> per-wheel kinematics (CarController)
         if (map.Pressed(InAction.ShiftUp)) car.dt.Shift(1);
         if (map.Pressed(InAction.ShiftDown)) car.dt.Shift(-1);
         // H-pattern: a held gear button selects that gear; a gear button on a shifter device (non-keyboard) returning to centre = neutral
@@ -64,7 +66,6 @@ public class InputRouter : MonoBehaviour
         if (map.Pressed(InAction.Reset)) { car.ResetCar(); car.dt.SelectGear(0); car.engine.SetRunning(!map.profile.startEngineOff);   // reset = respawn: neutral, engine as at spawn
  if (ffb) ffb.ResetRamp(); }
         if (map.Pressed(InAction.ResetToStart)) ResetToStart();
-        if (map.Pressed(InAction.ProfileToggle)) car.ToggleProfile();
         if (map.Pressed(InAction.Recenter) && vr) vr.Recenter();
         if (map.Pressed(InAction.CameraToggle) && vr) vr.ToggleCamera();
         if (map.Pressed(InAction.HudToggle)) { if (panel) panel.showHud = !panel.showHud; map.profile.hudVisible = !map.profile.hudVisible; InputMapper.Save(map.profile); status = map.profile.hudVisible ? "info HUD shown (H)" : "info HUD hidden (H)"; }
@@ -113,7 +114,7 @@ public class InputRouter : MonoBehaviour
     // ---------------- IMGUI settings menu ----------------
     GUIStyle st;
     void OnGUI() { if (VrPanel.Active) return; UiSurface.Begin(out var m); DrawMenu(); UiSurface.End(m); }
-    public int tab; static readonly string[] Tabs = { "Quick", "Bindings", "Calibration", "FFB / Steering", "VR / Seat" };
+    public int tab; static readonly string[] Tabs = { "Quick", "Bindings", "Calibration", "FFB / Steering", "VR / Seat", "Gamepad Steering" };
     public void DrawMenu()
     {
         if (map == null || !menuOpen) return;
@@ -135,6 +136,7 @@ public class InputRouter : MonoBehaviour
             case 2: DrawCalibration(pr); break;
             case 3: DrawFfb(pr, p); break;
             case 4: DrawVr(pr, p); break;
+            case 5: DrawGamepad(pr); break;
         }
         GUILayout.EndScrollView();
         GUILayout.BeginHorizontal();
@@ -151,6 +153,7 @@ public class InputRouter : MonoBehaviour
         GUILayout.Label("Devices: " + string.Join(" | ", DeviceNames()), st);
         foreach (InAction a in System.Enum.GetValues(typeof(InAction)))
         {
+            if (InputMapper.IsRetired(a)) continue;   // retired actions (handling-profile toggle) are not shown or bindable
             var slots = pr.Get(a); bool bip = InputMapper.IsBipolar(a);
             GUILayout.BeginHorizontal();
             GUILayout.Label($"{a}  = {(InputMapper.IsAxisAction(a) ? map.Axis(a).ToString("0.00") : (map.Held(a) ? "ON" : "off"))}", st, GUILayout.Width(190));
@@ -241,7 +244,7 @@ public class InputRouter : MonoBehaviour
         if (GUILayout.Toggle(pr.mapping == SteerMapping.RealColumn1to1, " 1:1 column (wheel angle = car steering-wheel angle, soft lock at your wheel's limit)")) pr.mapping = SteerMapping.RealColumn1to1;
         if (GUILayout.Toggle(pr.mapping == SteerMapping.ScaleToCarLock, " Scale to car lock")) pr.mapping = SteerMapping.ScaleToCarLock;
         float half = pr.RotationDeg(p.handwheelLockDeg) * 0.5f, colAtLimit = pr.mapping == SteerMapping.RealColumn1to1 ? Mathf.Min(half, p.handwheelLockDeg) : p.handwheelLockDeg;
-        GUILayout.Label($"  -> at your wheel's limit (±{half:0}°): car column ±{colAtLimit:0}° = road wheel ±{colAtLimit / p.steeringRatio:0.0}°; effective ratio {half * p.steeringRatio / colAtLimit:0.00}:1", st);
+        GUILayout.Label($"  -> at your wheel's limit (±{half:0}°): car column ±{colAtLimit:0}° = mean road wheel ±{SteeringLinkage.MeanAngle(p, colAtLimit):0.0}°; effective on-centre ratio {half / colAtLimit * SteeringLinkage.CentreRatio(p):0.00}:1", st);
         GUILayout.Space(8);
         pr.ffbEnabled = GUILayout.Toggle(pr.ffbEnabled, " Force feedback");
         GUILayout.BeginHorizontal(); GUILayout.Label("Wheelbase max torque N m (SC2 Sport 17 / Pro 25 / Ultimate 32):", st, GUILayout.Width(420));
@@ -305,6 +308,7 @@ public class InputRouter : MonoBehaviour
     {
         if (map.Pressed(InAction.MenuTabNext)) { tab = (tab + 1) % Tabs.Length; scroll = Vector2.zero; }
         if (map.Pressed(InAction.MenuTabPrev)) { tab = (tab + Tabs.Length - 1) % Tabs.Length; scroll = Vector2.zero; }
+        if (tab == 5) { NavigateGamepad(map.profile); return; }
         if (tab != 0) return;
         var pr = map.profile; int n = QuickItems(pr).Length;
         if (map.Pressed(InAction.MenuUp)) { navIndex = (navIndex + n - 1) % n; scrollToNav = true; }
@@ -359,6 +363,67 @@ public class InputRouter : MonoBehaviour
         GUILayout.BeginHorizontal(); GUILayout.Label($"Master {pr.audioVolume * 100f:0}%", st, GUILayout.Width(110)); pr.audioVolume = GUILayout.HorizontalSlider(pr.audioVolume, 0f, 1f, GUILayout.Width(250)); pr.audioMute = GUILayout.Toggle(pr.audioMute, " mute", GUILayout.Width(80)); GUILayout.EndHorizontal();
         GUILayout.BeginHorizontal(); GUILayout.Label($"Tires {pr.tireVolume * 100f:0}%", st, GUILayout.Width(110)); pr.tireVolume = GUILayout.HorizontalSlider(pr.tireVolume, 0f, 2f, GUILayout.Width(250)); GUILayout.Label("(tire scrub level relative to engine; 100% = default)", st); GUILayout.EndHorizontal();
         GUILayout.BeginHorizontal(); GUILayout.Label($"Ambient brightness {pr.ambientBrightness * 100f:0}%", st, GUILayout.Width(170)); pr.ambientBrightness = GUILayout.HorizontalSlider(pr.ambientBrightness, 0.5f, 2f, GUILayout.Width(190)); GUILayout.Label("(sky/bounce ambient + fill light; visual only, default 130%)", st); GUILayout.EndHorizontal();
+    }
+    // ---------------- Gamepad steering preferences (input assist; never applies to a wheel bound as SteerSource.Wheel) ----------------
+    public struct GpSlider { public string label, fmt, help; public float min, max, step; public System.Func<GamepadSteerSettings, float> get; public System.Action<GamepadSteerSettings, float> set; }
+    public static readonly GpSlider[] GpSliders = {
+        new GpSlider { label = "Steering speed", fmt = "{0:0} deg/s road", help = "how fast the wheel turns towards the stick target (lower = calmer)", min = 5f, max = 120f, step = 5f, get = g => g.steerSpeed, set = (g, v) => g.steerSpeed = v },
+        new GpSlider { label = "Response curve (gamma)", fmt = "{0:0.0}", help = "1 = linear; higher = less sensitive near centre", min = 1f, max = 4f, step = 0.1f, get = g => g.gamma, set = (g, v) => g.gamma = v },
+        new GpSlider { label = "Deadzone", fmt = "{0:P0}", help = "stick travel ignored around centre (rest rescaled)", min = 0f, max = 0.3f, step = 0.01f, get = g => g.deadzone, set = (g, v) => g.deadzone = v },
+        new GpSlider { label = "Smoothing", fmt = "{0:0.00} s", help = "filter time constant on the stick (0 = off)", min = 0f, max = 0.3f, step = 0.01f, get = g => g.smoothing, set = (g, v) => g.smoothing = v },
+        new GpSlider { label = "Speed sensitivity", fmt = "{0:P0}", help = "0 = full lock at any speed; 100% = full stick limited to peak tire grip at speed", min = 0f, max = 1f, step = 0.05f, get = g => g.speedSensitivity, set = (g, v) => g.speedSensitivity = v },
+        new GpSlider { label = "Grip limit", fmt = "{0:P0} of peak slip", help = "full stick at speed puts the front tires at this fraction of their peak-grip slip angle", min = 0.5f, max = 2f, step = 0.05f, get = g => g.gripLimit, set = (g, v) => g.gripLimit = v },
+        new GpSlider { label = "Countersteer speed", fmt = "x{0:0.0}", help = "steering-speed factor when unwinding / catching a rear slide", min = 1f, max = 4f, step = 0.1f, get = g => g.countersteer, set = (g, v) => g.countersteer = v },
+        new GpSlider { label = "Self-centre (caster follow)", fmt = "{0:P0}", help = "released stick: wheels follow the front-axle travel direction (0 = straight ahead)", min = 0f, max = 1f, step = 0.05f, get = g => g.casterFollow, set = (g, v) => g.casterFollow = v },
+    };
+    public static int GpItemCount => GpSliders.Length + 2;   // [0] assist on/off, sliders, [last] reset all
+    public static void GpAdjust(GamepadSteerSettings g, int item, int dir, bool sel)
+    {
+        var d = GamepadSteerSettings.Default;
+        if (item == 0) { g.enabled = sel ? !g.enabled : dir > 0 ? true : dir < 0 ? false : g.enabled; return; }
+        if (item == GpItemCount - 1) { if (sel) JsonUtility.FromJsonOverwrite(JsonUtility.ToJson(d), g); return; }
+        var sl = GpSliders[item - 1];
+        if (sel) { sl.set(g, sl.get(d)); return; }   // Select / A = reset this slider to default
+        float v = Mathf.Clamp(Mathf.Round((sl.get(g) + dir * sl.step) / sl.step) * sl.step, sl.min, sl.max); sl.set(g, v);
+    }
+    void NavigateGamepad(BindingProfile pr)
+    {
+        int n = GpItemCount;
+        if (map.Pressed(InAction.MenuUp)) { navIndex = (navIndex + n - 1) % n; scrollToNav = true; }
+        if (map.Pressed(InAction.MenuDown)) { navIndex = (navIndex + 1) % n; scrollToNav = true; }
+        navIndex = Mathf.Clamp(navIndex, 0, n - 1);
+        int dir = (map.Pressed(InAction.MenuRight) ? 1 : 0) - (map.Pressed(InAction.MenuLeft) ? 1 : 0); bool sel = map.Pressed(InAction.MenuSelect);
+        if (dir != 0 || sel) GpAdjust(pr.gamepadSteer, navIndex, sel ? 0 : dir, sel);
+    }
+    void DrawGamepad(BindingProfile pr)
+    {
+        var g = pr.gamepadSteer; var d = GamepadSteerSettings.Default; var hl = new GUIStyle(st) { fontStyle = FontStyle.Bold }; hl.normal.textColor = new Color(1f, 0.85f, 0.3f);
+        GUILayout.Label("GAMEPAD / KEYBOARD STEERING  (input preferences, not physics; a wheel bound as 'Wheel' is never affected)", st);
+        GUILayout.Label("Up/Down select, Left/Right change, Select/A = reset that item to default", st);
+        void Row(int i, System.Action body)
+        {
+            if (navIndex >= GpItemCount && tab == 5) navIndex = 0;
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button(i == navIndex ? ">" : " ", GUILayout.Width(24))) navIndex = i;
+            body(); GUILayout.EndHorizontal();
+            if (i == navIndex && Event.current.type == EventType.Repaint) navRect = GUILayoutUtility.GetLastRect();
+        }
+        Row(0, () => { g.enabled = GUILayout.Toggle(g.enabled, g.enabled ? " Steering assist ON (stick sets a target, wheel follows)" : " Steering assist OFF (direct: stick = lock fraction)", navIndex == 0 ? hl : st); });
+        for (int k = 0; k < GpSliders.Length; k++)
+        {
+            var sl = GpSliders[k]; int i = k + 1;
+            Row(i, () =>
+            {
+                GUILayout.Label(sl.label, i == navIndex ? hl : st, GUILayout.Width(200));
+                GUILayout.Label(string.Format(System.Globalization.CultureInfo.InvariantCulture, sl.fmt, sl.get(g)), st, GUILayout.Width(130));
+                float nv = GUILayout.HorizontalSlider(sl.get(g), sl.min, sl.max, GUILayout.Width(200)); if (nv != sl.get(g)) sl.set(g, Mathf.Round(nv / sl.step) * sl.step);
+                if (GUILayout.Button("Reset", GUILayout.Width(60))) sl.set(g, sl.get(d));
+                GUILayout.Label($"(default {string.Format(System.Globalization.CultureInfo.InvariantCulture, sl.fmt, sl.get(d))}; {sl.help})", st);
+            });
+        }
+        Row(GpItemCount - 1, () => { if (GUILayout.Button("Reset all gamepad steering settings to defaults", GUILayout.Width(360))) GpAdjust(g, GpItemCount - 1, 0, true); GUILayout.Label(navIndex == GpItemCount - 1 ? "<- Select/A" : "", hl); });
+        var a = map.assist;
+        if (a != null && map.assistCtx.HasValue) { var c = map.assistCtx.Value; GUILayout.Label($"live: target {a.lastTarget:0.0} deg road, steering {a.roadDeg:0.0} deg, front tire peak slip {c.peakSlipDeg:0.0} deg, front travel {c.frontTravelDeg:0.0} deg, rear travel {c.rearTravelDeg:0.0} deg{(a.countersteering ? "  [countersteer rate]" : "")}", st); }
     }
     static IEnumerable<string> DeviceNames() { foreach (var d in InputSystem.devices) if (!InputMapper.Skip(d)) yield return $"{(string.IsNullOrEmpty(d.description.product) ? d.layout : d.description.product)} [{InputMapper.Category(d)}]"; }
 }

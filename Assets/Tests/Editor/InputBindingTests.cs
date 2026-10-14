@@ -251,7 +251,7 @@ public class InputBindingTests : InputTestFixture
         var m = NM(InputMapper.Defaults()); InputSystem.AddDevice<Keyboard>(); m.MarkDirty();
         var gp = m.GameplayControls(); foreach (var a in new[] { InAction.MenuTabNext, InAction.MenuTabPrev }) foreach (var b in m.profile.Get(a)) { Assert.NotNull(b.resolved); Assert.IsFalse(gp.Contains(b.resolved), b.Label); }
         var old = new BindingProfile { version = 3 }; old.Get(InAction.ShiftUp).Add(new Binding { layout = "Keyboard", control = "e" }); InputMapper.Migrate(old);
-        Assert.AreEqual(6, old.version); Assert.Greater(old.Get(InAction.MenuTabNext).Count, 0); Assert.Greater(old.Get(InAction.MenuTabPrev).Count, 0);
+        Assert.AreEqual(7, old.version); Assert.Greater(old.Get(InAction.MenuTabNext).Count, 0); Assert.Greater(old.Get(InAction.MenuTabPrev).Count, 0);
         m.Dispose();
     }
     [Test] public void ResetToStart_DefaultBackspace_AndMigratedIntoOldProfiles()
@@ -259,7 +259,7 @@ public class InputBindingTests : InputTestFixture
         var d = InputMapper.Defaults(); Assert.IsTrue(d.Get(InAction.ResetToStart).Exists(b => b.layout == "Keyboard" && b.control == "backspace"));
         Assert.IsTrue(d.Get(InAction.Reset).Count > 0, "R reset kept");
         var old = new BindingProfile { version = 4 }; InputMapper.Migrate(old);
-        Assert.IsTrue(old.Get(InAction.ResetToStart).Exists(b => b.control == "backspace")); Assert.AreEqual(6, old.version);
+        Assert.IsTrue(old.Get(InAction.ResetToStart).Exists(b => b.control == "backspace")); Assert.AreEqual(7, old.version);
         Assert.IsTrue(d.hudVisible, "info HUD visible by default");
         var q = JsonUtility.FromJson<BindingProfile>(JsonUtility.ToJson(new BindingProfile { hudVisible = false })); Assert.IsFalse(q.hudVisible, "H hide setting persists");
     }

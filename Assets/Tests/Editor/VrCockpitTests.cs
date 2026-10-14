@@ -36,7 +36,7 @@ public class VrCockpitTests
         var p = InputMapper.Defaults(); p.version = 1; p.Get(InAction.Recenter).Clear(); p.Get(InAction.MenuSelect).Clear();
         p.Get(InAction.MenuSelect).Add(new Binding { layout = "Joystick", control = "button5" });
         var q = JsonUtility.FromJson<BindingProfile>(JsonUtility.ToJson(p)); InputMapper.Migrate(q);
-        Assert.AreEqual(6, q.version); Assert.Greater(q.Get(InAction.Starter).Count, 0); Assert.IsTrue(q.autoClutch); Assert.Greater(q.Get(InAction.Recenter).Count, 0);
+        Assert.AreEqual(7, q.version); Assert.Greater(q.Get(InAction.Starter).Count, 0); Assert.IsTrue(q.autoClutch); Assert.Greater(q.Get(InAction.Recenter).Count, 0);
         Assert.AreEqual(1, q.Get(InAction.MenuSelect).Count); Assert.AreEqual("button5", q.Get(InAction.MenuSelect)[0].control);
         Assert.IsFalse(q.vrEnabled);
     }
