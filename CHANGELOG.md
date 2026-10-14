@@ -82,4 +82,5 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Research notes and car documents removed from the repo (18:30 PT), then restored by revert (18:35 PT).
 
 ### Fixed
+- **Laguna Seca terrain invisible in player builds** (21:45 PT). None of the four DEM Terrain components (Outer 1902 m plus Inner_A/B1/B2) drew anything in builds, on Linux and Windows alike. Only the road, kerb and building meshes showed. Cause: `materialTemplate` was null, so the terrains used Unity's built-in default terrain material, and its shader (`Nature/Terrain/Standard`) was not included in the player. Fix: new `Materials/M_Terrain_DEM.mat` (Nature/Terrain/Standard) assigned to all four terrains in `LagunaSeca.unity`. `TrackSetup` now assigns it when it rebuilds the terrain (menu: Scirocco > Assign Laguna Seca terrain material). Terrain data, the raw heightmaps and Git LFS were all correct.
 - `InputBindings.FromControl` (19:57 PT) threw ArgumentOutOfRangeException when a control path is not `<device>/<control>`. It now falls back to the control name.

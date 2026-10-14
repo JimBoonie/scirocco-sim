@@ -86,6 +86,21 @@ public static class TrackSetup
     // inner window on the 2049 grid (node indices; multiples of 4 so the borders sit on 513 nodes): covers the track bbox +40 m
     public const int C0 = 560, R0 = 332;
     static ushort[] Raw(string f, int n) { var b = System.IO.File.ReadAllBytes(Dir + "/" + f); if (b.Length != n * n * 2) throw new System.Exception("TRACKCHECK heightmap size " + f); var h = new ushort[n * n]; for (int i = 0; i < h.Length; i++) h[i] = (ushort)(b[2 * i] | b[2 * i + 1] << 8); return h; }
+    // Explicit terrain material asset: with materialTemplate = null the Terrain falls back to the built-in default terrain material, whose
+    // shader (Nature/Terrain/Standard) is not pulled into player builds -> the Terrain components draw nothing (only the road/kerb meshes show).
+    public const string TerrainMatPath = Dir + "/Materials/M_Terrain_DEM.mat";
+    public static Material TerrainMaterial()
+    {
+        var m = AssetDatabase.LoadAssetAtPath<Material>(TerrainMatPath); if (m) return m;
+        m = new Material(Shader.Find("Nature/Terrain/Standard")) { name = "M_Terrain_DEM" }; AssetDatabase.CreateAsset(m, TerrainMatPath); return m;
+    }
+    [MenuItem("Scirocco/Assign Laguna Seca terrain material")]
+    public static void AssignTerrainMaterial()
+    {
+        var sc = UnityEditor.SceneManagement.EditorSceneManager.OpenScene(ScenePath, UnityEditor.SceneManagement.OpenSceneMode.Single); var m = TerrainMaterial(); int n = 0;
+        foreach (var t in Object.FindObjectsOfType<Terrain>(true)) { t.materialTemplate = m; EditorUtility.SetDirty(t); n++; }
+        UnityEditor.SceneManagement.EditorSceneManager.SaveScene(sc); AssetDatabase.SaveAssets(); Debug.Log($"TRACKCHECK terrain material {m.shader.name} assigned to {n} terrains");
+    }
     static int MakeTerrainCollider(Transform parent)
     {
         var meta = JsonUtility.FromJson<HMeta>(System.IO.File.ReadAllText(Dir + "/LagunaSeca_Heightmap_meta.json"));
@@ -107,7 +122,7 @@ public static class TrackSetup
             var go = new GameObject("TerrainCollider_DEM_" + name); go.transform.SetParent(parent, false); go.transform.position = at;
             go.AddComponent<TerrainCollider>().terrainData = td; go.AddComponent<SurfaceTag>().type = SurfaceType.Terrain;
             var tv = go.AddComponent<Terrain>(); tv.terrainData = td; tv.heightmapPixelError = 1f; tv.basemapDistance = 4000f; tv.drawInstanced = true; tv.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; tv.drawTreesAndFoliage = false;
-            tv.groupingID = order; made++;
+            tv.materialTemplate = TerrainMaterial(); tv.groupingID = order; made++;
             Debug.Log($"TRACKCHECK terrain tile {name}: {n}x{n} at {spacing:0.000} m, origin {at.ToString("F2")}, size {td.size.x:0.0} m");
         }
         System.Func<int, int, float> fine = (r, c) => h2[r * 2049 + c] / 65535f;
