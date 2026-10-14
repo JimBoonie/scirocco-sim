@@ -49,6 +49,11 @@ public class TireScrubTests
         Assert.AreEqual(0.5f, Rms(h, 12000) / Rms(a, 12000), 0.02f); Assert.AreEqual(0f, Rms(z, 0), 1e-9);
     }
     static float PeakHz(float[] x, int from, float lo, float hi) { float best = lo, bv = -1f; for (float f = lo; f <= hi; f += 0.5f) { float v = Goertzel(x, from, f); if (v > bv) { bv = v; best = f; } } return best; }
+    // noise band centre: Goertzel power at 1 Hz steps smoothed over +-12 Hz, then the power-weighted centroid of the region above half max
+    // (single bins / argmax of bandpassed noise fluctuate by several Hz; the half-max centroid is stable to ~1 %)
+    static float BandCentreHz(float[] x, int from, float lo, float hi) { int n = (int)(hi - lo) + 1; var v = new float[n]; var sm = new float[n]; for (int i = 0; i < n; i++) v[i] = Goertzel(x, from, lo + i) * Goertzel(x, from, lo + i);
+        float mx = 0f; for (int i = 0; i < n; i++) { float a = 0f; for (int j = System.Math.Max(0, i - 12); j <= System.Math.Min(n - 1, i + 12); j++) a += v[j]; sm[i] = a; mx = System.Math.Max(mx, a); }
+        double sw = 0, sf = 0; for (int i = 0; i < n; i++) if (sm[i] > 0.5f * mx) { sw += sm[i]; sf += sm[i] * (lo + i); } return (float)(sf / sw); }
     [Test] public void Spectrum_Low_Tone_Present_Below_Peak_And_Pitch_Span()
     {
         var a = Render(0.35f, 1f, 10f, 2f, out _); var m = Render(0.7f, 1f, 10f, 2f, out _); var o = Render(2.5f, 1f, 10f, 2f, out _);
@@ -59,7 +64,7 @@ public class TireScrubTests
             Assert.Greater(Goertzel(x, 24000, f0), 3f * Goertzel(x, 24000, f0 * 1.5f), $"r={r}: tone at f0");
         }
         Assert.Greater(20f * Mathf.Log10(Rms(m, 24000)), -45f, "low tone audible below the peak (pre-ceiling)");
-        float pa = PeakHz(a, 24000, 120f, 220f), po = PeakHz(o, 24000, 120f, 220f), span = 12f * Mathf.Log(po / pa, 2f);
+        float pa = BandCentreHz(a, 24000, 100f, 260f), po = BandCentreHz(o, 24000, 100f, 260f), span = 12f * Mathf.Log(po / pa, 2f);
         Debug.Log($"TIRESOUND peak {pa:0.0} Hz @0.35 -> {po:0.0} Hz @2.5 = {span:0.00} semitones; rms {20 * Mathf.Log10(Rms(a, 24000)):0.0}/{20 * Mathf.Log10(Rms(m, 24000)):0.0}/{20 * Mathf.Log10(Rms(o, 24000)):0.0} dBFS");
         Assert.That(span, Is.InRange(1.6f, 3f));
     }
@@ -78,6 +83,46 @@ public class TireScrubTests
         a = blk(true); foreach (var v in a) Assert.AreEqual(0f, v, 0f, "fully silent while paused");
         a = blk(false); Assert.Less(a[0], 0.002f, "starts from silence"); Assert.AreEqual(1f, a[(n - 1) * 2], 1e-6, "back to full within the fade");
         for (int i = 1; i < n; i++) Assert.LessOrEqual(a[i * 2] - a[(i - 1) * 2], 0.002f, "no click on resume");
+    }
+    static float EngDb(float rpm, float load, int n = 48000) { var g = new GameObject("e"); var e = g.AddComponent<EngineSynth>(); e.SetOfflineState(fs, rpm, load, load); var b = new float[n]; e.Render(b, n); Object.DestroyImmediate(g); return 20f * Mathf.Log10(Rms(b, n / 4)); }
+    [Test] public void Engine_Overrun_Stays_Audible_6_To_10_dB_Down()
+    {
+        foreach (var rpm in new[] { 2000f, 3000f, 4500f, 6000f })
+        {
+            float on = EngDb(rpm, 1f), off = EngDb(rpm, 0f), d = on - off;
+            Debug.Log($"ENGINE_ONOFF {rpm:0} rpm: on {on:0.0} off {off:0.0} diff {d:0.0} dB");
+            Assert.That(d, Is.InRange(5f, 11f), $"overrun at {rpm} rpm should be ~6-10 dB under load");
+            Assert.Greater(off, -30f, "overrun clearly audible");
+        }
+    }
+    [Test] public void Tire_Ceiling_Tracks_Overrun_Engine()
+    {
+        foreach (var load in new[] { 0f, 1f })
+        {
+            var g = new GameObject("e"); var e = g.AddComponent<EngineSynth>(); e.SetOfflineState(fs, 4000f, load, load); var eb = new float[512]; var d = new TireSoundDsp(fs); var tb = new float[512];
+            float er = 0f, tAcc = 0f; int cnt = 0;
+            for (int k = 0; k < 400; k++) { e.Render(eb, 512); double acc = 0; foreach (var v in eb) acc += v * v; er = (float)System.Math.Sqrt(acc / 512);
+                d.SetTargets(new[] { 2.5f, 2.5f, 2.5f, 2.5f }, 20f, new[] { 4000f, 4000f, 4000f, 4000f }); d.Render(tb, 512, 1, 4f, er); if (k > 200) { tAcc += Rms(tb, 0) * Rms(tb, 0); cnt++; } }
+            Object.DestroyImmediate(g);
+            float tDb = 10f * Mathf.Log10(tAcc / cnt), eDb = 20f * Mathf.Log10(er);
+            Debug.Log($"CEILING load {load}: tire {tDb:0.0} engine {eDb:0.0}");
+            Assert.LessOrEqual(tDb, eDb - 4f + 1f, "tire stays under engine - 4 dB"); Assert.Greater(tDb, eDb - 12f, "tire still audible under overrun engine");
+        }
+    }
+    [Test] public void Offline_OnOff_Sweep_To_Disk()
+    {
+        var dir = System.Environment.GetEnvironmentVariable("SCIROCCO_SWEEP_DIR"); if (string.IsNullOrEmpty(dir)) { Assert.Pass("set SCIROCCO_SWEEP_DIR"); return; }
+        // at 2000/3000/4500/6000 rpm: 2 s on (load 1) then 2 s off (closed-throttle overrun, load 0)
+        var g = new GameObject("e"); var e = g.AddComponent<EngineSynth>(); var eb = new float[480];
+        using (var we = new System.IO.BinaryWriter(System.IO.File.Create(dir + "/onoff_engine.f32")))
+            foreach (var rpm in new[] { 2000f, 3000f, 4500f, 6000f }) for (int ph = 0; ph < 2; ph++) for (int s = 0; s < 200; s++) { e.SetOfflineState(fs, rpm, ph == 0 ? 1f : 0f, ph == 0 ? 1f : 0f); e.Render(eb, 480); foreach (var v in eb) we.Write(v); }
+        Object.DestroyImmediate(g);
+    }
+    [Test] public void Tire_Is_Noise_Not_Buzz()
+    {
+        var d = new TireSoundDsp(fs); d.ceilingOn = false; var b = new float[48000]; d.SetTargets(new[] { 2.5f, 2.5f, 2.5f, 2.5f }, 20f, new[] { 3000f, 3000f, 3000f, 3000f }); d.Render(b, b.Length, 1, 1f, 1f);
+        int lag = (int)(3f * fs / TireSoundTuning.ToneHz(2.5f)); double r0 = 0, rl = 0; for (int i = 12000; i < b.Length - lag; i++) { r0 += b[i] * b[i]; rl += b[i] * b[i + lag]; }
+        Debug.Log($"TIRE autocorr @3 periods {rl / r0:0.000}"); Assert.Less(System.Math.Abs(rl / r0), 0.35, "no periodic (pitched/buzzy) excitation");
     }
     [Test] public void Offline_Sweeps_To_Disk()
     {

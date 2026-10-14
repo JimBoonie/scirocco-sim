@@ -3,12 +3,14 @@
 // When the tire starts to slip a LOW-frequency, noisy tone (~150 Hz fundamental + a softer 2nd harmonic so it carries on
 // small speakers) fades in and builds in volume up to peak grip (scrubRatio ~1). Its pitch rises only ~2 semitones from the
 // onset of slip to the peak and reaches its maximum, +2.5 semitones (+15.5 %), at heavy slide (scrubRatio >= OverFull).
-// Character goes from band-limited noise (onset) to a more tonal stick-slip buzz (sliding).
+// v4: NOISE ONLY (Taylor: v3's impulse-train tone + 2nd harmonic sounded like "angry bees"). Static/white noise through a
+// resonant bandpass (centre = ToneHz, Q 3..4, i.e. a band ~45-50 Hz wide, never a pitched tone) plus a wide low-Q band at
+// ~2.2 x centre for gentle broadband body. No impulse train, no harmonics.
 // v2 problems fixed here: (a) below scrubRatio 0.5 v2 only played a -50 dB lowpassed rub (~30 dB under the engine, fully
 // masked) and the level only built from 0.5, so the low part was never heard; (b) the v2 tone ran 300 -> 380 -> 520 Hz,
 // i.e. +9.5 semitones and far above the "low" register.
-// Signal per tire: excitation = (1-tonal)*white noise + tonal*jittered impulse train at f0
-//                  -> constant-peak-gain bandpass at f0 (+ 0.45 x bandpass at 2 f0), normalised to ~unit RMS
+// Signal per tire: white noise -> constant-peak-gain bandpass at f0 (Q ToneQ) + BroadLevel x bandpass at BroadMul*f0 (Q BroadQ),
+//                  normalised to ~unit RMS
 //                  out = gain(ratio, speed, load) * that
 // Mix: 4 tires panned + summed, x Tires slider, then the ENGINE CEILING limiter (tire RMS <= engine RMS * CeilingDb).
 // No UnityEngine dependency in this part (System.Math only).
@@ -26,9 +28,8 @@ public static class TireSoundTuning
     public const float BaseHz = 150f;          // fundamental at slip onset
     public const float SemisAtPeak = 2.0f;     // one whole step by peak grip
     public const float SemisMax = 2.5f;        // 1.25 whole steps at heavy slide (spec: 2..3 semitones total)
-    public const float Harm2 = 0.45f;          // 2nd harmonic level (makes the low tone audible on small speakers)
-    public const float ToneQLo = 3f, ToneQHi = 8f;            // bandpass Q onset / heavy slide (noise -> tone)
-    public const float JitterLo = 0.30f, JitterHi = 0.08f;    // impulse period jitter
+    public const float BroadLevel = 0.35f, BroadMul = 2.2f, BroadQ = 0.7f;   // gentle broadband body above the main band (carries on small speakers, not hissy)
+    public const float ToneQLo = 3f, ToneQHi = 4f;            // resonant-noise bandpass Q onset / heavy slide (stays noise: Q <= 4)
     public const float TireSpreadCents = 12f;  // small per-tire detune (keeps 4 tires from phase-locking)
     // --- speed / load gates ---
     public const float SpeedFullMs = 8f;
@@ -50,9 +51,7 @@ public static class TireSoundTuning
     public static float Gain(float r) => Db(LevelDb(r)) * OnsetFade(r);
     public static float Semis(float r) => r <= BuildEnd ? SemisAtPeak * Build(r) : Lerp(SemisAtPeak, SemisMax, Over(r));
     public static float ToneHz(float r) => BaseHz * (float)System.Math.Pow(2.0, Semis(r) / 12.0);
-    public static float Tonal(float r) => Clamp01(0.25f + 0.45f * Build(r) + 0.3f * Over(r));
     public static float ToneQ(float r) => Lerp(ToneQLo, ToneQHi, 0.5f * Build(r) + 0.5f * Over(r));
-    public static float Jitter(float r) => Lerp(JitterLo, JitterHi, 0.5f * Build(r) + 0.5f * Over(r));
     public static float SpeedGate(float v) => (float)System.Math.Sqrt(Clamp01((v - 0.5f) / (SpeedFullMs - 0.5f)));
     public static float LoadGate(float fz) { float x = fz / LoadRefN; return x <= 0f ? 0f : System.Math.Min(1.4f, (float)System.Math.Sqrt(x)); }
     public static float Db(float db) => (float)System.Math.Pow(10.0, db / 20.0);
@@ -96,15 +95,13 @@ public class TireSoundDsp
                 sG[i] += kP * (gT - sG[i]);
                 if (sG[i] < 1e-6f) continue;
                 float f0 = TireSoundTuning.ToneHz(ra) * (float)System.Math.Pow(2.0, (i - 1.5) * TireSoundTuning.TireSpreadCents / 1200.0);
-                float q = TireSoundTuning.ToneQ(ra), tn = TireSoundTuning.Tonal(ra);
-                float imp = 0f; ph[i] += f0 / fs * per[i];
-                if (ph[i] >= 1.0) { ph[i] -= 1.0; imp = 1f; per[i] = 1f + TireSoundTuning.Jitter(ra) * Noise(); }
-                // normalise each excitation so the fundamental band has ~unit RMS: impulse train -> fs/(sqrt2 f0); white(+-1) -> 1/(0.577 sqrt(pi BW/fs))
-                float nN = 1f / (0.577f * (float)System.Math.Sqrt(System.Math.PI * f0 / q / fs)), iN = fs / (1.4142f * f0);
-                float ex = (1f - tn) * Noise() * nN + tn * imp * iN;
+                float q = TireSoundTuning.ToneQ(ra);
+                // white(+-1) through a peak-gain bandpass of bandwidth f0/q has RMS 0.577 sqrt(pi BW/fs): normalise the main band to ~unit RMS
+                float nN = 1f / (0.577f * (float)System.Math.Sqrt(System.Math.PI * f0 / q / fs));
+                float ex = Noise() * nN;
                 float b1 = Bp(ex, f0, q, fs, ref x1[i], ref x2[i], ref y1[i], ref y2[i]);
-                float b2 = Bp(ex, 2f * f0, q, fs, ref z1[i], ref z2[i], ref dzA[i], ref dzB[i]);
-                float m = sG[i] * (b1 + TireSoundTuning.Harm2 * b2) * 0.9f;
+                float b2 = Bp(ex, TireSoundTuning.BroadMul * f0, TireSoundTuning.BroadQ, fs, ref z1[i], ref z2[i], ref dzA[i], ref dzB[i]) * (float)System.Math.Sqrt(TireSoundTuning.BroadQ / (q * TireSoundTuning.BroadMul));
+                float m = sG[i] * (b1 + TireSoundTuning.BroadLevel * b2) * 0.9f;
                 float x = (TireSoundTuning.Pan[i] + 1f) * 0.5f;
                 l += m * (float)System.Math.Cos(x * 0.5 * System.Math.PI); r += m * (float)System.Math.Sin(x * 0.5 * System.Math.PI);
             }

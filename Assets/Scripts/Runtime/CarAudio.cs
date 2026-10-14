@@ -51,9 +51,9 @@ public abstract class SynthBase : MonoBehaviour
 public class EngineSynth : SynthBase
 {
     // state copied from the main thread (floats/bools: atomic)
-    volatile float rpm, load, thrArea, starterRps, crankAmp; volatile bool combusting, starter, limiter, ignition, sputter;
+    volatile float rpm, load, mapBar = 1f, thrArea, starterRps, crankAmp; volatile bool combusting, starter, limiter, ignition, sputter;
     volatile int clicks; bool wasComb, wasIgn; float sputterT;
-    double phase; float jitter = 1f, lp, hp, clickEnv, starterPhase, motorPhase;
+    double phase; float jitter = 1f, jitS = 1f, ampS = -1f, lp, lp2, hp, clickEnv, starterPhase, motorPhase;
     const int Harm = 10;   // harmonics of the firing frequency
     public override void Init(CarController c, float sampleRate = 0f) { base.Init(c, sampleRate); if (c.engine != null) { wasIgn = c.engine.ignition; wasComb = c.engine.combusting; } }
     void Update() { Sample(Time.deltaTime); }
@@ -61,7 +61,7 @@ public class EngineSynth : SynthBase
     {
         var e = car.engine; var p = car.p; if (e == null) return;
         rpm = e.rpm; thrArea = e.throttleArea; combusting = e.combusting; starter = e.starter; limiter = e.limiter; ignition = e.ignition;
-        load = Mathf.Clamp01((e.map - p.mapZeroTorque) / (1f - p.mapZeroTorque));
+        load = Mathf.Clamp01((e.map - p.mapZeroTorque) / (1f - p.mapZeroTorque)); mapBar = e.map;
         starterRps = e.starter ? e.rpm / 60f * e.StarterRatio : 0f;                       // armature rev/s (pinion turns ratio x crank speed)
         crankAmp = Mathf.Clamp01(e.rpm / p.idleRpm);
         if (e.ignition != wasIgn) { clicks++; wasIgn = e.ignition; }
@@ -69,7 +69,7 @@ public class EngineSynth : SynthBase
         wasComb = e.combusting; sputterT = Mathf.Max(0f, sputterT - dt); sputter = sputterT > 0f && e.rpm > 1f;
     }
     /// offline render (tests / sweep tool): set the audio-thread state directly, no CarController needed
-    public void SetOfflineState(float sampleRate, float rpmV, float loadV, float throttleArea, bool comb = true) { sr = sampleRate; rpm = rpmV; load = loadV; thrArea = throttleArea; combusting = comb; ignition = comb; crankAmp = 1f; }
+    public void SetOfflineState(float sampleRate, float rpmV, float loadV, float throttleArea, bool comb = true, float mapV = -1f) { sr = sampleRate; rpm = rpmV; load = loadV; mapBar = mapV >= 0f ? mapV : OfflineMapZero + loadV * (1f - OfflineMapZero); thrArea = throttleArea; combusting = comb; ignition = comb; crankAmp = 1f; }
     float[] mono = new float[0]; readonly AudioPauseGate pause = new AudioPauseGate();
     void OnAudioFilterRead(float[] data, int ch)
     {
@@ -80,23 +80,42 @@ public class EngineSynth : SynthBase
         for (int i = 0; i < n; i++) for (int c = 0; c < ch; c++) data[i * ch + c] *= mono[i];
         pause.Apply(data, n, ch, CarAudio.Paused, sr);
     }
+    // Exhaust level model (physically motivated, replaces the old 0.12..0.55 lerp on torque-load that put closed throttle ~13 dB
+    // down AND low-passed it at 200 Hz, so overrun nearly vanished; a real 8V on overrun is only ~6-10 dB down with a burble).
+    // Exhaust pulse strength ~ cylinder pressure at exhaust-valve opening, p_EVO ~ trapped charge ~ MAP x pressure ratio:
+    //   fired:    p_EVO ~ MAP x (MotorRatio + CombRatio)  (combustion raises EVO pressure ~4-5x intake)
+    //   motoring: p_EVO ~ MAP x MotorRatio               (compression/expansion alone still blows a pulse down the pipe)
+    // Radiated tailpipe level grows sub-linearly with blowdown pressure (muffler/flow-noise compression): amp ~ p_EVO^LevelExp.
+    // Closed throttle MAP ~0.22 bar fired -> (0.22)^0.75 = -9.9 dB re WOT at the pulse; after the load-dependent lowpass and the
+    // tanh output stage (which compresses the loud WOT note) the rendered on/off difference is ~6-10 dB. Fuel-cut motoring -> ~-19 dB.
+    public const float MotorRatio = 1.2f, CombRatio = 3.8f, LevelExp = 0.75f, AmpWot = 0.55f, OfflineMapZero = 0.22f;
+    static float SoftClip(float x) => (float)System.Math.Tanh(x);   // tanh instead of hard clamp
+    public static float ExhaustAmp(float map, bool fired)
+    {
+        float pEvo = Mathf.Max(0f, map) * (MotorRatio + (fired ? CombRatio : 0f)), pWot = MotorRatio + CombRatio;
+        return AmpWot * Mathf.Pow(pEvo / pWot, LevelExp);
+    }
     public void Render(float[] buf, int n)   // mono synthesis (also used offline by the -audiowav test)
     {
         float f = rpm / 60f * 2f;                         // firing frequency, 4-cyl 4-stroke
         float tilt = Mathf.Lerp(1.7f, 0.9f, load);        // brighter spectrum under load
-        float amp = combusting && !limiter ? Mathf.Lerp(0.12f, 0.55f, load) : 0.10f * crankAmp;   // overrun / motoring quieter
-        float rough = combusting ? 0.35f * load : 0.6f;
-        float aLP = OnePole(200f + 6000f * load, sr);   // (no intake sound: the old white-noise intake hiss was removed on request)
+        bool fired = combusting && !limiter;
+        float amp = ExhaustAmp(mapBar, fired) * (fired ? 1f : crankAmp);
+        float burble = fired ? (1f - load) * Mathf.Clamp01((rpm - 1300f) / 2000f) : 0f;   // overrun pumping/burble: weak, lean, late-burning closed-throttle charges vary cycle to cycle
+        float rough = combusting ? 0.06f * load + 0.22f * burble : 0.3f;   // per-cycle pulse variation, now subtle + smoothed (was 0.35 x load as a hard per-cycle amplitude step = grain)
+        float aLP = OnePole(700f + 5500f * load, sr);     // softer (darker) off load, but the firing fundamental + low harmonics stay audible   // (no intake sound: the old white-noise intake hiss was removed on request)
         float norm = 0f; for (int k = 1; k <= Harm; k++) norm += 1f / Mathf.Pow(k, tilt); norm += 0.25f;   // peak of the harmonic sum -> keeps the pulse train within +-1
+        float aSm = OnePole(30f, sr), aJ = OnePole(Mathf.Max(20f, 1.5f * f), sr);   // amplitude smoothing; jitter glides over ~1/3 cycle instead of stepping
         float meshF = starterRps * 9f;                    // starter gear-mesh whine = pinion teeth x armature rev/s (9 teeth, S)
         if (clicks > 0) { clickEnv = 1f; clicks = 0; }
         for (int i = 0; i < n; i++)
         {
-            double prev = phase; phase += f / sr; if (phase >= 1.0) { phase -= 1.0; jitter = 1f + rough * Noise(); if (sputter && rng.NextDouble() < 0.5) jitter = 3f * (float)rng.NextDouble(); }
+            double prev = phase; phase += f / sr; if (phase >= 1.0) { phase -= 1.0; jitter = 1f + rough * Noise(); if (sputter && rng.NextDouble() < 0.5) jitter = 3f * (float)rng.NextDouble(); if (jitter < 0.2f) jitter = 0.2f; }
             float th = (float)(phase * 2.0 * System.Math.PI), s = 0f;
             for (int k = 1; k <= Harm; k++) s += Mathf.Sin(k * th) / Mathf.Pow(k, tilt);
             s += 0.25f * Mathf.Sin(0.5f * th);           // half order: cylinder-to-cylinder imbalance
-            float eng = s / norm * amp * jitter * (f > 1f ? 1f : 0f);
+            if (ampS < 0f) ampS = amp; ampS += aSm * (amp - ampS); jitS += aJ * (jitter - jitS);   // de-zipper: no amplitude steps
+            float eng = s / norm * ampS * jitS * (f > 1f ? 1f : 0f);
             float st = 0f;
             if (starterRps > 0f || starter)
             {
@@ -104,8 +123,8 @@ public class EngineSynth : SynthBase
                 st = 0.18f * Mathf.Sin(motorPhase * 2f * Mathf.PI) * (0.7f + 0.3f * Mathf.Sin(starterPhase * 2f * Mathf.PI)) + 0.05f * Noise();   // whine modulated by compression strokes
             }
             float click = 0f; if (clickEnv > 1e-3f) { click = clickEnv * Noise() * 0.6f; clickEnv *= Mathf.Exp(-1f / (0.004f * sr)); }
-            lp += aLP * (eng - lp);
-            float o = Mathf.Clamp(lp + st + click, -1f, 1f);
+            lp += aLP * (eng - lp); lp2 += aLP * (lp - lp2);   // 2-pole lowpass (12 dB/oct): smoother, no fizzy top
+            float o = SoftClip(lp2 + st + click);
             buf[i] = o;
         }
     }
