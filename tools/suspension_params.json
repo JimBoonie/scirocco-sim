@@ -1,0 +1,675 @@
+{
+ "_meta": {
+  "coords": "vehicle frame, metres: origin on ground plane at front axle centreline, x forward, y left, z up; left side given, mirror y for right",
+  "ride_state": "unladen kerb (VW alignment condition), estimated ride height",
+  "tags": "S=sourced, SD=sources disagree, D=derived (method in suspension_data.md), E=estimated",
+  "variant": "1984 Scirocco II EU 1.8 GTI/GTX, 185/60HR14 on 6Jx14"
+ },
+ "vehicle": {
+  "wheelbase": [
+   2.4,
+   "S"
+  ],
+  "track_front": [
+   1.404,
+   "S (EU 14in); A1 manual 1.387 for 13in"
+  ],
+  "track_rear": [
+   1.372,
+   "S"
+  ],
+  "tyre_loaded_radius": [
+   0.2768,
+   "D"
+  ],
+  "tyre_free_radius": [
+   0.2888,
+   "D"
+  ]
+ },
+ "front_macpherson": {
+  "strut_top_mount": [
+   [
+    -0.01353,
+    0.5525,
+    0.7
+   ],
+   "D (x shifted +0.0089 m 2026-10-12: derived correction so steering axis passes through wheel centre longitudinally, zero caster offset; keeps sourced caster/KPI/scrub)"
+  ],
+  "lower_ball_joint": [
+   [
+    0.00357,
+    0.6744,
+    0.165
+   ],
+   "D (x shifted +0.0089 m 2026-10-12: derived correction so steering axis passes through wheel centre longitudinally, zero caster offset; keeps sourced caster/KPI/scrub)"
+  ],
+  "lower_arm_front_pivot": [
+   [
+    0.04,
+    0.35,
+    0.195
+   ],
+   "E"
+  ],
+  "lower_arm_rear_pivot": [
+   [
+    -0.25,
+    0.36,
+    0.205
+   ],
+   "E"
+  ],
+  "wheel_centre": [
+   [
+    0.0,
+    0.702,
+    0.2768
+   ],
+   "D"
+  ],
+  "tie_rod_outer": [
+   [
+    -0.12,
+    0.6,
+    0.362
+   ],
+   "E (fitted 2026-10-13: end take-off rack, zero bump steer / symmetric rack travel; kept fixed when the rod was set to 0.379 m SD; proposed_geometry_fix.md)"
+  ],
+  "tie_rod_inner": [
+   [
+    -0.09949,
+    0.2216,
+    0.35594
+   ],
+   "SD (Bentley 1985-93 US Scirocco/Cabriolet manual p.10-33 Fig. 7-7: replacement manual tie rod set to c = 379 mm; unconfirmed for 1984): outer point kept, inner point moved 3.9 mm inboard along the rod line (2026-10-13); was (-0.0997, 0.2255, 0.356) at 0.3751 m (S TOPRAN). Topology S: rack end take-off via axial joint 171 419 821"
+  ],
+  "kpi_deg": [
+   12.833,
+   "S ('Spreizung' 12d50')"
+  ],
+  "caster_deg": [
+   1.833,
+   "S (+-0.5)"
+  ],
+  "scrub_radius_m": [
+   -0.01,
+   "D/SD: manual -13.8..-6.3 mm on 13in; 14in GTI value est"
+  ],
+  "spring_rate_N_per_mm": [
+   17.2,
+   "SD: one forum press test 98 lb/in, 1983 Golf GTI front spring; Rabbit 77-81 lb/in"
+  ],
+  "spring_motion_ratio": [
+   0.95,
+   "D"
+  ],
+  "wheel_rate_N_per_mm": [
+   15.5,
+   "D"
+  ],
+  "spring_free_length_m": [
+   0.37,
+   "E"
+  ],
+  "bump_stop": {
+   "gap_m": 0.06,
+   "rate_progressive_N_per_mm": [
+    [
+     0,
+     0
+    ],
+    [
+     0.01,
+     30
+    ],
+    [
+     0.025,
+     150
+    ],
+    [
+     0.035,
+     600
+    ]
+   ],
+   "tag": "E"
+  },
+  "travel_m": {
+   "bump": 0.08,
+   "rebound": 0.09,
+   "tag": "E"
+  },
+  "unsprung_mass_kg": [
+   34.0,
+   "E (hub, 239mm vented disc, caliper, wheel 6x14, tyre, half strut/arm/driveshaft)"
+  ]
+ },
+ "rear_twist_beam": {
+  "trailing_arm_pivot": [
+   [
+    -1.985,
+    0.6,
+    0.3
+   ],
+   "E (pivot ~0.415 m ahead of rear axle)"
+  ],
+  "beam_shear_centre_x": [
+   -2.06,
+   "E (beam close to pivots on A1 = more torsion-like)"
+  ],
+  "wheel_centre": [
+   [
+    -2.4,
+    0.686,
+    0.2768
+   ],
+   "D"
+  ],
+  "damper_top": [
+   [
+    -2.43,
+    0.555,
+    0.675
+   ],
+   "D: static length 0.445 m = compressed 0.33 + 0.55*stroke (aftermarket 533-543/324-331 mm); points E"
+  ],
+  "damper_bottom": [
+   [
+    -2.43,
+    0.585,
+    0.23
+   ],
+   "E (coilover strut just inboard of hub)"
+  ],
+  "spring_rate_N_per_mm": [
+   14.0,
+   "E"
+  ],
+  "spring_motion_ratio": [
+   0.92,
+   "E"
+  ],
+  "wheel_rate_N_per_mm": [
+   11.9,
+   "D"
+  ],
+  "static_camber_deg": [
+   -1.25,
+   "S (-1d15' +-25..35')"
+  ],
+  "static_toe_total_deg": [
+   0.333,
+   "S (+20' toe-in)"
+  ],
+  "travel_m": {
+   "bump": 0.085,
+   "rebound": 0.09,
+   "tag": "E"
+  },
+  "unsprung_mass_kg": [
+   27.0,
+   "E (incl. ~half beam)"
+  ]
+ },
+ "anti_roll": {
+  "front_bar_diameter_mm": [
+   16,
+   "S? (driversfound spec sheet; some trims 20/18 mm reported: SD)"
+  ],
+  "front_bar_wheel_rate_N_per_mm": [
+   4.5,
+   "D: G=79.3GPa, L_active~0.9m, lever 0.2m, arm MR~0.55"
+  ],
+  "rear_bar_diameter_mm": [
+   19,
+   "S? (driversfound; bar inside beam on GTI/GTX)"
+  ],
+  "rear_roll_stiffness_total_Nm_per_deg": [
+   350,
+   "D/E: beam torsion + 19mm bar via 0.415m trailing arms"
+  ],
+  "front_roll_stiffness_springs_plus_bar_Nm_per_deg": [
+   400,
+   "D"
+  ]
+ },
+ "alignment_front": {
+  "camber_deg": [
+   0.333,
+   "S (+20' +-30'); sporty option +40'"
+  ],
+  "toe_total_deg": [
+   -0.25,
+   "S (-15' +-10' = toe-out, unloaded); sporty -10'..0'"
+  ],
+  "toe_out_on_turns_20deg": [
+   "outer 18d30' at inner 20d (+-30': 18d00'..19d00')",
+   "SD Bentley 1985-93 US manual p.10-10 Table b: toe-angle difference at 20d lock -1d30' +-30'; unconfirmed for 1984. Replaces A1 manual 18d10' (S, A1)"
+  ],
+  "toe_out_on_turns_outer_deg_at_inner20": [
+   [
+    18.5,
+    0.5
+   ],
+   "SD (value, tolerance) deg; Bentley p.10-10"
+  ]
+ },
+ "steering": {
+  "overall_ratio": [
+   17.32,
+   "S (A1 workshop manual)"
+  ],
+  "turns_lock_to_lock": [
+   3.525,
+   "D: 2 x mean sourced lock 36.645 x 17.32 = 1269 deg; manual '3.5' (S) = rounded; carfolio 3.9 (US 1983) SD"
+  ],
+  "lock_inner_outer_deg": [
+   [
+    40.37,
+    32.92
+   ],
+   "S (A1 manual, 13in)"
+  ]
+ },
+ "kinematics_targets": {
+  "front_roll_centre_height_m": [
+   0.07,
+   "D (graphical from hardpoints above)"
+  ],
+  "rear_roll_centre_height_m": [
+   0.18,
+   "D (twist beam ~ pivot-height line)"
+  ],
+  "front_camber_gain_deg_per_m_bump": [
+   -15,
+   "D"
+  ],
+  "rear_camber_vs_body_roll": [
+   0.85,
+   "D (fraction of roll, beam ~ trailing arm)"
+  ],
+  "rear_roll_steer": [
+   "slight understeer (toe-in outer)",
+   "E"
+  ],
+  "front_camber_change_20L_to_20R_deg": [
+   [
+    1.25,
+    0.333
+   ],
+   "SD Bentley 1985-93 US manual p.10-10 Table b: 1d15' +-20' (caster check); unconfirmed for 1984"
+  ],
+  "side_to_side_limits_deg": [
+   {
+    "caster_max_diff": 1.0,
+    "front_camber_max_diff": 1.0,
+    "rear_camber_max_diff": 0.667,
+    "thrust_max_dev": 0.5
+   },
+   "SD Bentley 1985-93 US manual p.10-10 Table b (1d / 1d / 40' / 30'; thrust value faint); unconfirmed for 1984"
+  ]
+ },
+ "dampers": {
+  "type": "OE Boge/Sachs twin-tube oil (gas twin-tube in later replacements); front strut insert/cartridge, rear coilover",
+  "tag": "type S (Eibach notes cartridge front strut); curves E",
+  "front": {
+   "bump": [
+    [
+     0,
+     0
+    ],
+    [
+     0.05,
+     90
+    ],
+    [
+     0.1,
+     170
+    ],
+    [
+     0.3,
+     330
+    ],
+    [
+     1.0,
+     700
+    ]
+   ],
+   "rebound": [
+    [
+     0,
+     0
+    ],
+    [
+     0.05,
+     200
+    ],
+    [
+     0.1,
+     380
+    ],
+    [
+     0.3,
+     700
+    ],
+    [
+     1.0,
+     1300
+    ]
+   ]
+  },
+  "rear": {
+   "bump": [
+    [
+     0,
+     0
+    ],
+    [
+     0.05,
+     70
+    ],
+    [
+     0.1,
+     130
+    ],
+    [
+     0.3,
+     260
+    ],
+    [
+     1.0,
+     560
+    ]
+   ],
+   "rebound": [
+    [
+     0,
+     0
+    ],
+    [
+     0.05,
+     160
+    ],
+    [
+     0.1,
+     300
+    ],
+    [
+     0.3,
+     560
+    ],
+    [
+     1.0,
+     1050
+    ]
+   ]
+  },
+  "units": "damper shaft velocity m/s -> force N (at damper)"
+ },
+ "bushings": {
+  "front_arm_front_N_per_mm": {
+   "radial": [
+    2500,
+    "E"
+   ],
+   "axial": [
+    800,
+    "E"
+   ]
+  },
+  "front_arm_rear_N_per_mm": {
+   "radial": [
+    1200,
+    "E"
+   ],
+   "axial": [
+    600,
+    "E"
+   ]
+  },
+  "rear_beam_pivot_N_per_mm": {
+   "radial": [
+    2000,
+    "E"
+   ],
+   "axial": [
+    700,
+    "E"
+   ]
+  },
+  "strut_top_N_per_mm": [
+   1500,
+   "E"
+  ]
+ },
+ "wheels": {
+  "rim": [
+   "6Jx14",
+   "S"
+  ],
+  "bolt_pattern": [
+   "4x100 PCD, 57.1 bore",
+   "S (A1 standard)"
+  ],
+  "offset_ET_mm": [
+   38,
+   "S (VW 171 601 125A 6x14 ET38, GTX standard; 321 601 025H/N, 191 601 025B/F also 6x14 ET38; wheelfitment.eu). ET42 (tirewheelguide) is for 5.5J fitments"
+  ]
+ },
+ "components": {
+  "front_lower_arm": {
+   "part": "171 407 153 D (arm), ball joint 171 407 365 F, 17 mm cone; Febi 07167 kit",
+   "mass_kg": [
+    2.97,
+    "S Febi kit incl. ball joint (arm bare 1.98, ball joint 0.29)"
+   ],
+   "front_bush": {
+    "part": "171 407 182 D",
+    "len_mm": 61,
+    "id_mm": 12,
+    "od_mm": "20/32",
+    "axis": "longitudinal (x)",
+    "tag": "S"
+   },
+   "rear_bush": {
+    "part": "171 407 181 A",
+    "len_mm": 55,
+    "id_mm": 16,
+    "od_mm": 38,
+    "axis": "pressed onto rear pin, in a bolted body bracket (2 bolts; bracket also carries ARB on GTI)",
+    "tag": "S"
+   },
+   "lengths_m": {
+    "pivot_spacing": [
+     0.2903,
+     "D"
+    ],
+    "lbj_to_front_pivot": [
+     0.3289,
+     "D"
+    ],
+    "lbj_to_rear_pivot": [
+     0.4004,
+     "D"
+    ]
+   },
+   "mount": "front pivot bolt into front subframe crossmember (70 Nm), rear bracket to body (45 Nm)",
+   "sources": [
+    "https://www.simplycarparts.co.uk/products/7167",
+    "https://www.vwmanual.ru/en/golf/1/chassis/fsuspension/rychagi-peredney-podveski-i-vtulki"
+   ]
+  },
+  "front_strut": {
+   "design": "damper piston runs directly in strut tube (cartridge on replacements); knuckle clamped by 2 bolts, upper eccentric = camber adjust; hollow rubber bump stop under top mount; springs in VW load groups",
+   "tag": "S https://workshop-manuals.com/volkswagen/golf-mk1/running_gear/technical_data/general_view_of_front_axle/",
+   "insert_overall_length_m": [
+    0.565,
+    "S-weak: Bilstein 34-001370 listing dimension (likely package/overall length, not extended-length spec)"
+   ],
+   "top_mount_to_lbj_m": [
+    0.549,
+    "D"
+   ],
+   "stroke_m": [
+    0.17,
+    "E"
+   ],
+   "strut_assembly_mass_kg": [
+    3.8,
+    "S Bilstein B4 22-239594 (strut housing only, no spring); spring ~1.6 E"
+   ]
+  },
+  "knuckle_hub": {
+   "lbj_to_wheel_centre_z_m": [
+    0.112,
+    "D"
+   ],
+   "steering_arm": "high, on strut/knuckle, points rearward",
+   "mass_kg": [
+    6.5,
+    "E incl hub+bearing"
+   ],
+   "hub": "4x100, double-row ball bearing"
+  },
+  "tie_rod": {
+   "part": "171 419 804 (manual; right one adjustable), M12x1.5/M22x1.5",
+   "rod_length_m": [
+    0.379,
+    "SD Bentley 1985-93 US manual p.10-33 Fig. 7-7 dimension c = 379 mm (14.921 in), outer stud centre to inner joint housing end; unconfirmed for 1984. Was 0.3751 (S TOPRAN/SKF listing via wortox.com)"
+   ],
+   "pivot_to_pivot_m": [
+    0.379,
+    "D = rod_length_m (inner point placed on the rod line at 0.379 m from the outer point)"
+   ],
+   "ratio": 17.32,
+   "inner_joint_b_mm_LR": [
+    [
+     69.0,
+     67.0
+    ],
+    "SD Bentley 1985-93 US manual p.10-33 Figs 7-8/7-9 (rack centred). NOT applied: both sides modelled at the mean (Taylor 2026-10-13)"
+   ]
+  },
+  "rear_damper": {
+   "type": "twin-tube, top pin M10x1 / bottom eye, rod 12 mm, body 39 mm",
+   "extended_m": [
+    0.538,
+    "SD 0.533 TRW / 0.535 Stark / 0.543 Monroe"
+   ],
+   "compressed_m": [
+    0.328,
+    "SD 0.324-0.331"
+   ],
+   "mass_kg": [
+    1.8,
+    "S 1.7 Monroe / 1.83 Bilstein"
+   ],
+   "sources": [
+    "https://www.autodoc.parts/monroe/7437416",
+    "https://www.rexbo.co.uk/trw/shock-absorber-jhs101t",
+    "https://www.heritagepartscentre.com/uk/171513033r-rear-shock-absorber-bilstein-b4-gas.html"
+   ]
+  },
+  "rear_axle": {
+   "trailing_arm_length_pivot_to_wheel_m": [
+    0.4245,
+    "E"
+   ],
+   "beam": "open (V/U) section near pivots, welded to arms; GTI 19 mm bar inside",
+   "mass_kg": [
+    17,
+    "E whole axle w/o hubs/drums"
+   ]
+  },
+  "front_arb": {
+   "diam_mm": 16,
+   "layout": "U-bar: centre clamped to body/subframe, ends bolted to lower arms near rear bush (no drop links, so it also locates arms)",
+   "lever_m": [
+    0.2,
+    "E"
+   ],
+   "tag": "layout S (manual), dims E"
+  },
+  "engine_mounts": {
+   "layout": "A1 3-mount: right mount, left gearbox mount, front torque mount on subframe; rear mount on later cars",
+   "tag": "S-weak (manual text); positions not modeled"
+  }
+ },
+ "multibody_links": [
+  [
+   "body",
+   "front_subframe",
+   "rigid (bolted)"
+  ],
+  [
+   "front_subframe",
+   "lower_arm",
+   "front bush: revolute about arm axis + bush compliance"
+  ],
+  [
+   "body",
+   "lower_arm",
+   "rear bush via bracket: compliant spherical"
+  ],
+  [
+   "lower_arm",
+   "knuckle",
+   "ball joint: spherical"
+  ],
+  [
+   "knuckle",
+   "strut_tube",
+   "rigid (2 bolts)"
+  ],
+  [
+   "strut_tube",
+   "strut_rod",
+   "cylindrical (prismatic+rotation) + spring/damper/bumpstop force"
+  ],
+  [
+   "strut_rod",
+   "body",
+   "top mount: compliant spherical"
+  ],
+  [
+   "body",
+   "rack",
+   "rigid; rack prismatic along y driven by steering"
+  ],
+  [
+   "rack",
+   "tie_rod",
+   "spherical (inner)"
+  ],
+  [
+   "tie_rod",
+   "knuckle",
+   "spherical (outer)"
+  ],
+  [
+   "knuckle",
+   "hub",
+   "revolute (wheel spin)"
+  ],
+  [
+   "lower_arm L",
+   "lower_arm R",
+   "ARB torsion spring via body-mounted bar"
+  ],
+  [
+   "body",
+   "rear_axle",
+   "2 pivot bushes: compliant revolute; beam = flexible (torsion spring between L/R arms)"
+  ],
+  [
+   "rear_axle",
+   "damper_bottom",
+   "eye: revolute"
+  ],
+  [
+   "damper_top",
+   "body",
+   "pin: compliant spherical"
+  ]
+ ]
+}

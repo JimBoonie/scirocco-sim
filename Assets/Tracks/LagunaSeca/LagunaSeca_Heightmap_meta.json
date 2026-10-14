@@ -1,0 +1,36 @@
+{
+ "files": {
+  "LagunaSeca_Heightmap_513_16bit_LE.raw": 513,
+  "LagunaSeca_Heightmap_1025_16bit_LE.raw": 1025,
+  "LagunaSeca_Heightmap_2049_16bit_LE.raw": 2049
+ },
+ "spacing_m": {
+  "513": 3.715751456089265,
+  "1025": 1.8578757280446325,
+  "2049": 0.9289378640223163
+ },
+ "extent_m": [
+  1902.4647455177037,
+  1902.4647455178201
+ ],
+ "height_range_m": 152.51460626397602,
+ "z_min_rel_origin": -92.20602798991018,
+ "corner_southwest_E_N_rel_origin": [
+  -674.9562922795303,
+  -1090.2360723018646
+ ],
+ "unity_terrain_position": [
+  -674.9562922795303,
+  -92.20602798991018,
+  -1090.2360723018646
+ ],
+ "row0": "south (first row = minimum North)",
+ "byte_order": "little-endian (Windows)",
+ "source": "each RAW is built on its own grid from the USGS 3DEP 1 m lidar DEM (smoothed sigma 1 m), not upsampled; Terrain_* mesh = the 1025 grid exactly; carved 0.25 m under road/kerb footprint; >=0.22 m under road/kerbs/pit (worst triangulation); shoulder band 5 cm under the shoulder surfaces",
+ "terrain_mesh_grid": 1025,
+ "origin_utm10n_nad83": [
+  611234.53659129,
+  4049726.498551327,
+  233.5258865893631
+ ]
+}

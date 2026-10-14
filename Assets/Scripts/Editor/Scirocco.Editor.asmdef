@@ -1,0 +1,1 @@
+{ "name": "Scirocco.Editor", "references": [ "Scirocco.Runtime", "Unity.XR.Management", "Unity.XR.Management.Editor", "Unity.XR.OpenXR", "Unity.XR.OpenXR.Editor" ], "includePlatforms": [ "Editor" ] }

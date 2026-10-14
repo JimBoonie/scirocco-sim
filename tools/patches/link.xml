@@ -1,0 +1,8 @@
+<!-- managed code stripping (Low): keep our assemblies and reflection-heavy packages whole -->
+<linker>
+  <assembly fullname="Scirocco.Runtime" preserve="all"/>
+  <assembly fullname="Assembly-CSharp" preserve="all"/>
+  <assembly fullname="Unity.InputSystem" preserve="all"/>
+  <assembly fullname="Unity.XR.OpenXR" preserve="all"/>
+  <assembly fullname="Unity.XR.Management" preserve="all"/>
+</linker>

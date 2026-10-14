@@ -1,0 +1,197 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 86a3d5b128e8b91c4b119209034fdc58, type: 3}
+  m_Name: SciroccoParams
+  m_EditorClassIdentifier: 
+  mass: 995
+  inertiaTensor: {x: 1350, y: 1450, z: 330}
+  cgHeight: 0.5
+  cgFromFront: 0.95
+  wheelbase: 2.4
+  trackFront: 1.404
+  trackRear: 1.372
+  kin: {fileID: 11400000, guid: 8ecb74d074ed8f64eb54130b3c385d7e, type: 2}
+  profile: 0
+  kinProposed: {fileID: 11400000, guid: 4c51f3fe6a1ef0573bc24dd496d17570, type: 2}
+  propArbFront: 7200
+  propTwistBeamRoll: 8520
+  propWheelRateFront: 15500
+  propWheelRateRear: 11900
+  propSteeringStiffness: 12000
+  propPneumaticTrail0: 0.035
+  hubDropDesign: 0.3
+  wheelRateFront: 15500
+  wheelRateRear: 11900
+  bumpTravelF: 0.08
+  reboundTravelF: 0.09
+  bumpTravelR: 0.085
+  reboundTravelR: 0.09
+  bumpStopGap: 0.06
+  bumpStopX:
+  - 0
+  - 0.01
+  - 0.025
+  - 0.035
+  bumpStopRate:
+  - 0
+  - 30000
+  - 150000
+  - 600000
+  damperV:
+  - 0
+  - 0.05
+  - 0.1
+  - 0.3
+  - 1
+  damperBumpF:
+  - 0
+  - 90
+  - 170
+  - 330
+  - 700
+  damperReboundF:
+  - 0
+  - 200
+  - 380
+  - 700
+  - 1300
+  damperBumpR:
+  - 0
+  - 70
+  - 130
+  - 260
+  - 560
+  damperReboundR:
+  - 0
+  - 160
+  - 300
+  - 560
+  - 1050
+  arbFront: 4500
+  twistBeamRoll: 10650
+  staticCamberF: 0.333
+  staticCamberR: -1.25
+  toeTotalF: -0.25
+  toeTotalR: 0.333
+  useJacking: 1
+  rearModel: 1
+  frontModel: 1
+  useUnsprungMass: 1
+  unsprungFront: 34
+  unsprungRear: 27
+  tireRate: 180000
+  tireDamping: 150
+  wheelRadius: 0.289
+  wheelInertia: 0.9
+  Fz0: 3000
+  pCy1: 1.3
+  pDy1: 1.1
+  pDy2: -0.1
+  pEy1: -0.8
+  pKy1: 16
+  pKy2: 1.8
+  pCx1: 1.6
+  pDx1: 1.15
+  pDx2: -0.08
+  pEx1: 0.2
+  pKx1: 20
+  rBx1: 12
+  rBy1: 9
+  relaxLength: 0.45
+  camberThrust: 0.9
+  rollingRes: 0.012
+  tireThermal: 0
+  coldPressureFront: 170000
+  coldPressureRear: 170000
+  rollingResV2: 0.00000004
+  tirePreset: 0
+  rpmPoints:
+  - 800
+  - 1500
+  - 2000
+  - 3000
+  - 3500
+  - 4000
+  - 5000
+  - 5800
+  - 6300
+  - 6700
+  torquePoints:
+  - 95
+  - 120
+  - 135
+  - 150
+  - 153
+  - 152
+  - 146
+  - 135.6
+  - 125
+  - 0
+  idleRpm: 850
+  revLimit: 6500
+  stallRpm: 350
+  engineInertia: 0.13
+  starterPowerW: 950
+  starterPinionTeeth: 9
+  ringGearTeeth: 130
+  starterNoLoadRpm: 5000
+  starterArmatureInertia: 0.0006
+  minFiringRpm: 150
+  throttleFlowCoeff: 4.7
+  throttleLeakArea: 0.004
+  idleMaxPedal: 0.12
+  manifoldRate: 25
+  mapZeroTorque: 0.22
+  pumpingTorque: 10
+  frictionTorqueBase: 12
+  frictionTorquePerKrpm: 4
+  gearRatios:
+  - 3.455
+  - 2.118
+  - 1.444
+  - 1.129
+  - 0.894
+  reverseRatio: 3.17
+  finalDrive: 3.667
+  drivetrainEff: 0.9
+  clutchMaxTorque: 260
+  shiftTime: 0.25
+  brakeTorqueFront: 1400
+  brakeTorqueRear: 300
+  handwheelLockDeg: 634.7
+  rackPerHandwheelDeg: 0.0001081
+  steeringStiffness: 20000
+  pneumaticTrail0: 0.025
+  peakSlipTrail: 0.15
+  columnFriction: 0.6
+  columnFrictionVel: 0.05
+  columnDamping: 0.03
+  steerRate: 90
+  handbrakeTorque: 1500
+  hPointBehindFrontAxle: 1.2
+  hPointHeight: 0.3
+  driverLateral: 0.36
+  driverStature: 1.75
+  sittingEyeRatio: 0.45
+  hPointAboveSeat: 0.09
+  seatBackAngle: 25
+  wheelCentreAheadOfH: 0.45
+  wheelCentreAboveH: 0.33
+  wheelDiameter: 0.37
+  wheelTiltDeg: 25
+  seatTravelFore: 0.1
+  seatTravelAft: 0.1
+  seatTravelUp: 0.04
+  seatTravelDown: 0.04
+  cd: 0.38
+  frontalArea: 1.75
+  airDensity: 1.2
