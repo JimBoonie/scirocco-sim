@@ -6,24 +6,35 @@ using UnityEngine;
 //  * Throttle mass flow: compressible isentropic orifice, Cd * A * p0 / sqrt(R T0) * Psi(p_man/p0), choked below the critical ratio.
 //  * Cylinder air demand: VE(rpm) * rho_man * Vd * rpm/120 (four-stroke). VE(rpm) is DERIVED so the steady WOT brake torque equals the sourced curve.
 //  * Manifold: isothermal filling/emptying dp/dt = R T / V * (mdot_throttle - mdot_cylinders).
-//  * Indicated torque = eta_i * m_air/cycle * LHV / AFR / (4 pi);  friction: Chen-Flynn FMEP;  pumping: (p_amb - p_man) * Vd / (4 pi).
+//  * Closed-plate leakage (v2): the stop screw holds the primary plate stopScrewTurns * pitch / leverArm rad off its seat (Bentley paper + 1/4 turn),
+//    plus the plate-to-bore annulus pi * D * clearance on both plates. Always open, in parallel with the idle bypass.
+//  * Fresh charge per cycle (v2): VE(rpm) * rho_man * Vd * phi, phi = residual-gas fraction lost:
+//      Heywood (1988) ideal throttled-cycle volumetric efficiency (r_c - (p_e/p_i)^(1/n)) / (r_c - 1) (residual at p_e expands into the intake at IVO)
+//      minus the volume, at manifold pressure, of exhaust gas blown back through the valve-overlap curtain (isentropic orifice, overlap duration).
+//    -> as p_man falls the cylinders induct less fresh air per stroke, so the manifold cannot be pumped to near vacuum.
+//  * Indicated torque = eta_i * m_air/cycle * LHV / AFR / (4 pi);  friction: Chen-Flynn FMEP;  pumping: (p_man,WOT(rpm) - p_man) * Vd / (4 pi).
+//    The Heywood/Barnes-Moss tfmep correlation is total MOTORED friction at WOT, which by Heywood's definition (tfmep = pmep + rfmep + afmep)
+//    already contains the WOT pumping loss; only the extra throttling loss below the WOT manifold pressure is added (v2; v1 used p_amb, double-counting
+//    the WOT throttle-body drop).
 //  => the torque at a fixed pedal falls with rpm (the cylinders out-pump a fixed throttle area), so part-throttle curves slope down
 //     and cross zero; at low rpm a small opening already fills the manifold.
 public class Engine
 {
     readonly CarParams p; public float rpm, map = 1f, throttleArea, starterTorque; float omega, pMan;   // map = p_man / p_amb (HUD/audio); throttleArea = open area / WOT area
     public bool ignition = true, starter, combusting = true, limiter;   // limiter = fuel cut active this step   // starter = key held in START; combusting = combustion this step
-    readonly float[] ve; float aWot, aBypass;
-    public float IdleBypassArea => aBypass;
+    readonly float[] ve, pWot; float aWot, aBypass, aLeak;
+    public float IdleBypassArea => aBypass; public float LeakArea => aLeak;
     public Engine(CarParams p)
     {
-        this.p = p; ve = new float[p.rpmPoints.Length];
+        this.p = p; ve = new float[p.rpmPoints.Length]; pWot = new float[p.rpmPoints.Length];
         aWot = PlateArea(p.fullOpenPlateDeg * Mathf.Deg2Rad, p.primaryBore) + PlateArea(p.fullOpenPlateDeg * Mathf.Deg2Rad, p.secondaryBore);
-        for (int i = 0; i < ve.Length; i++) ve[i] = 1f;
+        float psi0 = p.closedPlateDeg * Mathf.Deg2Rad;
+        aLeak = PlateArea(psi0 + p.stopScrewTurns * p.stopScrewPitch / p.stopLeverArm, p.primaryBore) + Mathf.PI * (p.primaryBore + p.secondaryBore) * p.plateBoreClearance;
+        for (int i = 0; i < ve.Length; i++) { ve[i] = 1f; pWot[i] = p.ambientPressure; }
         for (int k = 0; k < 40; k++)   // VE(rpm) fixed point: steady WOT brake torque == sourced curve (D)
             for (int i = 0; i < ve.Length; i++)
             {
-                float r = Mathf.Max(p.rpmPoints[i], p.rpmPoints[0]), pm = SteadyMap(1f, r, ve[i]); Parts(r, pm, 1f, out float ti, out float tf, out float tp);
+                float r = Mathf.Max(p.rpmPoints[i], p.rpmPoints[0]), pm = SteadyMap(1f, r, ve[i]); pWot[i] = pm; Parts(r, pm, 1f, out float ti, out float tf, out float tp);
                 ve[i] = Mathf.Max(0f, (p.torquePoints[i] + tf + tp) / ti);
             }
         float lo = 0f, hi = 0.02f * aWot;   // idle bypass (D): closed-pedal steady net torque = 0 at idleRpm
@@ -68,7 +79,7 @@ public class Engine
         primary = psi0 + (psiW - psi0) * Mathf.Clamp01(pedal);
         secondary = psi0 + (psiW - psi0) * Mathf.Clamp01((primary - s0) / (psiW - s0));
     }
-    public float Area(float pedal) { PlateAngles(pedal, out float a1, out float a2); return PlateArea(a1, p.primaryBore) + PlateArea(a2, p.secondaryBore) + aBypass; }
+    public float Area(float pedal) { PlateAngles(pedal, out float a1, out float a2); return PlateArea(a1, p.primaryBore) + PlateArea(a2, p.secondaryBore) + aBypass + aLeak; }
     /// isentropic orifice flow function Psi(pr) = sqrt(2g/(g-1) (pr^(2/g) - pr^((g+1)/g))), held at its choked value below the critical ratio
     public float Psi(float pr)
     {
@@ -76,7 +87,21 @@ public class Engine
         return Mathf.Sqrt(Mathf.Max(0f, 2f * g / (g - 1f) * (Mathf.Pow(pr, 2f / g) - Mathf.Pow(pr, (g + 1f) / g))));
     }
     float ThrottleFlow(float area, float pm) => p.throttleDischargeCoeff * area * p.ambientPressure / Mathf.Sqrt(p.airGasConstant * p.ambientTemperature) * Psi(pm / p.ambientPressure);
-    float CylinderFlow(float r, float pm, float v) => v * pm / (p.airGasConstant * p.ambientTemperature) * p.displacement * r / 120f;
+    /// fresh-charge fraction (see header): ideal-cycle residual expansion minus overlap backflow volume, both at manifold pressure
+    public float FreshFraction(float r, float pm)
+    {
+        pm = Mathf.Max(pm, 1f); float rc = p.compressionRatio;
+        float res = (rc - Mathf.Pow(p.exhaustBackPressure / pm, 1f / p.residualExpansionExponent)) / (rc - 1f);
+        if (r > 0f)
+        {
+            float t = p.valveOverlapDeg * Mathf.Deg2Rad / (r * Mathf.PI / 30f), aOv = Mathf.PI * p.exhaustValveDia * p.valveLiftAtTdc / 2f;   // triangular lift -> mean curtain
+            float rt = p.airGasConstant * p.overlapGasTemperature;
+            float mBack = p.throttleDischargeCoeff * aOv * p.exhaustBackPressure / Mathf.Sqrt(rt) * Psi(Mathf.Min(1f, pm / p.exhaustBackPressure)) * t;
+            res -= mBack * rt / pm / (p.displacement / p.cylinders);
+        }
+        return Mathf.Max(0f, res);
+    }
+    float CylinderFlow(float r, float pm, float v) => v * FreshFraction(r, pm) * pm / (p.airGasConstant * p.ambientTemperature) * p.displacement * r / 120f;
     float SteadyMap(float pedal, float r, float v)   // bisection on mdot_throttle = mdot_cylinders
     {
         float A = Area(pedal), lo = 1f, hi = p.ambientPressure;
@@ -87,9 +112,9 @@ public class Engine
     float Fmep(float r, float pm) { float n = r / 1000f; return p.fmepA + p.fmepB * p.peakCylPressureWot * pm / p.ambientPressure + p.fmepCPerKrpm * n + p.fmepDPerKrpm2 * n * n; }
     void Parts(float r, float pm, float v, out float ind, out float fric, out float pump)
     {
-        float k = p.displacement / (4f * Mathf.PI), mCycle = v * pm / (p.airGasConstant * p.ambientTemperature) * p.displacement;
+        float k = p.displacement / (4f * Mathf.PI), mCycle = v * FreshFraction(r, pm) * pm / (p.airGasConstant * p.ambientTemperature) * p.displacement;
         ind = p.indicatedEfficiency * mCycle * p.fuelLhv / p.airFuelRatio / (4f * Mathf.PI);
-        fric = Fmep(r, pm) * k; pump = (p.ambientPressure - pm) * k;
+        fric = Fmep(r, pm) * k; pump = (Interp(p.rpmPoints, pWot, r) - pm) * k;
     }
     /// friction + pumping drag (positive number) at the current manifold pressure
     public float FrictionTorque(float r) { Parts(r, pMan, 0f, out _, out float f, out float pu); return f + pu; }

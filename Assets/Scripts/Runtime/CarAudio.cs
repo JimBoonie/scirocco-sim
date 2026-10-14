@@ -80,7 +80,7 @@ public class EngineSynth : SynthBase
         for (int i = 0; i < n; i++) for (int c = 0; c < ch; c++) data[i * ch + c] *= mono[i];
         pause.Apply(data, n, ch, CarAudio.Paused, sr);
     }
-    // Exhaust level model v2 (overrun fix after the physical air-path Engine, ece5ae0). v1 scaled level with p_EVO itself, assuming
+    // Exhaust level model v2 -> v3 below (overrun fix after the physical air-path Engine, ece5ae0). v1 scaled level with p_EVO itself, assuming
     // closed-throttle MAP ~0.22 bar; the air-path engine gives the physically correct ~0.02-0.05 bar on overrun at 3000-5000 rpm, which
     // put overrun 18-21 dB under WOT (inaudible under tires). The acoustic source at the tailpipe is not p_EVO but the pressure STEP
     // the opening exhaust valve throws into the pipe, |p_EVO - p_back| (p_back ~1.05 atm upstream of the muffler):
@@ -92,12 +92,19 @@ public class EngineSynth : SynthBase
     // plus the exhaust-stroke displacement pulse (piston pushes the cylinder volume out every cycle whatever the charge), modelled as an
     // equivalent PDisp atm added to the step so cruise (p_EVO ~= p_back) never nulls. Radiated level ~ source^LevelExp (muffler compression).
     // Result at 3000-5000 rpm overrun: ~7-9 dB under WOT after the load lowpass + tanh stage (target 6-10 dB). Fuel cut: similar (motoring).
-    public const float MotorRatio = 1.2f, CombRatio = 3.8f, LevelExp = 0.75f, AmpWot = 0.55f, PBack = 1.05f, PDisp = 0.4f, BackflowWeight = 0.47f, OfflineMapZero = 0.03f;
+    // v3 (2026-10-13 PT, after Engine v2 closed-plate leakage + residual floor raised overrun MAP to ~0.09-0.15 bar): the source is the gas VOLUME
+    // the valve event moves at pipe pressure, not the linear step. Blowdown: cylinder gas expands isentropically to p_back, V_out = V (p_EVO/p_back)^(1/g) - V.
+    // Backflow: pipe gas fills the cylinder until it reaches p_back, compressing the residual isentropically, V_in = V - V (p_EVO/p_back)^(1/g).
+    // => |(p_EVO/p_back)^(1/g) - 1| * p_back (equivalent atm), g = burned-gas ratio of specific heats (S: Heywood ~1.3). Higher MAP -> smaller backflow pulse.
+    // BackflowWeight (E) = rarefaction transmission through cat/muffler vs a blowdown pulse: 0.60 (was 0.47 on the linear step), fixed once at the reference
+    // overrun state (3600 rpm, MAP 0.10 bar, fired) to sit ~8 dB under WOT; its rpm/MAP dependence then comes only from the volume law above.
+    // PDisp (E) kept at the same 9.2 % of the WOT source as v2. OfflineMapZero = Engine v2 closed-throttle MAP at ~3600 rpm (D).
+    public const float MotorRatio = 1.2f, CombRatio = 3.8f, LevelExp = 0.75f, AmpWot = 0.55f, PBack = 1.05f, GasGamma = 1.3f, PDispFrac = 0.092f, BackflowWeight = 0.60f, OfflineMapZero = 0.10f;
+    static float PulseVolume(float pEvo) { float v = PBack * (Mathf.Pow(Mathf.Max(0f, pEvo) / PBack, 1f / GasGamma) - 1f); return v >= 0f ? v : -BackflowWeight * v; }
     public static float ExhaustAmp(float map, bool fired)
     {
-        float pEvo = Mathf.Max(0f, map) * (MotorRatio + (fired ? CombRatio : 0f)), pWot = MotorRatio + CombRatio;
-        float d = pEvo - PBack, src = (d >= 0f ? d : -BackflowWeight * d) + PDisp, srcWot = (pWot - PBack) + PDisp;
-        return AmpWot * Mathf.Pow(src / srcWot, LevelExp);
+        float pEvo = Mathf.Max(0f, map) * (MotorRatio + (fired ? CombRatio : 0f)), wot = PulseVolume(MotorRatio + CombRatio), pDisp = PDispFrac / (1f - PDispFrac) * wot;
+        return AmpWot * Mathf.Pow((PulseVolume(pEvo) + pDisp) / (wot + pDisp), LevelExp);
     }
     static float SoftClip(float x) => (float)System.Math.Tanh(x);   // tanh instead of hard clamp
     public void Render(float[] buf, int n)   // mono synthesis (also used offline by the -audiowav test)

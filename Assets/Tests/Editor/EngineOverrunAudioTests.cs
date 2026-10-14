@@ -26,7 +26,7 @@ public class EngineOverrunAudioTests
             float load = Mathf.Clamp01((e.map - p.mapZeroTorque) / (1f - p.mapZeroTorque));
             float on = Db(Render(e.rpm, 1f, 1f, true)), off = Db(Render(e.rpm, load, e.map, e.combusting)), d = on - off;
             Debug.Log($"OVERRUN rpm {e.rpm:0} map {e.map:0.000} load {load:0.00} comb {e.combusting} WOT {on:0.0} dBFS overrun {off:0.0} dBFS diff {d:0.0} dB");
-            Assert.Less(e.map, 0.15f, "closed throttle overrun MAP from the air-path model"); Assert.IsTrue(e.combusting);
+            Assert.That(e.map, Is.InRange(0.05f, 0.35f), "closed-throttle overrun MAP (leakage + residual floor; real SI overrun ~0.15-0.35 bar, aa1car MAP article)"); Assert.IsTrue(e.combusting);
             Assert.That(d, Is.InRange(6f, 10f), $"overrun at {e.rpm:0} rpm");
         }
     }

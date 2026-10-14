@@ -84,6 +84,19 @@ public class CarParams : ScriptableObject
     // B = 0.005 (Chen & Flynn 1965 typical, E) with Pmax scaled by MAP, A reduced by B*Pmax_WOT so WOT FMEP is unchanged (D).
     public float fmepA = 0.67e5f, fmepB = 0.005f, fmepCPerKrpm = 0.15e5f, fmepDPerKrpm2 = 0.05e5f; // Pa
     public float peakCylPressureWot = 60e5f;  // Pa (E)
+    // Closed-throttle leakage + residual gas (2026-10-13 PT; Engine.cs, diagnostics/throttle_model/model_v2.py, SOURCES.md)
+    public float stopScrewPitch = 0.7e-3f;     // m, plate stop screw thread pitch (E: M4 coarse; screw size not published)
+    public float stopScrewTurns = 0.25f;       // turns past "paper just gripped" (S: Bentley 02_fuel.txt throttle valve basic adjustment)
+    public float stopLeverArm = 0.015f;        // m, stop-screw contact radius from the primary shaft (E)
+    public float plateBoreClearance = 0.02e-3f; // m, radial plate-to-bore machining clearance, both plates (E)
+    public float compressionRatio = 10.0f;     // (S: DX 10.0:1, VW Golf/Scirocco GTI 1.8 tech data)
+    public float residualExpansionExponent = 1.3f; // polytropic exponent of residual gas expanding into the intake at IVO (E; Heywood ideal cycle uses gamma)
+    public float exhaustBackPressure = 101325f; // Pa, exhaust port pressure at low flow (E: ~ambient on overrun/idle)
+    public float overlapGasTemperature = 600f; // K, exhaust-port gas flowing back during valve overlap (E)
+    public float exhaustValveDia = 0.033f;     // m (SD: 1.8 8V head 40/33 mm valves, Bentley 1.8 cylinder head data)
+    public float valveLiftAtTdc = 0.6e-3f;     // m, both valves at overlap TDC (E: stock-cam scale of the 268 cam's 1.2 mm, golfgtiforum cam table)
+    public float valveOverlapDeg = 20f;        // crank deg, seat-to-seat overlap (E: between stock ~6 deg @0.050" and 268 cam 42 deg @0.004")
+    public int cylinders = 4;                  // (S)
     public float mapZeroTorque = 0.22f;       // audio-only load scaling (CarAudio); no longer used by the engine physics
     [Header("Drivetrain")] public float[] gearRatios = { 3.455f, 2.118f, 1.444f, 1.129f, 0.894f }; // (S) 4Y box
     public float reverseRatio = 3.17f, finalDrive = 3.667f, drivetrainEff = 0.90f;
