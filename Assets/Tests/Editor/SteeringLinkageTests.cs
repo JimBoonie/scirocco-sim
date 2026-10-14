@@ -9,13 +9,13 @@ public class SteeringLinkageTests
     const float LockCheckDeg = 20f;                            // camber check made at 20d left and 20d right lock
     const float CamberChangeDeg = 1.25f, CamberChangeTolDeg = 20f / 60f;   // SD: 1d15' +-20'
     const float MaxCamberDiffDeg = 1f;                         // SD: max front camber difference between sides
-    // Lock: S [A1] 40d22' / 32d55'; solver with the 0.379 m tie rod (SD) at +-68.6 mm rack gives 40.50 / 32.90 (D) with the single-baseline
-    // lower-arm pivots (+20 mm, E, 2026-10-13; was 40.34 / 32.91). Also checked against the sourced values within 0.25 deg.
-    const float LockInnerDeg = 40.50f, LockOuterDeg = 32.90f, LockTolDeg = 0.1f;
+    // Lock: S [A1] 40d22' / 32d55'; solver with the 0.379 m tie rod (SD) at +-68.6 mm rack gives 40.34 / 32.91 (D) with the original
+    // lower-arm pivots (E; the +20 mm single-baseline estimate gave 40.50 / 32.90 and was dropped in the 2026-10-13 re-solve). Also checked against the sourced values within 0.25 deg.
+    const float LockInnerDeg = 40.34f, LockOuterDeg = 32.91f, LockTolDeg = 0.1f;
     const float LockInnerSrcDeg = 40.367f, LockOuterSrcDeg = 32.917f, LockSrcTolDeg = 0.25f;
     static void Log(string s) { Debug.Log("STEER " + s); TestContext.Out.WriteLine(s); }
     [Test] public void Full_Lock_Matches_Sourced_Lock_Angles()
-    {   // S [A1]: 40d22' inner / 32d55' outer; solver (0.379 m rod, single-baseline pivots) at +-68.6 mm: 40.50 / 32.90
+    {   // S [A1]: 40d22' inner / 32d55' outer; solver (0.379 m rod, original pivots) at +-68.6 mm: 40.34 / 32.91
         var p = P(); float rack = SteeringLinkage.Rack(p, p.handwheelLockDeg);
         Assert.AreEqual(0.0686, rack, 2e-4, "rack stop +-68.6 mm at 634.7 deg");
         SteeringLinkage.WheelAngles(p.kin, rack, 0f, 0f, out float l, out float r);

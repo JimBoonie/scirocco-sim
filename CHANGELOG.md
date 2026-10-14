@@ -10,6 +10,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [2026-10-13] (PT)
 
 ### Changed
+- Handling baseline re-solve (20:44 PT, approved by Taylor): kept only the 3df3038 estimates that do not conflict with sourced/derived data.
+  - Dropped: front lower-arm pivots z +20 mm (back to 0.195 / 0.205 m, E). The sourced 0.379 m tie rod with inner point (-0.09949, ±0.22160, 0.35594) was fitted for this height. Front bump steer -18.4 → +0.55 deg/m, front RC 188 → 134 mm, camber gain -37.9 → -32.4 deg/m.
+  - Dropped: beam shear centre x -2.00 m (back to -2.06, E). -2.00 moved rear ground camber-vs-roll to 0.96 and rear RC to 11 mm, away from the D targets 0.85 / 180 mm. Now 0.80 / 55 mm.
+  - Kept (E, no conflict found): front arm bushes x2; rear trailing-arm pivot z -30 mm (rear roll steer now slight understeer, +0.0033 deg/deg, matching the E target); front ARB 7200 N/m; rear roll 8520 N/m; steering stiffness 12000 Nm/rad; pneumatic trail 0.035 m.
+  - Tables re-solved (`solve_kinematics.py`, `multibody_compliance.py`, `export_unity.py`). Lock at ±68.6 mm rack: 40.34 / 32.91 deg (sourced 40°22′ / 32°55′). Rear anti-lift coefficient 0.60 (unchanged).
+  - Handling battery (thermal off), re-solve vs 3df3038 / old baseline: understeer gradient 1.84 vs 2.40 / 1.06 deg/g; skidpad 0.785 vs 0.773 / 0.811 g; step-steer steady yaw rate 13.8 vs 12.5 / 16.3 deg/s; power-on R40 2nd (full throttle) curvature change at 3 s -52.3 % vs -46.7 % / -48.1 %.
+  - Tests: `SingleBaselineTests` checks front bump steer near zero and rear RC 55 mm; `SteeringLinkageTests` lock reference 40.34 / 32.91.
 - **Single handling baseline** (20:30 PT). The former 'ProposedUndersteer' profile is now the only handling profile. Its inputs are folded into `CarParams.cs` and `tools/suspension_params.json`. Every one is an **estimate (E)** inside the estimated range, chosen by Taylor for the understeer balance (not sourced):
   - front ARB 7200 N/m (was 4500);
   - rear twist-beam roll 8520 N/m (was 10650; rear roll stiffness 280 Nm/deg, was 350);

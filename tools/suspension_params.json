@@ -48,17 +48,17 @@
    [
     0.04,
     0.35,
-    0.215
+    0.195
    ],
-   "E: z +20 mm (single baseline 2026-10-13: within the estimated range, chosen by Taylor for the understeer balance; estimate, not sourced); was z 0.195"
+   "E (re-solve 2026-10-13: 3df3038's +20 mm estimate DROPPED: conflicted with the sourced 379 mm tie rod / inner point (-0.09949, +/-0.22160, 0.35594), fitted for ~zero bump steer at this height; with +20 mm bump steer was -18.4 deg/m)"
   ],
   "lower_arm_rear_pivot": [
    [
     -0.25,
     0.36,
-    0.225
+    0.205
    ],
-   "E: z +20 mm (single baseline 2026-10-13: within the estimated range, chosen by Taylor for the understeer balance; estimate, not sourced); was z 0.205"
+   "E (re-solve 2026-10-13: 3df3038's +20 mm estimate DROPPED: conflicted with the sourced 379 mm tie rod / inner point (-0.09949, +/-0.22160, 0.35594), fitted for ~zero bump steer at this height; with +20 mm bump steer was -18.4 deg/m)"
   ],
   "wheel_centre": [
    [
@@ -151,11 +151,11 @@
     0.6,
     0.27
    ],
-   "E (pivot ~0.415 m ahead of rear axle): z -30 mm (single baseline 2026-10-13: within the estimated range, chosen by Taylor for the understeer balance; estimate, not sourced); was z 0.3"
+   "E (pivot ~0.415 m ahead of rear axle): z -30 mm (single baseline 2026-10-13: within the estimated range, chosen by Taylor for the understeer balance; estimate, not sourced); was z 0.3; kept in the re-solve 2026-10-13: no sourced conflict; rear roll steer with shear -2.06 becomes slight understeer (+0.0033 deg/deg, E target 'slight understeer') vs -0.0112 at z 0.3; rear anti-lift coeff 0.66 -> 0.60"
   ],
   "beam_shear_centre_x": [
-   -2.0,
-   "E (beam close to pivots on A1 = more torsion-like): -2.00 (single baseline 2026-10-13: within the estimated range, chosen by Taylor for the understeer balance; estimate, not sourced); was -2.06"
+   -2.06,
+   "E (beam close to pivots on A1 = more torsion-like) (re-solve 2026-10-13: 3df3038's -2.00 estimate DROPPED: moved ground camber-vs-roll 0.80 -> 0.96 and solved rear RC 55 -> 11 mm, both away from the D targets 0.85 / 180 mm)"
   ],
   "wheel_centre": [
    [

@@ -146,8 +146,10 @@ Not implemented. The Input System has no generic DirectInput force-feedback API,
   - rear `twistBeamRoll` 8520 N/m (0.8 x 10650; rear roll stiffness 280 Nm/deg);
   - `steeringStiffness` 12000 Nm/rad (was 20000 E);
   - `pneumaticTrail0` 0.035 m (was 0.025 E);
-  - in suspension_params.json: front lower-arm pivots z +20 mm, front arm bush rates x2, rear trailing-arm pivot z -30 mm, beam shear centre x -2.00 m (was -2.06).
-  - The kinematic/compliance tables are re-solved from these on top of the current geometry (caster-trail fix, 0.379 m tie rod with inner point (-0.09949, +-0.22160, 0.35594), steering linkage grid). Side effect: front bump steer becomes -18 deg/m (was +0.6), because the tie-rod inner point (SD) was fitted for the old pivot height. Lock at the +-68.6 mm rack stop is 40.50/32.90 deg (sourced 40d22'/32d55').
+  - in suspension_params.json: front arm bush rates x2, rear trailing-arm pivot z -30 mm.
+  - Dropped in the re-solve (2026-10-13) because they conflicted with sourced/derived data: front lower-arm pivots z +20 mm (with the sourced 0.379 m tie rod, inner point (-0.09949, +-0.22160, 0.35594), bump steer went to -18 deg/m; back at the original height it is +0.55 deg/m) and beam shear centre x -2.00 m (moved rear camber-vs-roll to 0.96 and rear RC to 11 mm, away from the D targets 0.85 / 180 mm; back at -2.06: 0.80 / 55 mm).
+  - The kinematic/compliance tables are re-solved from these on top of the current geometry (caster-trail fix, tie rod above, steering linkage grid). Lock at the +-68.6 mm rack stop is 40.34/32.91 deg (sourced 40d22'/32d55').
+  - Result (thermal off): understeer gradient 1.84 deg/g (3df3038: 2.40; old baseline 1.06).
   - Spring and wheel rates are unchanged.
 - The 16/19 mm anti-roll bar diameters are tagged **SD**: the source lists them only for the '84 US/Canada car (online_research_findings.md).
 - Saved input settings: old files (version <= 5) load fine. Their handling-toggle bindings are dropped and every other setting is kept (`InputMapper.Migrate`, version 6).
