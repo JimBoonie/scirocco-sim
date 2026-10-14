@@ -58,3 +58,4 @@ reference/
 *.pdf
 .DS_Store
 Thumbs.db
+tools/*.md
