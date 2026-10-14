@@ -42,7 +42,7 @@ public class InputRouter : MonoBehaviour
         var p = car.p;
         car.throttle = map.Axis(InAction.Throttle); car.brake = map.Axis(InAction.Brake); car.clutch = map.Axis(InAction.Clutch);
         car.handbrakeInput = map.Axis(InAction.Handbrake);
-        car.autoClutch = map.profile.autoClutch; p.tireThermal = map.profile.tireThermal; p.coldPressureFront = map.profile.coldPsiFront * (float)TireThermal.PaPerPsi; p.coldPressureRear = map.profile.coldPsiRear * (float)TireThermal.PaPerPsi; CarAudio.Volume = map.profile.audioVolume; CarAudio.TireVolume = map.profile.tireVolume; CarAudio.Mute = map.profile.audioMute; AmbientLighting.Apply(map.profile.ambientBrightness);
+        car.autoClutch = map.profile.autoClutch; p.tireThermal = map.profile.tireThermal; p.tireCompound = map.profile.tireCompound == 1 ? CarParams.TireCompound.ExperimentalViscoelastic : CarParams.TireCompound.Default; p.coldPressureFront = map.profile.coldPsiFront * (float)TireThermal.PaPerPsi; p.coldPressureRear = map.profile.coldPsiRear * (float)TireThermal.PaPerPsi; CarAudio.Volume = map.profile.audioVolume; CarAudio.TireVolume = map.profile.tireVolume; CarAudio.Mute = map.profile.audioMute; AmbientLighting.Apply(map.profile.ambientBrightness);
         if (map.Pressed(InAction.Ignition)) car.engine.ignition = !car.engine.ignition;
         bool interlockOk = !map.profile.starterInterlock || car.dt.gear == 0 || car.ClutchFullyIn;
         car.engine.starter = map.Held(InAction.Starter) && interlockOk;
@@ -298,6 +298,7 @@ public class InputRouter : MonoBehaviour
             $"Tire thermal model (temperature + pressure): {(pr.tireThermal ? "ON" : "off")}",
             $"Cold tire pressure front: {pr.coldPsiFront:0.0} psi  (VW 25 psi)",
             $"Cold tire pressure rear: {pr.coldPsiRear:0.0} psi  (VW 25 psi)",
+            $"Tyre compound: {(pr.tireCompound == 1 ? "Experimental (viscoelastic)" : "Default")}  (Left/Right/Select)",
             $"VR debug HUD panel: {(panel && panel.showHud ? "shown" : "hidden")}  (H)",
             $"Flat-screen FOV: {pr.flatFovDeg:0}° vertical ({VrManager.HorizontalFov(pr.flatFovDeg, Camera.main ? Camera.main.aspect : 16f / 9f):0}° horizontal)",
             $"Track: {(TrackManager.Instance ? TrackManager.Names[TrackManager.Instance.current] + (TrackManager.Instance.Loading ? " (loading...)" : "") : "-")}   (Left/Right/Select = change, loads now)",
@@ -340,11 +341,12 @@ public class InputRouter : MonoBehaviour
             case 16: pr.tireThermal = sel ? !pr.tireThermal : dir > 0; break;
             case 17: pr.coldPsiFront = sel ? 24.7f : Mathf.Clamp(pr.coldPsiFront + dir * 0.5f, 15f, 45f); break;   // 0.5 psi steps (gauge resolution); Select = VW 1.7 bar
             case 18: pr.coldPsiRear = sel ? 24.7f : Mathf.Clamp(pr.coldPsiRear + dir * 0.5f, 15f, 45f); break;
-            case 19: if (panel) panel.showHud = sel ? !panel.showHud : dir > 0; break;
-            case 20: pr.flatFovDeg = sel ? 60f : Mathf.Clamp(pr.flatFovDeg + dir * 5f, BindingProfile.FovMin, BindingProfile.FovMax); if (vr) vr.ApplyFlatFov(); break;
-            case 21: { var tm = TrackManager.Instance; if (tm) { int n = TrackManager.Names.Length; tm.Select((tm.current + (sel ? 1 : dir) + n) % n); } break; }
-            case 22: if (sel) { ResetToStart(); menuOpen = false; } break;
-            case 23: if (sel) { menuOpen = false; InputMapper.Save(pr); status = "saved"; if (ffb) ffb.TryOpen(); } break;
+            case 19: pr.tireCompound = sel ? 1 - pr.tireCompound : (dir > 0 ? 1 : 0); break;
+            case 20: if (panel) panel.showHud = sel ? !panel.showHud : dir > 0; break;
+            case 21: pr.flatFovDeg = sel ? 60f : Mathf.Clamp(pr.flatFovDeg + dir * 5f, BindingProfile.FovMin, BindingProfile.FovMax); if (vr) vr.ApplyFlatFov(); break;
+            case 22: { var tm = TrackManager.Instance; if (tm) { int n = TrackManager.Names.Length; tm.Select((tm.current + (sel ? 1 : dir) + n) % n); } break; }
+            case 23: if (sel) { ResetToStart(); menuOpen = false; } break;
+            case 24: if (sel) { menuOpen = false; InputMapper.Save(pr); status = "saved"; if (ffb) ffb.TryOpen(); } break;
         }
     }
     void DrawQuick(BindingProfile pr)

@@ -7,6 +7,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [2026-10-14] (PT)
+
+### Added
+- **Tyres: selectable "Experimental (viscoelastic)" compound** (01:40 PT). Quick settings -> "Tyre compound: Default / Experimental (viscoelastic)"; settings file v8 (v7 files migrate to Default, everything else kept). Default compound unchanged (smoke CSVs byte-identical to e4004aa).
+  - `ViscoTire.cs`: complex modulus of a carbon-black E-SBR tread (Havriliak-Negami + fractional filler network, fitted by `tools/visco_fit.py` to sourced DMA tan d(0/60 C), Sae-oui 2017, **D**), WLF shift about Tg -50 C (**S**), Payne softening (Kraus, **SD**), Persson hysteretic friction + Lorenz/Persson adhesion (**S** laws, road texture **E**) precomputed as master curves in log10(a_T v), flash temperature (Tian-Kennedy, **E** asperity size).
+  - Calibration: grip factor mu(v_s)/mu(v_s,ref) on the sourced peak coefficients, = 1 at the reference slip speed at every temperature (no added grip; slip stiffness unchanged). Rate-dependent tread stiffness, load-dependent relaxation length (Pacejka sigma = C_Falpha/c_Fy), rolling resistance ~ tan d (referenced to ISO 28580), tread-hysteresis share of friction heat into the TireThermal bulk (`pFricBulk`, 0 for Default).
+  - Effect (thermal on): skidpad 0.784 -> 0.780 g, understeer 1.84 -> 1.94 deg/g, step yaw overshoot 10.5 -> 9.7 %, threshold brake +0.1 m. Ablation per principle in `tools/viscoelastic_tyre_research.md`; `ViscoTireTests` (15); harness `tools/visco_smoke.py`, `visco_metrics.py`, `visco_plots.py`.
+
 ## [2026-10-13] (PT)
 
 ### Fixed

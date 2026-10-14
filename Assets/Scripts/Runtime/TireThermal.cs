@@ -85,6 +85,7 @@ public class TireThermal
     public double Tb, Tc, Tg, Tr;                   // bulk, carcass, gas, rim
     public double pColdGauge, TCold = TAmb, gasMass;
     public double pGauge;                            // current gauge pressure, Pa
+    public double pFricBulk;                         // W of the friction power dissipated as tread deformation hysteresis in the bulk (experimental compound; 0 = Default)
     public readonly double[] zoneW = { 1.0 / 3, 1.0 / 3, 1.0 / 3 };
     // energy bookkeeping (J): in = heat into the tire system, out = convection + road conduction; residual should stay ~0
     public double EIn, EOut, EFricRoad, E0; readonly double[] dTs = new double[3];
@@ -129,7 +130,8 @@ public class TireThermal
         double pg = System.Math.Max(pGauge, 20000.0);
         double aC = onGround && fz > 0 ? fz / pg : 0.0;                 // nominal contact area = Fz / inflation pressure (D, membrane approx.)
         double L = aC / TreadW, hR = HRoad(av, L);
-        double qFric = BetaTire * System.Math.Max(pFric, 0.0);
+        double pB = System.Math.Min(System.Math.Max(pFricBulk, 0.0), System.Math.Max(pFric, 0.0));   // 0 unless the experimental compound sets it
+        double qFric = BetaTire * (System.Math.Max(pFric, 0.0) - pB);
         double inS = 0, outS = 0;
         double qToBulk = 0;
         for (int i = 0; i < 3; i++)
@@ -144,12 +146,12 @@ public class TireThermal
         double qBC = GBulkCarc * (Tb - Tc), qCG = HInner * ACarcIn * (Tc - Tg), qGR = HInner * ARimIn * (Tg - Tr);
         double qSide = HOut(av, Tc - TAmb) * ASide * (Tc - TAmb), qRimOut = HOut(av, Tr - TAmb) * ARimOut * (Tr - TAmb);
         double rr = System.Math.Max(pRR, 0.0);
-        Tb += (qToBulk + RrToTread * rr - qBC) / CBulk * dt;
+        Tb += (qToBulk + BetaTire * pB + RrToTread * rr - qBC) / CBulk * dt;
         Tc += ((1 - RrToTread) * rr + qBC - qCG - qSide) / CCarc * dt;
         Tg += (qCG - qGR) / (gasMass * CvAir) * dt;
         Tr += (qGR - qRimOut) / CRim * dt;
         for (int i = 0; i < 3; i++) Ts[i] += dTs[i];
-        EIn += (inS + rr) * dt; EOut += (outS + qSide + qRimOut) * dt; EFricRoad += (1 - BetaTire) * System.Math.Max(pFric, 0.0) * dt;
+        EIn += (inS + BetaTire * pB + rr) * dt; EOut += (outS + qSide + qRimOut) * dt; EFricRoad += (1 - BetaTire) * System.Math.Max(pFric, 0.0) * dt;
         UpdatePressure();
     }
     // grip temperature = tread BULK temperature (TRT EVO, Farroni et al. 2019: grip correlates best with bulk temperature, S; applying

@@ -68,7 +68,7 @@ public class GamepadSteeringTests
         var json = JsonUtility.ToJson(p); json = System.Text.RegularExpressions.Regex.Replace(json, "\"gamepadSteer\":\\{[^}]*\\},?", "");
         Assert.IsFalse(json.Contains("gamepadSteer"));
         var q = JsonUtility.FromJson<BindingProfile>(json); InputMapper.Migrate(q);
-        Assert.AreEqual(7, q.version); Assert.AreEqual(0.33f, q.audioVolume, 1e-6); Assert.AreEqual("LagunaSeca", q.track);
+        Assert.AreEqual(8, q.version); Assert.AreEqual(0.33f, q.audioVolume, 1e-6); Assert.AreEqual("LagunaSeca", q.track);
         Assert.IsNotNull(q.gamepadSteer); Assert.AreEqual(30f, q.gamepadSteer.steerSpeed); Assert.IsTrue(q.gamepadSteer.enabled);
         Assert.AreEqual(p.Get(InAction.Steer).Count, q.Get(InAction.Steer).Count);
     }

@@ -61,9 +61,10 @@ public enum SteerMapping { RealColumn1to1, ScaleToCarLock }
 [Serializable] public class ActionSlots { public InAction action; public List<Binding> slots = new List<Binding>(); }
 [Serializable] public class BindingProfile
 {
-    public int version = 7;
+    public int version = 8;
     public GamepadSteerSettings gamepadSteer = new GamepadSteerSettings();   // v7: gamepad/keyboard steering assist preferences (input layer)
     public bool startEngineOff = false, starterInterlock = false, autoClutch = true;
+    public int tireCompound = 0;   // v8: 0 = Default (sourced model), 1 = Experimental (viscoelastic) (CarParams.TireCompound)
     public bool tireThermal = false; public float coldPsiFront = 24.7f, coldPsiRear = 24.7f;   // tire thermal model option; cold pressures in psi (VW 1.7 bar = 24.7 psi)
     public float audioVolume = 0.8f, tireVolume = 1f, ambientBrightness = 1.3f; public bool audioMute; public bool hudVisible = true;   // H: grey info boxes (telemetry / FFB / joints) shown   // master volume 0..1   // autoClutch: for keyboard/gamepad drivers without a clutch pedal (option)   // spawn with engine stopped; starter only with clutch fully in or neutral (1984 car had no interlock)
     public bool vrEnabled = false, cockpitView = false;   // VR on/off (launch flags -vr / -novr override); flat-screen camera
@@ -390,8 +391,9 @@ public class InputMapper
     public static bool IsRetired(InAction a) => a == InAction.RetiredProfileToggle;
     public static void Migrate(BindingProfile p)   // older saved profiles: add new defaults only to actions that have no binding yet
     {
-        if (p.version >= 7) { p.Get(InAction.RetiredProfileToggle).Clear(); if (p.gamepadSteer == null) p.gamepadSteer = new GamepadSteerSettings(); return; }
-        if (p.version == 6) { p.Get(InAction.RetiredProfileToggle).Clear(); MigrateV7(p); return; }
+        if (p.version >= 8) { p.Get(InAction.RetiredProfileToggle).Clear(); if (p.gamepadSteer == null) p.gamepadSteer = new GamepadSteerSettings(); return; }
+        if (p.version == 7) { p.Get(InAction.RetiredProfileToggle).Clear(); if (p.gamepadSteer == null) p.gamepadSteer = new GamepadSteerSettings(); MigrateV8(p); return; }
+        if (p.version == 6) { p.Get(InAction.RetiredProfileToggle).Clear(); MigrateV7(p); MigrateV8(p); return; }
         if (p.version < 5)
         {
             if (p.version < 3) { var d = new BindingProfile(); AddV2(d); foreach (var a in V2Actions) if (p.Get(a).Count == 0) p.Get(a).AddRange(d.Get(a)); }
@@ -401,10 +403,12 @@ public class InputMapper
         // v6 (2026-10-13): single handling baseline, the P / d-pad-up handling-profile toggle is gone. Drop its saved bindings so the keys are free;
         // the int slot stays so old files still parse. Other settings in the file (tracks, FFB, audio, ...) are kept as they are.
         p.Get(InAction.RetiredProfileToggle).Clear();
-        MigrateV7(p);
+        MigrateV7(p); MigrateV8(p);
     }
     // v7 (2026-10-13): gamepad steering assist settings added with their defaults; everything else in the file is kept
     static void MigrateV7(BindingProfile p) { p.gamepadSteer = new GamepadSteerSettings(); p.version = 7; }
+    // v8 (2026-10-13): tyre compound selection; old files get the Default compound (handling unchanged), everything else kept
+    static void MigrateV8(BindingProfile p) { p.tireCompound = 0; p.version = 8; }
     public static string DefaultPath => System.IO.Path.Combine(Application.persistentDataPath, "input_bindings.json");
     public static void Save(BindingProfile p, string path = null) { System.IO.File.WriteAllText(path ?? DefaultPath, JsonUtility.ToJson(p, true)); PlayerPrefs.SetString("input_bindings_path", path ?? DefaultPath); PlayerPrefs.Save(); }
     public static BindingProfile LoadOrDefault(string path = null)

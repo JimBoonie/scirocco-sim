@@ -122,8 +122,52 @@ public class WheelCorner : MonoBehaviour
         if (thermal == null) { thermal = new TireThermal(coldGauge, warm, warmCarcass); thFric = thRR = thT = 0; }
         thermal.SetColdPressure(coldGauge);
         double T = thT > 0 ? thT : Time.fixedDeltaTime;
+        thermal.pFricBulk = thBulk / T;
         thermal.Step(T, thFric / T, thRR / T, Vector3.Dot(rb.GetPointVelocity(transform.position), transform.forward), Fz, camberDeg * Mathf.Deg2Rad, p.tireRate, grounded);
-        thFric = thRR = thT = 0; ts = thermal.Scale();
+        thFric = thRR = thT = thBulk = 0; ts = thermal.Scale();
+    }
+    // ---- Experimental (viscoelastic) compound (ViscoTire.cs); never reached with the Default compound ----
+    ViscoTire.Flags veFlags; double veVsRef = -1, thBulk;
+    [HideInInspector] public float veGrip = 1f, veFlashK, veKScale = 1f, veSigScale = 1f, veRrScale = 1f, veMu;   // diagnostics
+    void ViscoUpdate(float vx, float vy, ref float sigma, ref TireScale t, ref float rrScale)
+    {
+        veFlags = ViscoTire.FromParams(p); if (veVsRef < 0) veVsRef = ViscoTire.VsRef(p);
+        double T = thermal != null ? thermal.GripTemp() : TireThermal.TOpt;              // base coefficients = tyre at its optimum (D, as TireThermal)
+        double sigP = thermal != null ? System.Math.Max(thermal.pGauge, 20000.0) : TireThermal.PNom;   // nominal contact pressure ~ inflation
+        double vsx = vx - omega * p.wheelRadius, vs = System.Math.Sqrt(vsx * vsx + vy * vy);
+        double g = ViscoTire.GripFactor(vs, T, sigP, veVsRef, veFlags, out double dT);
+        t.mux *= (float)g; t.muy *= (float)g; veGrip = (float)g; veFlashK = (float)dT;
+        float FzE = Mathf.Max(Fz, 1f); double k = 1.0;
+        if (veFlags.rateStiffness)
+        {
+            double L = FzE / (sigP * TireThermal.TreadW), Lr = p.Fz0 / (TireThermal.PNom * TireThermal.TreadW);   // contact length (D, membrane approx.)
+            k = ViscoTire.StiffnessFactor(vx, L, Lr); t.kx *= (float)k; t.ky *= (float)k;
+        }
+        veKScale = (float)k;
+        if (veFlags.loadRelax)
+        {   // sigma = C_Falpha / c_Fy with constant lateral carcass stiffness c_Fy (Pacejka 2012 ch. 7, S; c_Fy const E): sigma scales with C_Falpha
+            float ca = t.ky * Mathf.Sin(2f * Mathf.Atan(FzE / (p.pKy2 * t.kyLoad * p.Fz0))), ca0 = Mathf.Sin(2f * Mathf.Atan(1f / p.pKy2));
+            sigma *= ca / ca0;
+        }
+        veSigScale = sigma / p.relaxLength;
+        if (veFlags.rollingRes)
+        {
+            double Trr = thermal != null ? TireThermal.RrToTread * thermal.Tb + (1 - TireThermal.RrToTread) * thermal.Tc : ViscoTire.TRrRef;
+            rrScale = (float)ViscoTire.RollingFactor(vx, p.wheelRadius, Trr);
+        }
+        veRrScale = rrScale;
+    }
+    /// tread deformation hysteresis (brush model, Pacejka ch. 3): tread elements renew every L/V, each storing F^2 L share / (4 C) in the patch
+    /// (C_F = 2 c_p a^2, a = L/2), of which ~pi tan d is lost per load-unload pass (E: half-cycle loss). Power = pi tan d V share sum F^2/(4 C);
+    /// contact length cancels. This part of the friction power is dissipated in the tread bulk instead of the surface (TireThermal clamps it).
+    float BulkHysteresisPower(float vx, float fx, float fy, in TireScale t)
+    {
+        if (thermal == null) return 0f;
+        float FzE = Mathf.Max(Fz, 1f);
+        double cx = p.pKx1 * t.kx * FzE, cy = p.pKy1 * t.ky * p.Fz0 * Mathf.Sin(2f * Mathf.Atan(FzE / (p.pKy2 * t.kyLoad * p.Fz0)));
+        double L = FzE / (System.Math.Max(thermal.pGauge, 20000.0) * TireThermal.TreadW), v = System.Math.Abs(vx);
+        double td = ViscoTire.TanDelta(System.Math.Max(v, 0.5) / L, thermal.Tb);
+        return (float)(System.Math.PI * td * v * ViscoTire.TreadShare * (fx * fx / (4 * cx) + fy * fy / (4 * cy)));
     }
     public void ThermalOff() { thermal = null; ts = TireScale.One; }
     public void TireStep(float h, float forceScale)
@@ -144,15 +188,19 @@ public class WheelCorner : MonoBehaviour
         float srMF = Mathf.Clamp((omega * p.wheelRadius - vx) / den, -1.5f, 1.5f);
         slipRatio = srMF;
         slipAngle = Mathf.Atan2(vy, Mathf.Max(Mathf.Abs(vx), 0.5f));
-        float kRel = Mathf.Min(1f, (Mathf.Abs(vx) + 0.5f) * h / p.relaxLength);
+        float sigma = p.relaxLength, rrScale = 1f; TireScale tsF = ts;   // Default compound: exactly the original values
+        bool ve = p.tireCompound == CarParams.TireCompound.ExperimentalViscoelastic;
+        if (ve) ViscoUpdate(vx, vy, ref sigma, ref tsF, ref rrScale);
+        float kRel = Mathf.Min(1f, (Mathf.Abs(vx) + 0.5f) * h / sigma);
         alphaRelaxed += kRel * (slipAngle - alphaRelaxed);
         float gamma = camberDeg * Mathf.Deg2Rad * (left ? -1f : 1f);
-        force = PacejkaTire.Combined(p, srMF, -alphaRelaxed, Fz, gamma, ts);
-        float kmhW = vx * 3.6f, rr = (p.rollingRes + p.rollingResV2 * kmhW * kmhW) * Fz * ts.rr * Mathf.Clamp(vx, -1f, 1f);   // speed-dependent radial-tire RR (Wong form, E)
+        force = PacejkaTire.Combined(p, srMF, -alphaRelaxed, Fz, gamma, ve ? tsF : ts);
+        float kmhW = vx * 3.6f, rr = (p.rollingRes + p.rollingResV2 * kmhW * kmhW) * Fz * ts.rr * Mathf.Clamp(vx, -1f, 1f);
+        if (ve) rr *= rrScale;   // speed-dependent radial-tire RR (Wong form, E)
         force.x -= rr;
         float vC = Mathf.Sqrt(vx * vx + vy * vy);
         float w = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.5f * vB, vB, vC)); stickWeight = 1f - w;
-        float sig = p.relaxLength, ax = Mathf.Abs(vx);
+        float sig = sigma, ax = Mathf.Abs(vx);
         if (w >= 1f)
         {   // original slip-based path (unchanged); the patch state tracks its steady value so the stick model takes over smoothly
             float wNoBrake0 = omega + (driveTorque - force.x * p.wheelRadius) / I * h;
@@ -191,6 +239,7 @@ public class WheelCorner : MonoBehaviour
         {   // thermal inputs: friction power -F.Vs (tire force without RR) and rolling-resistance power, applied force scale included
             float vsx = vx - omega * p.wheelRadius;
             thFric += -((force.x + rr) * vsx + force.y * vy) * forceScale * h; thRR += rr * vx * forceScale * h; thT += h;
+            if (ve && veFlags.bulkHeat) thBulk += BulkHysteresisPower(vx, force.x + rr, force.y, tsF) * forceScale * h;
         }
         // longitudinal at the contact patch; lateral at roll-centre height (geometric lateral load transfer)
         Vector3 latPoint = p.useJacking ? hit.point + transform.up * rcHeight : hit.point;

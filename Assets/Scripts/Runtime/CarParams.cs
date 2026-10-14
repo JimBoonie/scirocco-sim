@@ -44,6 +44,12 @@ public class CarParams : ScriptableObject
     public bool tireThermal = false;      // tire thermal + pressure model (settings option; off = original handling)
     public float coldPressureFront = 170000f, coldPressureRear = 170000f;   // Pa gauge, set cold at 18.9 C: VW 1.7 bar for 185/60R14 (SD: 1.7 x3 sources, 1.8 x1)
     public float rollingResV2 = 4e-8f;   // per (km/h)^2: radial passenger tire f = f0 + 0.4e-7 v^2 (Wong, Theory of Ground Vehicles; E). Added for top-speed check
+    public enum TireCompound { Default, ExperimentalViscoelastic }
+    public TireCompound tireCompound = TireCompound.Default;   // Quick menu "Tyre compound"; Default = sourced Pacejka/thermal model, untouched
+    // Experimental (viscoelastic) compound physics switches (ViscoTire.cs). All on in the game; the smoke harness turns single ones off
+    // (-overrides p.veX=false) for ablation tests. Ignored by the Default compound.
+    public bool veHysteresis = true, veAdhesion = true, veWlf = true, veFlash = true, vePayne = true;
+    public bool veRateStiffness = true, veLoadRelax = true, veRollingRes = true, veBulkHeat = true;
     public enum TirePreset { ModernSummer, PeriodMXV }
     public TirePreset tirePreset = TirePreset.ModernSummer;   // PeriodMXV: ESTIMATED Michelin MXV-era 185/60HR14 (see ApplyTirePreset); default stays modern
     // Period tire (E): mu ~1.0 (lambda_mu ~0.91 of modern 1.10), ~20 % lower cornering/long. stiffness, slightly longer relaxation length.
