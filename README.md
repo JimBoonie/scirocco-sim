@@ -19,6 +19,7 @@ The project uses Force Text serialization and Visible Meta Files. Always commit 
   - `kinematics/solve_kinematics.py`: suspension/steering kinematics solver driven by `suspension_params.json`.
   - `kinematics/export_unity.py`: exports the solved tables into the Unity project.
   - `suspension_params.json`: hardpoints and parameters, each value tagged with a source tag (see below).
+  - `suspension_data.md`, `tire_thermal_research.md`, `service_manual_findings.md`, `online_research_findings.md`, `proposed_geometry_fix.md`: research notes and justification for each value.
   - `patches/`: the build/patch scripts used on the dev box (`run_*.sh` headless builds and tests, `v1x_apply.py` patchers, and the C# sources they install into `Assets/Scripts`, plus their own copy of `export_unity.py`). They expect the original layout (`/workspace/scirocco_sim/...`) and are archived here for reference and reproducibility.
   - `sync_tools.sh`: refreshes `tools/` from the working tree.
 
