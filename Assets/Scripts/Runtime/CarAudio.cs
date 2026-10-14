@@ -35,7 +35,7 @@ public class EngineSynth : SynthBase
     // state copied from the main thread (floats/bools: atomic)
     volatile float rpm, load, thrArea, starterRps, crankAmp; volatile bool combusting, starter, limiter, ignition, sputter;
     volatile int clicks; bool wasComb, wasIgn; float sputterT;
-    double phase; float jitter = 1f, lp, hp, nlp, clickEnv, starterPhase, motorPhase;
+    double phase; float jitter = 1f, lp, hp, clickEnv, starterPhase, motorPhase;
     const int Harm = 10;   // harmonics of the firing frequency
     public override void Init(CarController c, float sampleRate = 0f) { base.Init(c, sampleRate); if (c.engine != null) { wasIgn = c.engine.ignition; wasComb = c.engine.combusting; } }
     void Update() { Sample(Time.deltaTime); }
@@ -50,6 +50,8 @@ public class EngineSynth : SynthBase
         if (wasComb && !e.combusting && e.ignition && e.rpm > 1f) sputterT = 1.2f;         // just stalled: misfires while it runs down
         wasComb = e.combusting; sputterT = Mathf.Max(0f, sputterT - dt); sputter = sputterT > 0f && e.rpm > 1f;
     }
+    /// offline render (tests / sweep tool): set the audio-thread state directly, no CarController needed
+    public void SetOfflineState(float sampleRate, float rpmV, float loadV, float throttleArea, bool comb = true) { sr = sampleRate; rpm = rpmV; load = loadV; thrArea = throttleArea; combusting = comb; ignition = comb; crankAmp = 1f; }
     float[] mono = new float[0];
     void OnAudioFilterRead(float[] data, int ch)
     {
@@ -65,7 +67,7 @@ public class EngineSynth : SynthBase
         float tilt = Mathf.Lerp(1.7f, 0.9f, load);        // brighter spectrum under load
         float amp = combusting && !limiter ? Mathf.Lerp(0.12f, 0.55f, load) : 0.10f * crankAmp;   // overrun / motoring quieter
         float rough = combusting ? 0.35f * load : 0.6f;
-        float aLP = OnePole(200f + 6000f * load, sr), aN = OnePole(800f + 3000f * thrArea, sr);
+        float aLP = OnePole(200f + 6000f * load, sr);   // (no intake sound: the old white-noise intake hiss was removed on request)
         float norm = 0f; for (int k = 1; k <= Harm; k++) norm += 1f / Mathf.Pow(k, tilt); norm += 0.25f;   // peak of the harmonic sum -> keeps the pulse train within +-1
         float meshF = starterRps * 9f;                    // starter gear-mesh whine = pinion teeth x armature rev/s (9 teeth, S)
         if (clicks > 0) { clickEnv = 1f; clicks = 0; }
@@ -76,8 +78,6 @@ public class EngineSynth : SynthBase
             for (int k = 1; k <= Harm; k++) s += Mathf.Sin(k * th) / Mathf.Pow(k, tilt);
             s += 0.25f * Mathf.Sin(0.5f * th);           // half order: cylinder-to-cylinder imbalance
             float eng = s / norm * amp * jitter * (f > 1f ? 1f : 0f);
-            nlp += aN * (Noise() - nlp);                  // intake hiss ~ throttle area
-            float intake = nlp * 0.15f * thrArea * Mathf.Clamp01(rpm / 3000f);
             float st = 0f;
             if (starterRps > 0f || starter)
             {
@@ -86,14 +86,14 @@ public class EngineSynth : SynthBase
             }
             float click = 0f; if (clickEnv > 1e-3f) { click = clickEnv * Noise() * 0.6f; clickEnv *= Mathf.Exp(-1f / (0.004f * sr)); }
             lp += aLP * (eng - lp);
-            float o = Mathf.Clamp(lp + intake + st + click, -1f, 1f);
+            float o = Mathf.Clamp(lp + st + click, -1f, 1f);
             buf[i] = o;
         }
     }
 }
 public class TireSynth : SynthBase
 {
-    // tire sound v2 (TireScrub.cs: stick-slip rub -> tone, constants in TireSoundTuning). 2D stereo source, x Tires slider, then capped under the engine RMS.
+    // tire sound v3 (TireScrub.cs: low slip tone, +2.5 semitones max, constants in TireSoundTuning). 2D stereo source, x Tires slider, then capped under the engine RMS.
     TireSoundDsp dsp; readonly float[] rat = new float[4], fzs = new float[4];
     public float[] lastRatio = new float[4];
     public override void Init(CarController c, float sampleRate = 0f)
