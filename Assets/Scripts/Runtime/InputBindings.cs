@@ -302,8 +302,13 @@ public class InputMapper
                 if (assist != null) { assist.roadDeg = handwheelDeg / centreRatio; assist.filtered = v; }
             }
         }
-        else if (assist != null) { assist.roadDeg = handwheelDeg / centreRatio; assist.filtered = 0f; }
-        else handwheelDeg = profile.mapping == SteerMapping.RealColumn1to1 ? wheel * half : wheel * carLockDeg;
+        else
+        {   // real wheel (SteerSource.Wheel) and no stick/key input: column follows the wheel directly (1:1 / scaled), never the gamepad assist.
+            // (2026-10-14 fix: this branch used to be an `else if (assist != null)` that only synced the assist state, so once InputRouter
+            // created the assist the wheel angle was never applied and wheel steering froze, whether the assist was on or off.)
+            handwheelDeg = profile.mapping == SteerMapping.RealColumn1to1 ? wheel * half : wheel * carLockDeg;
+            if (assist != null) { assist.roadDeg = handwheelDeg / centreRatio; assist.filtered = 0f; }   // keep the assist bumpless if a stick takes over
+        }
         wheelDegUnclamped = anyWheel && Mathf.Abs(v) == 0f ? (profile.mapping == SteerMapping.RealColumn1to1 ? wheel * half : wheel * carLockDeg) : handwheelDeg;
         handwheelDeg = Mathf.Clamp(handwheelDeg, -carLockDeg, carLockDeg);   // car's rack end stop
         return handwheelDeg;

@@ -44,12 +44,17 @@ public class VrPanel : MonoBehaviour
         UiSurface.W = Mathf.RoundToInt(TexW / UiScale); UiSurface.H = Mathf.RoundToInt(TexH / UiScale); var m0 = GUI.matrix; GUI.matrix = Matrix4x4.Scale(new Vector3(UiScale, UiScale, 1f));
         if (router && router.menuOpen)
         {
-            if (repaint) { RenderTexture.active = menuRT; GL.Clear(true, true, new Color(0.1f, 0.1f, 0.12f, 1f)); }
             Vector2 sp = default; bool mouse = VrMouse.Enabled(VrManager.Active || forced, true) && VrMouse.TryScreenPos(out sp);
-            Vector2 mp = default; if (mouse) { mp = VrMouse.MapToPanel(sp, Screen.width, Screen.height, TexW, TexH, UiScale); Event.current.mousePosition = mp; }   // IMGUI hover/click/drag hit-test in panel space
-            router.DrawMenu();
-            if (mouse) { Event.current.mousePosition = mp; VrMouse.DrawCursor(mp); }   // cursor on top, inside the menu texture
-            if (repaint) RenderTexture.active = prev;
+            Vector2 mp = mouse ? VrMouse.MapToPanel(sp, Screen.width, Screen.height, TexW, TexH, UiScale) : default;
+            if (mouse && VrMouse.Dispatch(pointer, mp, router.DrawMenu)) { }   // a queued click/drag/scroll replaced this Repaint: menu texture keeps last frame
+            else if (mouse && VrMouse.IsPointerEvent(Event.current.type)) { }  // native desktop-window mouse events: ignored, the queue carries the clicks
+            else
+            {
+                if (repaint) { RenderTexture.active = menuRT; GL.Clear(true, true, new Color(0.1f, 0.1f, 0.12f, 1f)); }
+                if (mouse) VrMouse.WithMouse(mp, () => { router.DrawMenu(); VrMouse.DrawCursor(mp); });   // hover/keyboard with the mouse in panel space; cursor on top
+                else router.DrawMenu();   // cursor on top, inside the menu texture
+                if (repaint) RenderTexture.active = prev;
+            }
         }
         else if (showHud && hud)
         {
@@ -57,6 +62,14 @@ public class VrPanel : MonoBehaviour
             hud.Draw(); if (repaint) RenderTexture.active = prev;
         }
         GUI.matrix = m0; UiSurface.W = UiSurface.H = 0;
+    }
+    readonly VrPointerQueue pointer = new VrPointerQueue();
+    void Update()
+    {   // sample the mouse through the Input System every frame (works while SteamVR owns window focus; OS clicks then never reach IMGUI)
+        var ms = UnityEngine.InputSystem.Mouse.current;
+        if (!Active || !router || !router.menuOpen || ms == null || !VrMouse.Enabled(VrManager.Active || forced, true)) { pointer.Reset(); return; }
+        var mp = VrMouse.MapToPanel(ms.position.ReadValue(), Screen.width, Screen.height, TexW, TexH, UiScale);
+        pointer.Sample(ms.leftButton.isPressed, mp, ms.scroll.ReadValue().y);
     }
     void OnDestroy() { if (hudRT) hudRT.Release(); if (menuRT) menuRT.Release(); }
 }
@@ -67,6 +80,53 @@ public class VrPanel : MonoBehaviour
 // the menu is open (VrPanel only draws the menu then). The settings menu is IMGUI, so IMGUI's own event handling is the "UI event system" here.
 public static class VrMouse
 {
+    /// Run `draw` with the IMGUI mouse at a panel position (logical, under the current GUI.matrix). Writing Event.current.mousePosition
+    /// alone is not enough (that was the acdb0e1 bug): IMGUI's clip stack keeps the absolute window mouse position taken when OnGUI began,
+    /// and every BeginArea / BeginGroup / BeginScrollView re-derives the event position from it, so inside the settings menu's layout area
+    /// the buttons and sliders were hit-tested at the desktop mouse position (scaled for the desktop window), not at the drawn VR cursor.
+    /// Fix: push a parent clip whose INPUT transform maps that absolute position onto the panel point (render transform unchanged),
+    /// the mechanism UIElements' IMGUIContainer uses for the same problem. Falls back to the plain write if the internal API is missing.
+    static System.Reflection.MethodInfo pushParent, popParent, absMouse, popClip, clipCount; static bool resolved;
+    public static void WithMouse(Vector2 panelPos, System.Action draw)
+    {
+        if (!resolved)
+        {
+            resolved = true; var clip = typeof(GUI).Assembly.GetType("UnityEngine.GUIClip"); const System.Reflection.BindingFlags F = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static;
+            pushParent = clip?.GetMethod("Internal_PushParentClip", F, null, new[] { typeof(Matrix4x4), typeof(Matrix4x4), typeof(Rect) }, null);
+            popParent = clip?.GetMethod("Internal_PopParentClip", F); absMouse = clip?.GetMethod("Internal_GetAbsoluteMousePosition", F);
+            popClip = clip?.GetMethod("Internal_Pop", F); clipCount = clip?.GetMethod("Internal_GetCount", F);
+        }
+        if (pushParent == null || popParent == null || absMouse == null || popClip == null || clipCount == null) { Event.current.mousePosition = panelPos; draw(); return; }
+        var m = GUI.matrix; var abs = (Vector2)absMouse.Invoke(null, null);
+        var d = abs - (Vector2)m.MultiplyPoint3x4(panelPos);
+        var shift = Matrix4x4.Translate(d);   // IMGUI decides "mouse inside this group" (else the event reads as Ignore) with the render transform, so
+        // pointer passes (nothing is drawn) shift both; the Repaint pass keeps the render transform so the menu is drawn in place
+        pushParent.Invoke(null, new object[] { Event.current.type == EventType.Repaint ? Matrix4x4.identity : shift, shift, new Rect(-100000f, -100000f, 200000f, 200000f) });
+        int n = (int)clipCount.Invoke(null, null);
+        try { GUI.matrix = m; draw(); }
+        finally
+        {   // a control that Use()s a mouse event can leave its BeginArea/ScrollView group open (IMGUI cleans up at the end of OnGUI);
+            // close those first so the parent clip pops cleanly
+            for (int k = (int)clipCount.Invoke(null, null); k > n; k--) popClip.Invoke(null, null);
+            popParent.Invoke(null, null); GUI.matrix = m;
+        }
+    }
+    public static bool IsPointerEvent(EventType t) => t == EventType.MouseDown || t == EventType.MouseUp || t == EventType.MouseDrag || t == EventType.ScrollWheel || t == EventType.ContextClick;
+    /// Clicks for the VR menu: the native IMGUI mouse events only arrive when the desktop mirror window has OS focus and the OS cursor is
+    /// over it, which in VR it usually is not (SteamVR / the compositor owns focus, runInBackground keeps us running). The cursor position
+    /// came from the Input System, so it moved, but MouseDown/MouseUp never reached the menu. Now the Input System button/scroll state is
+    /// turned into IMGUI events here: one queued event replaces a Repaint pass (the Layout pass just before it has laid the menu out),
+    /// the panel's own native mouse events are ignored (they are in desktop-window coordinates, not panel coordinates). Returns true when
+    /// a queued event was dispatched (the caller must not render this pass).
+    public static bool Dispatch(VrPointerQueue q, Vector2 panelPos, System.Action draw)
+    {
+        var e = Event.current; if (e == null || e.type != EventType.Repaint || q.Count == 0) return false;
+        var pe = q.Dequeue();
+        e.type = pe.type; e.delta = pe.delta; e.button = 0; e.clickCount = pe.type == EventType.MouseDown ? 1 : 0; e.modifiers = EventModifiers.None;
+        WithMouse(pe.pos, draw);
+        e.type = EventType.Repaint;   // other OnGUI scripts this frame still get their Repaint
+        return true;
+    }
     public static bool Enabled(bool xrActive, bool menuOpen) => xrActive && menuOpen;
     public static bool TryScreenPos(out Vector2 p)
     {
@@ -96,5 +156,30 @@ public static class VrMouse
     {
         if (Event.current.type != EventType.Repaint) return;
         var t = CursorTexture(); var d = GUI.depth; GUI.DrawTexture(new Rect(p.x, p.y, t.width, t.height), t); GUI.depth = d;
+    }
+}
+
+/// Input System mouse state (panel coordinates) -> queue of IMGUI pointer events (down / drag / up / scroll). Pure: unit-tested.
+public class VrPointerQueue
+{
+    public struct Evt { public EventType type; public Vector2 pos, delta; }
+    readonly System.Collections.Generic.Queue<Evt> q = new System.Collections.Generic.Queue<Evt>();
+    bool down; Vector2 last;
+    public int Count => q.Count;
+    public Evt Dequeue() => q.Dequeue();
+    public void Reset() { q.Clear(); down = false; }
+    public void Sample(bool pressed, Vector2 pos, float scrollY)
+    {
+        if (pressed && !down) Add(EventType.MouseDown, pos, Vector2.zero);
+        else if (pressed && pos != last) Add(EventType.MouseDrag, pos, pos - last);
+        if (!pressed && down) Add(EventType.MouseUp, pos, Vector2.zero);
+        if (scrollY != 0f) Add(EventType.ScrollWheel, pos, new Vector2(0f, -scrollY / 40f));   // Windows: 120 per notch -> IMGUI ~3 lines, down = +
+        down = pressed; last = pos;
+        while (q.Count > 16) q.Dequeue();
+    }
+    void Add(EventType t, Vector2 p, Vector2 d)
+    {   // coalesce consecutive drags (one per frame is enough; a click is never dropped)
+        if (t == EventType.MouseDrag && q.Count > 0) { var arr = q.ToArray(); var l = arr[arr.Length - 1]; if (l.type == EventType.MouseDrag) { q.Clear(); for (int i = 0; i < arr.Length - 1; i++) q.Enqueue(arr[i]); d += l.delta; } }
+        q.Enqueue(new Evt { type = t, pos = p, delta = d });
     }
 }

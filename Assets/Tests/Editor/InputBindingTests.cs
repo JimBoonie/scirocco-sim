@@ -263,4 +263,48 @@ public class InputBindingTests : InputTestFixture
         Assert.IsTrue(d.hudVisible, "info HUD visible by default");
         var q = JsonUtility.FromJson<BindingProfile>(JsonUtility.ToJson(new BindingProfile { hudVisible = false })); Assert.IsFalse(q.hudVisible, "H hide setting persists");
     }
+
+    // 2026-10-14 regression (acdb0e1): with the gamepad assist object present (InputRouter always creates it) a device bound as 'wheel'
+    // never moved the column, assist on or off. Simulates the wheel axis with the router's assist wiring.
+    static void WireAssist(InputMapper m)
+    {
+        m.assist = new GamepadSteering(m.profile.gamepadSteer); m.meanToHandwheel = mean => mean * 17.32f;
+        m.assistCtx = new GamepadSteerContext { speed = 20f, lockRoadDeg = 630f / 17.32f, peakSlipDeg = 6f };
+    }
+    [Test] public void Wheel_Steers_Directly_With_Assist_On_And_Off()
+    {
+        foreach (bool assistOn in new[] { true, false })
+        {
+            var m = NM(MultiDevice()); m.profile.wheelRotationDeg = 0f; m.profile.mapping = SteerMapping.RealColumn1to1;   // 0 = car's 1260 deg
+            m.profile.gamepadSteer.enabled = assistOn; WireAssist(m);
+            Set(A(wheel, "stick/x"), 0.5f); Assert.AreEqual(315f, m.StepSteer(0.01f, 630f, 90f, 17.32f), 0.5f, $"half right, assist {assistOn}: 1:1 column");
+            Set(A(wheel, "stick/x"), -0.25f); Assert.AreEqual(-157.5f, m.StepSteer(0.01f, 630f, 90f, 17.32f), 0.5f, $"instant, no rate limit / grip limit, assist {assistOn}");
+            Set(A(wheel, "stick/x"), 1f); Assert.AreEqual(630f, m.StepSteer(0.01f, 630f, 90f, 17.32f), 0.5f, "full 1260 deg mapping reaches the rack stop");
+            Assert.AreEqual(630f / 17.32f, m.assist.roadDeg, 0.1f, "assist state follows the wheel (bumpless)");
+            m.Dispose();
+        }
+    }
+    [Test] public void Gamepad_Assist_Applies_Only_To_Stick()
+    {
+        var m = NM(InputMapper.Defaults()); WireAssist(m); m.profile.gamepadSteer.enabled = true;
+        Set(pad.leftStick, new Vector2(1f, 0f));
+        float on = m.StepSteer(0.01f, 630f, 90f, 17.32f);
+        Assert.Less(on, 0.5f * 90f * 17.32f * 0.01f, "assist: rate/grip limited target");
+        var m2 = NM(InputMapper.Defaults()); WireAssist(m2); m2.profile.gamepadSteer.enabled = false;
+        Assert.AreEqual(90f * 17.32f * 0.01f, m2.StepSteer(0.01f, 630f, 90f, 17.32f), 0.5f, "assist off: direct rate-limited stick");
+        m.Dispose(); m2.Dispose();
+    }
+    [Test] public void Migration_Keeps_Wheel_Binding()
+    {
+        foreach (int ver in new[] { 5, 6, 7 })
+        {
+            var p = MultiDevice(); var w = p.Get(InAction.Steer)[^1]; w.cal = new AxisCal { min = 0f, max = 1f, center = 0.5f, calibrated = true };
+            p.version = ver; p.wheelRotationDeg = 1260f;
+            var q = JsonUtility.FromJson<BindingProfile>(JsonUtility.ToJson(p)); InputMapper.Migrate(q);
+            Assert.AreEqual(8, q.version);
+            var qw = q.Get(InAction.Steer).Find(b => b.product == "BrandA Wheel 900");
+            Assert.NotNull(qw, $"v{ver}: wheel steer binding kept"); Assert.AreEqual(SteerSource.Wheel, qw.steerSource); Assert.IsTrue(qw.cal.calibrated); Assert.AreEqual(0.5f, qw.cal.center, 1e-5);
+            Assert.AreEqual(1260f, q.wheelRotationDeg, 1e-3);
+        }
+    }
 }
