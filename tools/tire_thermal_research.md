@@ -55,17 +55,17 @@ Environment is fixed (Taylor): air 66 °F = 18.9 °C, track 70 °F = 21.1 °C. U
 ## 5. Grip vs temperature (passenger summer tyre)
 - **S:** Alcázar Vargas, Pérez et al., *Sensors* 22 (2022), PMC9459800. Austone Athena SP-6 205/65R15 summer tyre, bench, Fz 4000 N, 60 km/h (37 mph), slip angle 8°. μ rose from 0.70 to about 1.05 while the tread heated (some zones reached 120 °C after about 3 min).
   - Fit: **μ(T) = μmax + 1 − cosh((T − Topt)/Tdisp)**, with μmax 1.1, Topt 88 °C, Tdisp 50 °C.
-  - In the paper T is the zone temperatures weighted by (T_i − T_amb) (their Eq. 3–4). The model keeps that weighting only as the displayed surface temperature (`SurfaceTemp()`). **Since 2026-10-13 (option (a), approved by Taylor) the grip temperature is the tread bulk temperature**, see §5a.
+  - In the paper T is the zone temperatures weighted by (T_i − T_amb) (their Eq. 3–4). The model keeps that weighting only as the displayed surface temperature (`SurfaceTemp()`). Grip temperature: bulk (option (a), §5a), then **tread mean** with road-data cold side since 2026-10-13 (option (b), §5b).
   - Linear tests at 30/60/90 °C and 1.8/2.3/2.8 bar: cornering stiffness and relaxation length were practically **independent of temperature**. So the model scales **peak μ only**, not stiffness (S).
 - **Applied as a ratio** μ(T)/μmax on both μx and μy. The base coefficients therefore represent the tyre at Topt (D), and with a warm tyre the model returns the original handling. Using the same ratio on μx is E.
-- **Limits of the fit:** below 44.6 °C the fit falls under the lowest measured μ (0.70) and goes nonsensical (0.02 at 20 °C), so it is held at 0.70 (D/E). Above 120 °C (highest measured) it is held (E).
+- **Limits of the fit (bench curve, now only above 151 °F, §5b):** below 44.6 °C the fit falls under the lowest measured μ (0.70) and goes nonsensical (0.02 at 20 °C), so it is held at 0.70 (D/E). Above 120 °C (highest measured) it is held (E).
 - **Conflict (SD), important for feel:**
   - The road evidence says unheated summer tyres grip well. Real-road spring tread temperatures are 11–36 °C (Linköping thesis, diva2:1568991). ADAC 2024 summer test (215/55R17): 100–0 km/h (62–0 mph) dry braking in 35.4–40.9 m, i.e. μ ≈ 1.0–1.1 at road temperatures.
   - arXiv 2305.18422 notes a 20–25 % drop cold-vs-hot for a high-performance summer tyre. R888R window 71–105 °C (track tyre). Street tyres on track run 140–170 °F (60–77 °C) (949racing).
   - So a cold tyre in this model has 36 % less peak grip (0.70/1.10). That is the only measured μ(T) curve for a passenger summer tyre found, but it is a bench test on one budget tyre. The road data suggests the real cold penalty is much smaller (≈0–25 %). **This is the largest uncertainty of the feature.**
 - **Not used:** WLF/master-curve friction models (no compound data).
 
-## 5a. Grip temperature = tread bulk (change 2026-10-13, option (a))
+## 5a. Grip temperature = tread bulk (change 2026-10-13, option (a); superseded by §5b)
 | Item | Choice | Tag | Basis |
 |---|---|---|---|
 | Grip temperature | T_grip = T_bulk (tread bulk node, 7 mm under the 1 mm surface node) | S (model family) / E (transfer) | TRT EVO (Farroni et al. 2019) and the TRT/thermoracing literature: grip correlates best with the bulk temperature, which sets the viscoelastic state of the compound. Applying the Alcázar Vargas μ(T) curve (fitted against surface zone temperatures) to bulk temperature on a passenger tyre is E |
@@ -75,6 +75,46 @@ Environment is fixed (Taylor): air 66 °F = 18.9 °C, track 70 °F = 21.1 °C. U
 | Thermal model off | not affected: TireThermal is not instantiated and the Pacejka multipliers are exactly 1 | D | verified byte-identical, §7 |
 
 Consequence (D): the cold-start penalty now lasts longer than before, because the bulk warms more slowly than the surface: grip stays at the cold hold (64 %) until the bulk passes 112 °F (44.6 °C), and then no longer drops back on every straight. The bench replica now follows the measured μ rise better (μ 0.70 → 0.86 at 2 min → 1.03 at 3 min, measured 0.70 → ~1.05 over ~3 min; before: peak 0.99 at ~30 s, then falling as the surface passed Topt).
+
+## 5b. Cold side from road tests + tread-mean grip temperature (change 2026-10-13, option (b), approved by Taylor)
+Problem: below the bench curve's measured range grip was held at 0.70/1.10 = 64 %, so cold tyres felt like ice; and Taylor read ~270 °F on the front I/M/O display with only ~70 % grip (hot 1 mm skin over a cool bulk, grip taken from the bulk).
+
+**Sources (cold side)**
+| Source | What it gives | Tag |
+|---|---|---|
+| Tambellini, M., *Corrective formula for temperature influence on vehicle stopping distance specific for summer tires*, MSc thesis, Univ. Pisa / FCA, 2019 (etd-06272019-082336), Tab. 5.1 | ABS stops, 5 summer tyres, road surface 15–58 °C (59–136 °F), Balocco. Stopping distance **grows** with road temperature: 0.102–0.356 %/°C per tyre, mean **0.211 %/°C**, referenced to **25 °C** (77 °F, Balocco yearly mean road temperature) | S (mean), SD (spread) |
+| Pokorski, Sar, Reński, *Influence of exploitation conditions on anti-skid properties of tyres*, Transport 34(4) 2019:415–424, doi:10.3846/transport.2019.10426 | summer 185/65R14 (nearly our size), SRT-4 trailer: dry clean asphalt at −15 °C (5 °F) still μpeak 0.92–0.94; "no deterioration until ≈7 °C (45 °F)" | S |
+| ADAC Sommerreifentest 2024, 215/55R17 | 100–0 km/h (62–0 mph) dry 35.4–40.9 m (116–134 ft) ⇒ μ = v²/(2gd) ≈ 0.96–1.11 on unheated tyres at road temperature. ADAC corrects temperature drift with reference tyres (method page) | S |
+| Tyre Reviews (J. Benson), summer vs all-season vs winter, MIRA, dry at 18 °C (64 °F) air | summer 60–5 mph in 36.20 m (118.8 ft) ⇒ μ ≈ 1.01 | S |
+| TÜV SÜD tyre test 2021 (report 713209665) | dry braking at road 35.5–38.7 °C (96–102 °F), air 21.6–22.2 °C; dry handling road 25.7–29.8 °C: normal road tests run at 68–102 °F road | S |
+| Tyre Reviews / Test World, 0–15 °C indoor (2019) and TCS dry 10 °C vs 20–25 °C | summer tyre shortest dry stop at every temperature 0–8 °C; no cliff at 7 °C in the dry | S (qualitative) |
+| Linköping thesis diva2:1568991 | tread temperature in road driving 11–36 °C (52–97 °F), i.e. road tests run with the tread near road temperature | S |
+
+**New relation** (code: `MuRoad`, `MuBench`, `MuOfT`, `TCross` in TireThermal.cs)
+| Item | Value | Tag |
+|---|---|---|
+| Road relation | μ_road(T) = μmax·(1 − s·max(T − T_ref, 0)), s = 0.00211 /°C (0.117 %/°F), T_ref = 25 °C (77 °F) | S (s, T_ref), D (form) |
+| Distance → μ | d = v²/(2μg) ⇒ Δμ/μ = −Δd/d | D |
+| Full grip at/below 77 °F | ratio 1.0 (ADAC/Tyre Reviews μ 0.96–1.11 vs μmax 1.10; Pokorski: no loss above ≈45 °F) | S/SD |
+| Below 45 °F | still held at 1.0 (Pokorski −15 °C 0.92–0.94 has no warm reference on the same rig); never reached here (ambient 66 °F, track 70 °F) | E |
+| Bench curve | unchanged (Alcázar Vargas, §5), still held above 248 °F | S/E |
+| Blend | μ = μ_road below T_cross, bench above. T_cross is where the two meet (bisection): **66.3 °C = 151.3 °F, ratio 0.913**. Continuous (C0), monotone non-increasing below T_cross | D |
+| Conflict | the bench curve says 0.64–0.91 between 112 and 151 °F; road data say 0.91–0.95 there. Road data used (Taylor, option b); the bench low end is one budget tyre on a bench, starting a slide | SD |
+
+| Grip temp | 50 °F | 66 °F | 70 °F | 77 °F | 86 °F | 95 °F | 104 °F | 122 °F | 140 °F | 151 °F | 158 °F | 176 °F | 190 °F | 212 °F | 248 °F |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| new μ/μmax | 1.000 | 1.000 | 1.000 | 1.000 | 0.989 | 0.979 | 0.968 | 0.947 | 0.926 | 0.913 | 0.940 | 0.988 | 1.000 | 0.974 | 0.807 |
+| old (bench + hold) | 0.635 | 0.635 | 0.635 | 0.635 | 0.635 | 0.635 | 0.635 | 0.725 | 0.854 | 0.911 | 0.940 | 0.988 | 1.000 | 0.974 | 0.807 |
+
+**Grip temperature (Taylor's 270 °F report; replaces the bulk-only choice of §5a)**
+| Question | Finding | Tag |
+|---|---|---|
+| Which temperature is the bench curve's axis? | Alcázar Vargas 2022 measured the tread **surface** with IR across zones and weighted them (Eq. 3–4). Not bulk | S |
+| Is the bulk heating too slow? | Bulk node gets heat only by conduction through the 1 mm skin (G = k·A/Δx with k 0.282 W/mK, S) plus 44 % of RR heat (SD). Bench replica: bulk 75 °C (167 °F) after 3 min while the surface is 116 °C: the lag follows the rubber diffusivity (α = k/ρc = 1.4e-7 m²/s; √(αt) ≈ 5 mm in 3 min, D). Within the sourced k, c and depth it is not too slow; no change | S/D |
+| Surface only? | 1 mm skin flashes past 248 °F in a lock-up; with the surface as grip temperature the warm threshold stop became 55.8 m (front locked 64 %) against 40.8 m: runaway. Rejected | D (run) |
+| Chosen | **T_grip = heat-capacity-weighted tread mean** = (C_skin·ΣT_zone + C_bulk·T_bulk)/(3C_skin + C_bulk); weights 507 : 3557 J/K come from the node capacities, no free factor | D |
+| Why | the whole tread block shears over its height in the patch (brush model, Pacejka ch. 3) and hysteretic friction dissipates in the rubber deformed by the texture (Persson 2006), so grip follows the deformed tread, not the 1 mm skin or the bulk alone. Applying both curves to this mean is E | S / E |
+| Taylor's case | 270 °F surface over a 77 °F bulk: grip temp 101 °F → **97 %** (before: bulk 64 %; surface-only would be 81 %) | D (test `Hot_Surface_270F_Over_Cool_Bulk`) |
 
 ## 6. Pressure
 | Item | Value / law | Tag | Source |
@@ -118,3 +158,21 @@ Previous open issue (SD): the surface-temperature grip curve combined with stron
 - (a) drive grip from the bulk temperature (TRT EVO);
 - (b) replace the below-range hold with road-test data (μ ≈ 1.0 at 20–35 °C);
 - (c) keep as is.
+
+Result of option (b) + tread-mean grip temperature, 2026-10-13 (full car; mph, ft (m); ambient 66 °F, track 70 °F):
+
+| Run | Bulk-based, bench + 64 % hold (th_*_final) | Road cold side + tread mean (th_*_road) | Thermal off |
+|---|---|---|---|
+| Cold: skidpad max ay / understeer gradient | n/a (did not reach steady state) | 0.81 g / 1.06 °/g | 0.81 g / 1.06 °/g |
+| Cold: step steer ss yaw / overshoot / ss ay | 13.7 °/s / 10.8 % / 0.55 g | 16.2 °/s / 9.7 % / 0.645 g | 16.3 °/s / 9.7 % / 0.645 g |
+| Cold: threshold braking from 62 mph | 243 ft (74.1 m), front locked 73 % | 133.8 ft (40.8 m), no lock | 133.8 ft (40.8 m) |
+| Cold: lift-off max Δβ (ay before) | 4.5° (0.16 g, entry not reached) | 1.3° (0.70 g) | 1.3° (0.70 g) |
+| Warm: skidpad max ay / understeer gradient | 0.77 g / 1.17 °/g | 0.76 g / 1.19 °/g | 0.81 g / 1.06 °/g |
+| Warm: step steer ss yaw / overshoot | 15.9 °/s / 10.6 % | 15.9 °/s / 10.8 % | 16.3 °/s / 9.7 % |
+| Warm: threshold braking | 134.0 ft (40.8 m) | **163.1 ft (49.7 m), front locked 56 %** | 133.8 ft (40.8 m) |
+| Warm: lift-off Δβ | 1.5° | 1.5° | 1.3° |
+| Laguna cold start (0.45 g driver) | left the road at s ≈ 474 m in lap 1, grip 64 % | 3 laps, 182.4 / 181.8 / 180.6 s, grip 98–100 %, fronts 75–80 °F surface, 81–91 °F bulk | n/a |
+| 270 °F surface over 77 °F bulk (unit test) | 64 % | 97 % | n/a |
+
+Warm threshold braking (D): the -tirewarm start skin cools on the 13 s run-up, the tread mean sits at ~170 °F (bench side, ratio ~0.96 + hot-pressure terms). The battery's fixed 0.84 pedal is tuned to the thermal-off limit, so ~4 % less μ locks the fronts (no ABS). The bulk-only version kept 1.0 here. This is the remaining open point (SD: the bench curve's 151–190 °F side vs road data).
+Thermal off: metrics identical to the pre-change build (builds/th_off_pre vs th_off_road). The raw CSVs differ by 1 N in static Fz from the other tasks' uncommitted scene/terrain edits in the same tree, not from TireThermal (only instantiated when thermal is on).

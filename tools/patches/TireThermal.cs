@@ -2,7 +2,8 @@
 // Lumped multi-node model in the TRT / TRT-EVO family (Farroni et al. 2014 / 2019): per tire 3 tread-surface zones (inner/mid/outer),
 // tread bulk, carcass (belts+plies+sidewalls+liner), inflation gas, rim. Heat sources: friction power -F.Vs (split tire/road by thermal
 // effusivity, Blok) and rolling-resistance hysteresis F_rr.V. Sinks: forced+natural convection to air, transient conduction into the road,
-// internal convection carcass<->gas<->rim. Pressure: ideal gas at constant volume. Grip: Alcazar Vargas et al. 2022 measured mu(T)
+// internal convection carcass<->gas<->rim. Pressure: ideal gas at constant volume. Grip: road-test relation (Tambellini 2019) below ~151 F,
+// Alcazar Vargas et al. 2022 measured mu(T) above, on the tread-mean temperature
 // (summer passenger tire); pressure effects: MF6.1 terms (Besselink/Schmeitz/Pacejka 2010, TNO example coefficients).
 // Every constant carries a tag: S sourced, SD sources disagree, D derived, E estimated. Sources: tire_thermal_research.md.
 using UnityEngine;
@@ -38,7 +39,17 @@ public class TireThermal
     public const double RrToTread = 0.44;     // share of rolling-resistance loss in the tread (SD: tread 44% Tire Review; crown 70% Technia)
     // ---- grip vs temperature (S: Alcazar Vargas et al., Sensors 2022, Austone SP-6 205/65R15, Eq. mu = mumax + 1 - cosh((T-Topt)/Tdisp)) ----
     public const double MuMax = 1.1, TOpt = 88.0, TDisp = 50.0;
-    public const double TFitLo = 44.6;        // degC: fit gives 0.70 = lowest measured mu (D); held below (E: no data)
+    public const double TFitLo = 44.6;        // degC: bench fit gives 0.70 = lowest measured mu (D); bench curve held below (MuBench only)
+    // ---- cold side from ROAD tests (option (b), Taylor 2026-10-13; replaces the 0.70 cold hold in MuOfT) ----
+    // Tambellini 2019 (Univ. Pisa / FCA, Balocco): ABS stops of 5 summer tires at road surface 15-58 C. Stopping distance grows
+    // 0.211 %/C of road temperature on average (S; per tire 0.102-0.356 %/C, SD), referenced to 25 C (S, Balocco yearly mean road temp).
+    // d = v^2/(2 mu g) -> d(mu)/mu = -d(d)/d (D). Road-tested tires run with the tread near road temperature (Linkoping diva2:1568991:
+    // 11-36 C on the road, S), so the road temperature is taken as the bulk temperature (E). Below TRoadRef: full grip held (S: Pokorski
+    // 2019 summer 185/65R14, no deterioration down to ~7 C; ADAC/TUV/Tyre Reviews dry stops give mu 0.96-1.11 at road temperature).
+    public const double SRoad = 0.00211;      // 1/degC relative mu loss per degC above TRoadRef (S mean, SD spread)
+    public const double TRoadRef = 25.0;      // degC (S)
+    // crossover where the rising bench curve meets the road relation (D, solved once by bisection): ~66 C
+    public static readonly double TCross = SolveCross();
     public const double TFitHi = 120.0;       // degC: highest measured zone temperature; held above (E)
     // ---- pressure (MF6.1; S coefficients of the TNO example tire, transferred to this tire: E) ----
     public const double PNom = 170000.0;      // Pa gauge, VW cold pressure 185/60R14 (SD: 1.7 bar three sources, 1.8 one)
@@ -145,14 +156,32 @@ public class TireThermal
     // that to this passenger tire and to the Alcazar Vargas mu(T) curve, which was fitted against zone/surface temperatures, is E).
     // The 1 mm surface zones follow every slide and cool within ~15 s on a straight; the bulk (C_bulk ~21x C_skin, D) integrates the
     // heat history, which is what the compound's viscoelastic state follows. Surface zones still drive heat flow and the display.
-    public double GripTemp() => Tb;
+    // 2026-10-13 (option (b) + Taylor's 270 F report): grip temperature = TREAD MEAN temperature, i.e. the heat-capacity-weighted mean of
+    // the three 1 mm surface zones and the 7 mm bulk (D: weights are the node capacities 3*C_skin : C_bulk = 507 : 3557 J/K, no free factor).
+    // Basis: in the contact patch the whole tread block shears over its full height (brush model, Pacejka ch. 3, S), and hysteretic
+    // friction dissipates in the rubber deformed by the road texture (Persson 2006, S), so the viscoelastic state that sets grip is that of
+    // the deformed tread, not of the 1 mm skin alone (surface-only: 1 mm skin flashes past 248 F in a lock-up -> runaway, seen in the
+    // warm threshold-brake run: 55.8 m vs 40.8 m) nor of the bulk alone (a 270 F skin over a 77 F bulk read 64 %). Applying the bench
+    // curve (fitted vs IR surface temps, S) and the road relation (vs road temperature, S) to this mean is E.
+    public double GripTemp() => (CSkin * (Ts[0] + Ts[1] + Ts[2]) + CBulk * Tb) / (3.0 * CSkin + CBulk);
     // surface (display) temperature: zone temps weighted by (T_i - T_amb) (Alcazar Vargas Eq. 3-4, S); plain mean when all at/below ambient
     public double SurfaceTemp()
     {
         double s = 0, sw = 0; for (int i = 0; i < 3; i++) { double w = System.Math.Max(Ts[i] - TAmb, 0); s += w * Ts[i]; sw += w; }
         return sw > 1e-6 ? s / sw : (Ts[0] + Ts[1] + Ts[2]) / 3.0;
     }
-    public static double MuOfT(double T) { T = System.Math.Min(System.Math.Max(T, TFitLo), TFitHi); return MuMax + 1.0 - System.Math.Cosh((T - TOpt) / TDisp); }
+    /// bench curve alone (Alcazar Vargas 2022, held outside its measured range): used for the bench replica
+    public static double MuBench(double T) { T = System.Math.Min(System.Math.Max(T, TFitLo), TFitHi); return MuMax + 1.0 - System.Math.Cosh((T - TOpt) / TDisp); }
+    /// road-test relation (Tambellini 2019 slope, full grip at/below TRoadRef)
+    public static double MuRoad(double T) => MuMax * (1.0 - SRoad * System.Math.Max(T - TRoadRef, 0.0));
+    /// grip vs temperature: road data below the crossover, bench curve above; continuous at TCross (max of the two below TOpt)
+    public static double MuOfT(double T) => T < TCross ? MuRoad(T) : MuBench(T);
+    static double SolveCross()
+    {   // MuRoad - MuBench is >0 at TFitLo and <0 at TOpt; bisection to 1e-9 C
+        double a = TFitLo, b = TOpt;
+        for (int i = 0; i < 100; i++) { double m = 0.5 * (a + b); if (MuRoad(m) > MuBench(m)) a = m; else b = m; }
+        return 0.5 * (a + b);
+    }
     /// Pacejka multipliers: temperature on peak mu only (stiffness ~independent of T, S Vargas); MF6.1 pressure terms on stiffness + mu.
     public TireScale Scale()
     {
