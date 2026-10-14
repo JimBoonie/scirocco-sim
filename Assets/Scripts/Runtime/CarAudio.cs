@@ -21,7 +21,25 @@ public class CarAudio : MonoBehaviour
         src.clip = clip; src.loop = true; src.spatialBlend = 1f; src.dopplerLevel = 0f; src.minDistance = 1.5f; src.maxDistance = 200f; src.rolloffMode = AudioRolloffMode.Logarithmic; src.playOnAwake = false;
         var s = g.AddComponent<T>(); src.Play(); return s;
     }
-    void Update() { AudioListener.volume = Mute ? 0f : Volume; }
+    public static volatile bool Paused;   // menu open / Time.timeScale == 0 -> all car audio fades to silence
+    void Update() { AudioListener.volume = Mute ? 0f : Volume; Paused = Time.timeScale <= 0f || (car && car.router && car.router.menuOpen); }
+}
+/// click-free pause gate: per-sample linear ramp (FadeSec) towards 0 (paused) or 1 (running). Pure; unit tested.
+public class AudioPauseGate
+{
+    public const float FadeSec = 0.03f;
+    public float gain = 1f;
+    /// multiplies n interleaved frames (ch channels) in place
+    public void Apply(float[] data, int n, int ch, bool paused, float sampleRate)
+    {
+        float target = paused ? 0f : 1f, step = 1f / (FadeSec * sampleRate);
+        if (gain == target) { if (target == 0f) System.Array.Clear(data, 0, n * ch); return; }
+        for (int i = 0; i < n; i++)
+        {
+            gain = gain < target ? System.Math.Min(target, gain + step) : System.Math.Max(target, gain - step);
+            for (int c = 0; c < ch; c++) data[i * ch + c] *= gain;
+        }
+    }
 }
 public abstract class SynthBase : MonoBehaviour
 {
@@ -52,7 +70,7 @@ public class EngineSynth : SynthBase
     }
     /// offline render (tests / sweep tool): set the audio-thread state directly, no CarController needed
     public void SetOfflineState(float sampleRate, float rpmV, float loadV, float throttleArea, bool comb = true) { sr = sampleRate; rpm = rpmV; load = loadV; thrArea = throttleArea; combusting = comb; ignition = comb; crankAmp = 1f; }
-    float[] mono = new float[0];
+    float[] mono = new float[0]; readonly AudioPauseGate pause = new AudioPauseGate();
     void OnAudioFilterRead(float[] data, int ch)
     {
         int n = data.Length / ch; if (mono.Length < n) mono = new float[n];
@@ -60,6 +78,7 @@ public class EngineSynth : SynthBase
         double acc = 0; for (int i = 0; i < n; i++) acc += mono[i] * mono[i];
         TireSoundDsp.EngineRms = (float)System.Math.Sqrt(acc / System.Math.Max(1, n));   // tire ceiling reference (engine synth output, pre-spatial)
         for (int i = 0; i < n; i++) for (int c = 0; c < ch; c++) data[i * ch + c] *= mono[i];
+        pause.Apply(data, n, ch, CarAudio.Paused, sr);
     }
     public void Render(float[] buf, int n)   // mono synthesis (also used offline by the -audiowav test)
     {
@@ -115,5 +134,6 @@ public class TireSynth : SynthBase
         }
         dsp.SetTargets(rat, running ? speed : 0f, fzs);
     }
-    void OnAudioFilterRead(float[] data, int ch) { if (dsp != null) dsp.Render(data, data.Length / ch, ch, CarAudio.TireVolume); }
+    readonly AudioPauseGate pause = new AudioPauseGate();
+    void OnAudioFilterRead(float[] data, int ch) { if (dsp == null) return; dsp.Render(data, data.Length / ch, ch, CarAudio.TireVolume); pause.Apply(data, data.Length / ch, ch, CarAudio.Paused, sr); }
 }

@@ -68,6 +68,17 @@ public class TireScrubTests
         float[] R(float thr) { var g = new GameObject("e"); var e = g.AddComponent<EngineSynth>(); e.SetOfflineState(fs, 4000f, 0.8f, thr); var b = new float[9600]; e.Render(b, b.Length); Object.DestroyImmediate(g); return b; }
         var z = R(0f); var f = R(1f); for (int i = 0; i < z.Length; i++) Assert.AreEqual(z[i], f[i], 1e-7, "throttle area must not add noise");
     }
+    [Test] public void Pause_Gate_Fades_Out_Silent_And_Back_No_Click()
+    {
+        var g = new AudioPauseGate(); int n = 4800; var b = new float[n * 2];
+        System.Func<bool, float[]> blk = p => { for (int i = 0; i < b.Length; i++) b[i] = 1f; g.Apply(b, n, 2, p, fs); return b; };
+        var a = blk(true); float prev = 1f, maxStep = 0f;
+        for (int i = 0; i < n; i++) { maxStep = Mathf.Max(maxStep, Mathf.Abs(a[i * 2] - prev)); prev = a[i * 2]; }
+        Assert.AreEqual(0f, a[(n - 1) * 2], 1e-6, "silent after the fade"); Assert.Less(maxStep, 0.002f, "no click on pause");
+        a = blk(true); foreach (var v in a) Assert.AreEqual(0f, v, 0f, "fully silent while paused");
+        a = blk(false); Assert.Less(a[0], 0.002f, "starts from silence"); Assert.AreEqual(1f, a[(n - 1) * 2], 1e-6, "back to full within the fade");
+        for (int i = 1; i < n; i++) Assert.LessOrEqual(a[i * 2] - a[(i - 1) * 2], 0.002f, "no click on resume");
+    }
     [Test] public void Offline_Sweeps_To_Disk()
     {
         var dir = System.Environment.GetEnvironmentVariable("SCIROCCO_SWEEP_DIR"); if (string.IsNullOrEmpty(dir)) { Assert.Pass("set SCIROCCO_SWEEP_DIR to write sweeps"); return; }
