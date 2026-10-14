@@ -64,7 +64,6 @@ public class InputRouter : MonoBehaviour
         if (map.Pressed(InAction.Reset)) { car.ResetCar(); car.dt.SelectGear(0); car.engine.SetRunning(!map.profile.startEngineOff);   // reset = respawn: neutral, engine as at spawn
  if (ffb) ffb.ResetRamp(); }
         if (map.Pressed(InAction.ResetToStart)) ResetToStart();
-        if (map.Pressed(InAction.ProfileToggle)) car.ToggleProfile();
         if (map.Pressed(InAction.Recenter) && vr) vr.Recenter();
         if (map.Pressed(InAction.CameraToggle) && vr) vr.ToggleCamera();
         if (map.Pressed(InAction.HudToggle)) { if (panel) panel.showHud = !panel.showHud; map.profile.hudVisible = !map.profile.hudVisible; InputMapper.Save(map.profile); status = map.profile.hudVisible ? "info HUD shown (H)" : "info HUD hidden (H)"; }
@@ -151,6 +150,7 @@ public class InputRouter : MonoBehaviour
         GUILayout.Label("Devices: " + string.Join(" | ", DeviceNames()), st);
         foreach (InAction a in System.Enum.GetValues(typeof(InAction)))
         {
+            if (InputMapper.IsRetired(a)) continue;   // retired actions (handling-profile toggle) are not shown or bindable
             var slots = pr.Get(a); bool bip = InputMapper.IsBipolar(a);
             GUILayout.BeginHorizontal();
             GUILayout.Label($"{a}  = {(InputMapper.IsAxisAction(a) ? map.Axis(a).ToString("0.00") : (map.Held(a) ? "ON" : "off"))}", st, GUILayout.Width(190));

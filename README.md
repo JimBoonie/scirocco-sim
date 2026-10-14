@@ -94,7 +94,7 @@ Default bindings (all can be changed in the in-game **Input settings**, F1 / Esc
 | Shift up / down (sequential) | E / Q | RB / X(West) |
 | H-pattern gears 1-5, R | 1-5, 6 = Reverse (latched) | bind to your shifter |
 | Handbrake | Space | B(East) |
-| Reset / Handling profile | R / P | Back(Select) / D-pad up |
+| Reset | R | Back(Select) |
 | Look (camera orbit) | – | right stick |
 | Input settings | F1 or Esc | Start |
 The car starts in neutral: press E (or select 1st) to drive.
@@ -139,15 +139,25 @@ Not implemented. The Input System has no generic DirectInput force-feedback API,
 - Run: `unity test . --mode EditMode`.
 - Physics regression: `builds/run_tests.sh` (the InputRouter disables itself in `-smoketest` runs).
 
-## Handling profiles and model options (CarParams asset)
-- `profile`: **Baseline** is the best estimate of the real car. **ProposedUndersteer** is a documented PROPOSAL, not real data: same physics code, with different physical inputs inside the estimated uncertainty (see builds/tests/RESULTS.md). There are no gains or scalers.
+## Handling baseline and model options (CarParams asset)
+- There is **one** handling baseline (since 2026-10-13). The former 'ProposedUndersteer' profile became the only set of inputs; the profile switch (P key / d-pad up), the HandlingProfile enum and the second table set are gone. No gains or scalers.
+- These baseline inputs are **estimates (E)**, inside the estimated range and chosen by Taylor for the understeer balance. They are not sourced data:
+  - front ARB `arbFront` 7200 N/m (was 4500 D from the 16 mm bar);
+  - rear `twistBeamRoll` 8520 N/m (0.8 x 10650; rear roll stiffness 280 Nm/deg);
+  - `steeringStiffness` 12000 Nm/rad (was 20000 E);
+  - `pneumaticTrail0` 0.035 m (was 0.025 E);
+  - in suspension_params.json: front lower-arm pivots z +20 mm, front arm bush rates x2, rear trailing-arm pivot z -30 mm, beam shear centre x -2.00 m (was -2.06).
+  - The kinematic/compliance tables are re-solved from these on top of the current geometry (caster-trail fix, 0.379 m tie rod with inner point (-0.09949, +-0.22160, 0.35594), steering linkage grid). Side effect: front bump steer becomes -18 deg/m (was +0.6), because the tie-rod inner point (SD) was fitted for the old pivot height. Lock at the +-68.6 mm rack stop is 40.50/32.90 deg (sourced 40d22'/32d55').
+  - Spring and wheel rates are unchanged.
+- The 16/19 mm anti-roll bar diameters are tagged **SD**: the source lists them only for the '84 US/Canada car (online_research_findings.md).
+- Saved input settings: old files (version <= 5) load fine. Their handling-toggle bindings are dropped and every other setting is kept (`InputMapper.Migrate`, version 6).
 - `rearModel`: FullTwistBeam (default) | SimpleTable. `frontModel`: CompliantMultibody (default) | KinematicTable. `useUnsprungMass` (default on).
 - `tirePreset`: ModernSummer (default) | PeriodMXV (estimated 1980s MXV-era tire).
 - `steeringStiffness`, `pneumaticTrail0`, `mechanicalTrail`: steering-system compliance (0 stiffness = off).
 - The HUD shows joint reaction forces on the body (arm bushes, tie rod, top mount, ball joint; rear pivot bushes, damper mounts) from the linear maps in kinematics/compliance.json.
 
 ## Rebuilding
-- `python3 kinematics/solve_kinematics.py && python3 kinematics/multibody_compliance.py && python3 kinematics/export_unity.py` regenerates the tables (Baseline + Proposed).
+- `python3 kinematics/solve_kinematics.py && python3 kinematics/multibody_compliance.py && python3 kinematics/export_unity.py` regenerates the single baseline table set (`SuspensionTablesData.cs`).
 - Builds: `-executeMethod SciroccoSetup.BuildLinux` or `SciroccoSetup.BuildWindows`, or open in Unity 2022.3.62f3, run the menu setup, and press Play.
 
 ## Non-physical scalar audit

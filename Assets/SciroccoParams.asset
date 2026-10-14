@@ -20,14 +20,6 @@ MonoBehaviour:
   trackFront: 1.404
   trackRear: 1.372
   kin: {fileID: 11400000, guid: 8ecb74d074ed8f64eb54130b3c385d7e, type: 2}
-  profile: 0
-  kinProposed: {fileID: 11400000, guid: 4c51f3fe6a1ef0573bc24dd496d17570, type: 2}
-  propArbFront: 7200
-  propTwistBeamRoll: 8520
-  propWheelRateFront: 15500
-  propWheelRateRear: 11900
-  propSteeringStiffness: 12000
-  propPneumaticTrail0: 0.035
   hubDropDesign: 0.3
   wheelRateFront: 15500
   wheelRateRear: 11900
@@ -76,8 +68,8 @@ MonoBehaviour:
   - 300
   - 560
   - 1050
-  arbFront: 4500
-  twistBeamRoll: 10650
+  arbFront: 7200
+  twistBeamRoll: 8520
   staticCamberF: 0.333
   staticCamberR: -1.25
   toeTotalF: -0.25
@@ -169,8 +161,8 @@ MonoBehaviour:
   brakeTorqueRear: 300
   handwheelLockDeg: 634.7
   rackPerHandwheelDeg: 0.0001081
-  steeringStiffness: 20000
-  pneumaticTrail0: 0.025
+  steeringStiffness: 12000
+  pneumaticTrail0: 0.035
   peakSlipTrail: 0.15
   columnFriction: 0.6
   columnFrictionVel: 0.05

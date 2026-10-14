@@ -14,7 +14,7 @@ public class CarController : MonoBehaviour
     void Start()
     {
         if (Time.fixedDeltaTime > 0.00101f) Time.fixedDeltaTime = 0.001f;     // 1 kHz suspension/body, 2 kHz tire/drivetrain
-        source = p; p = source.ForProfile(source.profile);   // runtime copy (profile + tire preset); asset untouched
+        source = p; p = source.RuntimeCopy();   // runtime copy (tire preset); asset untouched. Single handling baseline: no profile switch
         rb = GetComponent<Rigidbody>(); rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;   // chassis box vs thin track MeshColliders at speed: no tunnelling
         ApplyParams();
         engine = new Engine(p); dt = new Drivetrain(p);
@@ -38,11 +38,6 @@ public class CarController : MonoBehaviour
             w.unsprungStaticLoad = (w.front ? wf + muF * g : wr + muR * g);
         }
     }
-    public void ToggleProfile()   // P key: switch handling profile live (same physics code, different physical inputs)
-    {
-        var h = p.profile == CarParams.HandlingProfile.Baseline ? CarParams.HandlingProfile.ProposedUndersteer : CarParams.HandlingProfile.Baseline;
-        p = source.ForProfile(h); ApplyParams();   // engine/drivetrain inputs are identical in both profiles
-    }
     void Update()
     {
         if (externalInput || (router && router.isActiveAndEnabled)) return;   // InputRouter (Input System, all devices) takes over when present
@@ -56,7 +51,6 @@ public class CarController : MonoBehaviour
         steer = Mathf.MoveTowards(steer, target, p.steerRate * Time.deltaTime); handwheelInput = false;   // road-angle command -> FixedUpdate inverts the linkage
         if (Input.GetKeyDown(KeyCode.E) || Input.GetKeyDown(KeyCode.JoystickButton5)) dt.Shift(1);
         if (Input.GetKeyDown(KeyCode.Q) || Input.GetKeyDown(KeyCode.JoystickButton2)) dt.Shift(-1);
-        if (Input.GetKeyDown(KeyCode.P)) ToggleProfile();
         if (Input.GetKeyDown(KeyCode.R) || Input.GetKeyDown(KeyCode.JoystickButton6))
             ResetCar();
     }

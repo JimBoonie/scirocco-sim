@@ -48,17 +48,17 @@
    [
     0.04,
     0.35,
-    0.195
+    0.215
    ],
-   "E"
+   "E: z +20 mm (single baseline 2026-10-13: within the estimated range, chosen by Taylor for the understeer balance; estimate, not sourced); was z 0.195"
   ],
   "lower_arm_rear_pivot": [
    [
     -0.25,
     0.36,
-    0.205
+    0.225
    ],
-   "E"
+   "E: z +20 mm (single baseline 2026-10-13: within the estimated range, chosen by Taylor for the understeer balance; estimate, not sourced); was z 0.205"
   ],
   "wheel_centre": [
    [
@@ -149,13 +149,13 @@
    [
     -1.985,
     0.6,
-    0.3
+    0.27
    ],
-   "E (pivot ~0.415 m ahead of rear axle)"
+   "E (pivot ~0.415 m ahead of rear axle): z -30 mm (single baseline 2026-10-13: within the estimated range, chosen by Taylor for the understeer balance; estimate, not sourced); was z 0.3"
   ],
   "beam_shear_centre_x": [
-   -2.06,
-   "E (beam close to pivots on A1 = more torsion-like)"
+   -2.0,
+   "E (beam close to pivots on A1 = more torsion-like): -2.00 (single baseline 2026-10-13: within the estimated range, chosen by Taylor for the understeer balance; estimate, not sourced); was -2.06"
   ],
   "wheel_centre": [
    [
@@ -214,19 +214,19 @@
  "anti_roll": {
   "front_bar_diameter_mm": [
    16,
-   "S? (driversfound spec sheet; some trims 20/18 mm reported: SD)"
+   "SD (driversfound: 16/19 mm appears only in the '84 US/Canada 1.8 column; EU column blank; online_research_findings.md 3); some trims 18/20 mm reported: SD"
   ],
   "front_bar_wheel_rate_N_per_mm": [
-   4.5,
-   "D: G=79.3GPa, L_active~0.9m, lever 0.2m, arm MR~0.55"
+   7.2,
+   "E: 7.2 (single baseline 2026-10-13: within the estimated range, chosen by Taylor for the understeer balance; estimate, not sourced); 18 mm bar reported on some trims (SD) would give ~7.2 (x(18/16)^4 = 1.60); 16 mm (SD) derivation gave 4.5 (D: G=79.3GPa, L_active~0.9m, lever 0.2m, arm MR~0.55)"
   ],
   "rear_bar_diameter_mm": [
    19,
-   "S? (driversfound; bar inside beam on GTI/GTX)"
+   "SD (driversfound '84 US/Canada column only, online_research_findings.md 3; C/D '0.8 in' = 20 mm SD); bar inside beam on GTI/GTX"
   ],
   "rear_roll_stiffness_total_Nm_per_deg": [
-   350,
-   "D/E: beam torsion + 19mm bar via 0.415m trailing arms"
+   280.0,
+   "E: x0.8 of the D/E 350 (beam torsion + 19 mm SD bar via 0.415m trailing arms) (single baseline 2026-10-13: within the estimated range, chosen by Taylor for the understeer balance; estimate, not sourced); twistBeamRoll 8520 N/m"
   ],
   "front_roll_stiffness_springs_plus_bar_Nm_per_deg": [
    400,
@@ -269,6 +269,14 @@
     32.92
    ],
    "S (A1 manual, 13in)"
+  ],
+  "road_wheel_stiffness_Nm_per_rad": [
+   12000,
+   "E: low end of the estimate (single baseline 2026-10-13: within the estimated range, chosen by Taylor for the understeer balance; estimate, not sourced); C/D 1982 'slightly rubbery' steering; was 20000 (E)"
+  ],
+  "pneumatic_trail0_m": [
+   0.035,
+   "E: period-tire-typical (single baseline 2026-10-13: within the estimated range, chosen by Taylor for the understeer balance; estimate, not sourced); was 0.025 (E)"
   ]
  },
  "kinematics_targets": {
@@ -409,22 +417,22 @@
  "bushings": {
   "front_arm_front_N_per_mm": {
    "radial": [
-    2500,
-    "E"
+    5000,
+    "E: x2 (stiffer OE rubber plausible) (single baseline 2026-10-13: within the estimated range, chosen by Taylor for the understeer balance; estimate, not sourced); was 2500"
    ],
    "axial": [
-    800,
-    "E"
+    1600,
+    "E: x2 (stiffer OE rubber plausible) (single baseline 2026-10-13: within the estimated range, chosen by Taylor for the understeer balance; estimate, not sourced); was 800"
    ]
   },
   "front_arm_rear_N_per_mm": {
    "radial": [
-    1200,
-    "E"
+    2400,
+    "E: x2 (stiffer OE rubber plausible) (single baseline 2026-10-13: within the estimated range, chosen by Taylor for the understeer balance; estimate, not sourced); was 1200"
    ],
    "axial": [
-    600,
-    "E"
+    1200,
+    "E: x2 (stiffer OE rubber plausible) (single baseline 2026-10-13: within the estimated range, chosen by Taylor for the understeer balance; estimate, not sourced); was 600"
    ]
   },
   "rear_beam_pivot_N_per_mm": {

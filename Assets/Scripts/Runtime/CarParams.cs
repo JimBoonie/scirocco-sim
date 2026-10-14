@@ -11,24 +11,9 @@ public class CarParams : ScriptableObject
     public float trackFront = 1.404f, trackRear = 1.372f;  // (S)
     [Header("Suspension (suspension_params.json; S/SD/D/E tags)")]
     public SuspensionTables kin;
-    public enum HandlingProfile { Baseline, ProposedUndersteer }
-    [Header("Handling profile (runtime toggle: P key)")]
-    public HandlingProfile profile = HandlingProfile.Baseline;   // Baseline = best estimate of the real car. ProposedUndersteer = PROPOSAL (see README)
-    public SuspensionTables kinProposed;                          // tables/compliance re-solved with the proposed hardpoints/bush rates
-    // Proposed-understeer physical inputs (set from sensitivity study; each one documented in README/RESULTS). Not real data.
-    public float propArbFront = 7200f, propTwistBeamRoll = 8520f, propWheelRateFront = 15500f, propWheelRateRear = 11900f;
-    public float propSteeringStiffness = 12000f, propPneumaticTrail0 = 0.035f;
-    public CarParams ForProfile(HandlingProfile h)
-    {
-        var c = Instantiate(this); c.profile = h;
-        if (h == HandlingProfile.ProposedUndersteer)
-        {
-            if (kinProposed) c.kin = kinProposed;
-            c.arbFront = propArbFront; c.twistBeamRoll = propTwistBeamRoll; c.wheelRateFront = propWheelRateFront; c.wheelRateRear = propWheelRateRear;
-            c.steeringStiffness = propSteeringStiffness; c.pneumaticTrail0 = propPneumaticTrail0;
-        }
-        return c.ApplyTirePreset();
-    }                            // baked kinematic tables (kinematics/solve_kinematics.py)
+    // Single handling baseline (2026-10-13). The former 'ProposedUndersteer' profile is now the only set of inputs; there is no profile
+    // switch. Its values are ESTIMATES (E) inside the estimated uncertainty, chosen by Taylor for the understeer balance; not sourced data.
+    public CarParams RuntimeCopy() => Instantiate(this).ApplyTirePreset();   // runtime copy (tire preset applied); asset untouched                            // baked kinematic tables (kinematics/solve_kinematics.py)
     public float hubDropDesign = 0.30f;                     // corner transform -> wheel centre at design ride height (layout only)
     public float wheelRateFront = 15500f, wheelRateRear = 11900f;   // N/m (D from SD/E spring rates x MR^2)
     public float bumpTravelF = 0.08f, reboundTravelF = 0.09f, bumpTravelR = 0.085f, reboundTravelR = 0.09f; // m (E)
@@ -38,8 +23,8 @@ public class CarParams : ScriptableObject
     public float[] damperV = { 0f, 0.05f, 0.1f, 0.3f, 1.0f };
     public float[] damperBumpF = { 0f, 90f, 170f, 330f, 700f }, damperReboundF = { 0f, 200f, 380f, 700f, 1300f };
     public float[] damperBumpR = { 0f, 70f, 130f, 260f, 560f }, damperReboundR = { 0f, 160f, 300f, 560f, 1050f };
-    public float arbFront = 4500f;                          // N/m per unit travel difference (D: 16 mm bar)
-    public float twistBeamRoll = 10650f;                    // N/m equiv. (D: 350 Nm/deg beam + 19 mm bar / track^2)
+    public float arbFront = 7200f;                          // N/m per unit travel difference (E: within the estimated range, chosen by Taylor for the understeer balance; 16 mm SD bar derivation gave 4500, 18 mm SD reported on some trims ~7200)
+    public float twistBeamRoll = 8520f;                     // N/m equiv. (E: 0.8 x the D/E 10650 = 350 Nm/deg beam + 19 mm SD bar / track^2; within the estimated range, chosen by Taylor for the understeer balance)
     [Header("Alignment (VW table, S)")]
     public float staticCamberF = 0.333f, staticCamberR = -1.25f;   // deg (+20', -1d15')
     public float toeTotalF = -0.25f, toeTotalR = 0.333f;           // deg total, + = toe-in (-15', +20')
@@ -100,8 +85,8 @@ public class CarParams : ScriptableObject
     public float MeanLockDeg => SteeringLinkage.MeanAngle(this, handwheelLockDeg);
     // Steering-system compliance: the kingpin moments of both front tires (SteeringTorque: full vector model, geometry from hardpoints)
     // twists column/rack/tie rods against the driver-held handwheel and reduces road-wheel angle. 0 stiffness = off.
-    public float steeringStiffness = 20000f;   // Nm/rad at the road wheels, both sides combined (E: column ~150 Nm/rad x on-centre linkage ratio ~19.3^2 ~ 56k in series with rack/tie-rod mounts)
-    public float pneumaticTrail0 = 0.025f;     // m at zero slip (E: ~1/6 of a ~0.14 m contact patch), falls linearly to 0 at peakSlipTrail
+    public float steeringStiffness = 12000f;   // Nm/rad at the road wheels, both sides combined (E: low end, within the estimated range, chosen by Taylor for the understeer balance; was 20000 E. C/D 1982 'slightly rubbery'. Estimate basis: column ~150 Nm/rad x on-centre linkage ratio ~19.3^2 ~ 56k in series with rack/tie-rod mounts)
+    public float pneumaticTrail0 = 0.035f;     // m at zero slip (E: period-tire-typical, within the estimated range, chosen by Taylor for the understeer balance; was 0.025 E = ~1/6 of a ~0.14 m contact patch), falls linearly to 0 at peakSlipTrail
     public float peakSlipTrail = 0.15f;        // rad (E)
     // Steering system at the column (E, manual rack; used for force feedback only): Coulomb friction and viscous damping
     public float columnFriction = 0.6f;       // N m at the handwheel (E: column bearings + rack/pinion + tie-rod joints)

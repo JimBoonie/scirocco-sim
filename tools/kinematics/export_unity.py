@@ -1,6 +1,6 @@
 """Write tables.json + compliance.json into a C# static filler (Assets/Scripts/Editor/SuspensionTablesData.cs).
 fields() is reused by sensitivity.py to produce runtime override files (-overrides) for perturbed inputs."""
-import json, sys, os
+import json, os
 def fields(t, c):
     K = c['rear']['Kkin']; rc_ = c['rear']['comp']; fr = c['front']
     f = dict(travel=t['travel'], frontCamberBody=t['front_camber_body'], frontBumpSteer=t['front_bumpsteer_toe'], frontTrackChange=t['front_track_change'],
@@ -44,11 +44,4 @@ public static class {cls}
 if __name__ == '__main__':
     E = '../unity/SciroccoSimDemo/Assets/Scripts/Editor/'
     write_cs(json.load(open('tables.json')), json.load(open('compliance.json')), 'SuspensionTablesData', E+'SuspensionTablesData.cs')
-    pd_ = sys.argv[1] if len(sys.argv) > 1 else '../sensitivity/runs/proposed'
-    if os.path.exists(pd_+'/tables.json'):
-        tp = json.load(open(pd_+'/tables.json'))
-        if 'front_toe_travel_rack' not in tp:   # stale proposed tables: carry the current steering grid so the runtime linkage works
-            print('WARNING: proposed tables have no steering grid; using the current geometry grid'); m = json.load(open('tables.json'))
-            for kk in ('rack', 'front_toe_travel_rack', 'front_steer_vs_rack', 'front_camber_travel_rack'): tp[kk] = m[kk]
-        write_cs(tp, json.load(open(pd_+'/compliance.json')), 'SuspensionTablesDataProposed', E+'SuspensionTablesDataProposed.cs')
-    else: print('WARNING: no proposed tables at', pd_)
+    # single baseline (2026-10-13): the former 'ProposedUndersteer' hardpoints/bush rates are folded into suspension_params.json; no second table set

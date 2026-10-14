@@ -32,14 +32,14 @@ The Scirocco I/II, Golf I, Jetta I and Cabrio share the front subframe, struts, 
 | Lock angles | inner 40°22′ / outer 32°55′ | S [A2] (13 in) | medium for 14 in |
 | Track | 1404/1372 (EU 14 in, report.md); A1 manual 1387/1358 (13 in) | S / SD by wheel | high |
 | Ground clearance | 121 mm at GVW | S [A2] (Golf) | medium |
-| Front ARB | 16 mm | S? [DF], single source | medium |
-| Rear bar | 19 mm, inside the beam | S? [DF] | medium |
+| Front ARB | 16 mm | SD [DF]: '84 US/Canada 1.8 column only, EU column blank (online_research_findings.md §3) | low-medium |
+| Rear bar | 19 mm, inside the beam | SD [DF]: '84 US/Canada column only (online_research_findings.md §3); C/D 0.8 in (SD) | low-medium |
 | Front spring rate | ≈17.2 N/mm (98 lb/in, one press test on a 1983 Golf GTI front spring with green/yellow stripes); Rabbit base 13.7 N/mm | S-ish [VX1], single amateur test, **SD** by variant | medium-low. VW never published rates. The Scirocco GTI should be in the 15–19 N/mm range |
 | Rear spring rate | 14 N/mm | E | low. No source found; picked to give ~1.4 Hz rear vs ~1.2 Hz front (rear-higher frequency is typical of FWD) |
 | Spring free length / wire | not found; front ~370 mm (E) | E | low. ETKA colour-stripe tables not accessible publicly |
 | Dampers | OE Boge (later Sachs) twin-tube; front is a cartridge in the strut housing [EB] | S (type) | curves **E** (see JSON; rebound ≈ 2× bump, knee ~0.1 m/s). No published force-velocity data found |
 | Motion ratios | front spring 0.95, rear 0.92 | D/E | strut nearly on the steering axis; rear coilover just inboard of the hub |
-| ARB wheel rates | front ≈4.5 N/mm; rear roll stiffness ≈350 Nm/deg (beam + bar) | D | method: k_t = G·πd⁴/32/L (G = 79.3 GPa, L_active ≈ 0.9/1.0 m) mapped to the wheel through lever 0.2 m × arm MR 0.55 (front) or the 0.415 m trailing arm (rear); low-medium |
+| ARB wheel rates | front ≈4.5 N/mm; rear roll stiffness ≈350 Nm/deg (beam + bar) | D (derivation). Sim baseline since 2026-10-13: front 7.2 N/mm, rear 280 Nm/deg (twistBeamRoll 8520 N/m): **E**, within the estimated range, chosen by Taylor for the understeer balance (not sourced) | method: k_t = G·πd⁴/32/L (G = 79.3 GPa, L_active ≈ 0.9/1.0 m) mapped to the wheel through lever 0.2 m × arm MR 0.55 (front) or the 0.415 m trailing arm (rear); low-medium |
 | Travel | front +80/−90 mm, rear +85/−90 mm | E | low |
 | Unsprung mass | front 34 kg, rear 27 kg per corner | E | medium (component sum) |
 | Wheels | 6J×14, 4×100, ET38 | rim/PCD S; ET is **E** (commonly cited, not verified) | |

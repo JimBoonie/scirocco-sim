@@ -24,10 +24,8 @@ public static class SciroccoSetup
         if (!kin) { kin = ScriptableObject.CreateInstance<SuspensionTables>(); AssetDatabase.CreateAsset(kin, kpath); }
         SuspensionTablesData.Fill(kin); EditorUtility.SetDirty(kin);   // always refresh from generated data
         p.kin = kin;
-        const string kpp = "Assets/SuspensionTablesProposed.asset";   // tables re-solved with the 'Proposed understeer' hardpoints (proposal, not data)
-        var kinP = AssetDatabase.LoadAssetAtPath<SuspensionTables>(kpp);
-        if (!kinP) { kinP = ScriptableObject.CreateInstance<SuspensionTables>(); AssetDatabase.CreateAsset(kinP, kpp); }
-        SuspensionTablesDataProposed.Fill(kinP); EditorUtility.SetDirty(kinP); p.kinProposed = kinP; EditorUtility.SetDirty(p);
+        EditorUtility.SetDirty(p);
+        AssetDatabase.DeleteAsset("Assets/SuspensionTablesProposed.asset");   // single handling baseline (2026-10-13): the second table set is gone
         // flat track: 2km plane + cones
         var testArea = new GameObject("TestArea");
         var ground = GameObject.CreatePrimitive(PrimitiveType.Plane); ground.name = "Track"; ground.transform.SetParent(testArea.transform, false); ground.transform.localScale = new Vector3(1000, 1, 1000); // 10 km x 10 km

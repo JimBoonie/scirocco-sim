@@ -5,7 +5,7 @@
 using System; using System.Collections.Generic; using UnityEngine;
 using UnityEngine.InputSystem; using UnityEngine.InputSystem.Controls; using UnityEngine.InputSystem.LowLevel;
 
-public enum InAction { Steer, Throttle, Brake, Clutch, Handbrake, ShiftUp, ShiftDown, Gear1, Gear2, Gear3, Gear4, Gear5, GearR, Reset, ProfileToggle, Menu, LookX, LookY, Recenter, CameraToggle, HudToggle, MenuUp, MenuDown, MenuLeft, MenuRight, MenuSelect, Ignition, Starter, MenuTabNext, MenuTabPrev, ResetToStart }   // append only (saved as ints)
+public enum InAction { Steer, Throttle, Brake, Clutch, Handbrake, ShiftUp, ShiftDown, Gear1, Gear2, Gear3, Gear4, Gear5, GearR, Reset, RetiredProfileToggle, Menu, LookX, LookY, Recenter, CameraToggle, HudToggle, MenuUp, MenuDown, MenuLeft, MenuRight, MenuSelect, Ignition, Starter, MenuTabNext, MenuTabPrev, ResetToStart }   // append only (saved as ints); RetiredProfileToggle keeps slot 14 (old P-key handling-profile toggle, removed 2026-10-13)
 public enum AxisHalf { Full, Positive, Negative }      // Positive/Negative: use one half of a combined pedal axis (centre -> max / centre -> min)
 public enum SteerSource { Wheel, Stick }               // Wheel: absolute angle (user's wheel = steering column). Stick/keys: target lock, rate-limited like the keyboard
 public enum SteerMapping { RealColumn1to1, ScaleToCarLock }
@@ -61,7 +61,7 @@ public enum SteerMapping { RealColumn1to1, ScaleToCarLock }
 [Serializable] public class ActionSlots { public InAction action; public List<Binding> slots = new List<Binding>(); }
 [Serializable] public class BindingProfile
 {
-    public int version = 5;
+    public int version = 6;
     public bool startEngineOff = false, starterInterlock = false, autoClutch = true;
     public bool tireThermal = false; public float coldPsiFront = 24.7f, coldPsiRear = 24.7f;   // tire thermal model option; cold pressures in psi (VW 1.7 bar = 24.7 psi)
     public float audioVolume = 0.8f, tireVolume = 1f, ambientBrightness = 1.3f; public bool audioMute; public bool hudVisible = true;   // H: grey info boxes (telemetry / FFB / joints) shown   // master volume 0..1   // autoClutch: for keyboard/gamepad drivers without a clutch pedal (option)   // spawn with engine stopped; starter only with clutch fully in or neutral (1984 car had no interlock)
@@ -351,11 +351,11 @@ public class InputMapper
         K(InAction.Throttle, "w"); K(InAction.Throttle, "upArrow"); K(InAction.Brake, "s"); K(InAction.Brake, "downArrow");
         K(InAction.Clutch, "leftShift"); K(InAction.Handbrake, "space"); K(InAction.ShiftUp, "e"); K(InAction.ShiftDown, "q");
         K(InAction.Gear1, "digit1"); K(InAction.Gear2, "digit2"); K(InAction.Gear3, "digit3"); K(InAction.Gear4, "digit4"); K(InAction.Gear5, "digit5"); K(InAction.GearR, "digit6");
-        K(InAction.Reset, "r"); K(InAction.ProfileToggle, "p"); K(InAction.Menu, "f1"); K(InAction.Menu, "escape");
+        K(InAction.Reset, "r"); K(InAction.Menu, "f1"); K(InAction.Menu, "escape");
         G(InAction.Steer, "leftStick/x", true); G(InAction.Throttle, "rightTrigger"); G(InAction.Brake, "leftTrigger"); G(InAction.Clutch, "leftShoulder");
         G(InAction.ShiftUp, "rightShoulder"); G(InAction.ShiftDown, "buttonWest"); G(InAction.Handbrake, "buttonEast"); G(InAction.Reset, "select");
         AddV2(p); AddV4(p); AddV5(p);
-        G(InAction.Menu, "start"); G(InAction.ProfileToggle, "dpad/up"); G(InAction.LookX, "rightStick/x", true); G(InAction.LookY, "rightStick/y", true);
+        G(InAction.Menu, "start"); G(InAction.LookX, "rightStick/x", true); G(InAction.LookY, "rightStick/y", true);
         return p;
     }
     public static readonly InAction[] V2Actions = { InAction.Recenter, InAction.CameraToggle, InAction.HudToggle, InAction.MenuUp, InAction.MenuDown, InAction.MenuLeft, InAction.MenuRight, InAction.MenuSelect, InAction.Ignition, InAction.Starter };
@@ -376,14 +376,20 @@ public class InputMapper
     }
     public static readonly InAction[] V5Actions = { InAction.ResetToStart };
     static void AddV5(BindingProfile p) { p.Get(InAction.ResetToStart).Add(new Binding { layout = "Keyboard", control = "backspace", cal = new AxisCal() }); }   // v5: reset to start/finish
+    public static bool IsRetired(InAction a) => a == InAction.RetiredProfileToggle;
     public static void Migrate(BindingProfile p)   // older saved profiles: add new defaults only to actions that have no binding yet
     {
-        if (p.version >= 5) return;
-        if (p.version == 4) { var d5 = new BindingProfile(); AddV5(d5); foreach (var a in V5Actions) if (p.Get(a).Count == 0) p.Get(a).AddRange(d5.Get(a)); p.version = 5; return; }
-        if (p.version < 3) { var d = new BindingProfile(); AddV2(d); foreach (var a in V2Actions) if (p.Get(a).Count == 0) p.Get(a).AddRange(d.Get(a)); }
-        var d4 = new BindingProfile(); AddV4(d4); foreach (var a in V4Actions) if (p.Get(a).Count == 0) p.Get(a).AddRange(d4.Get(a));
-        { var d5 = new BindingProfile(); AddV5(d5); foreach (var a in V5Actions) if (p.Get(a).Count == 0) p.Get(a).AddRange(d5.Get(a)); }
-        p.version = 5;
+        if (p.version >= 6) { p.Get(InAction.RetiredProfileToggle).Clear(); return; }
+        if (p.version < 5)
+        {
+            if (p.version < 3) { var d = new BindingProfile(); AddV2(d); foreach (var a in V2Actions) if (p.Get(a).Count == 0) p.Get(a).AddRange(d.Get(a)); }
+            if (p.version < 4) { var d4 = new BindingProfile(); AddV4(d4); foreach (var a in V4Actions) if (p.Get(a).Count == 0) p.Get(a).AddRange(d4.Get(a)); }
+            var d5 = new BindingProfile(); AddV5(d5); foreach (var a in V5Actions) if (p.Get(a).Count == 0) p.Get(a).AddRange(d5.Get(a));
+        }
+        // v6 (2026-10-13): single handling baseline, the P / d-pad-up handling-profile toggle is gone. Drop its saved bindings so the keys are free;
+        // the int slot stays so old files still parse. Other settings in the file (tracks, FFB, audio, ...) are kept as they are.
+        p.Get(InAction.RetiredProfileToggle).Clear();
+        p.version = 6;
     }
     public static string DefaultPath => System.IO.Path.Combine(Application.persistentDataPath, "input_bindings.json");
     public static void Save(BindingProfile p, string path = null) { System.IO.File.WriteAllText(path ?? DefaultPath, JsonUtility.ToJson(p, true)); PlayerPrefs.SetString("input_bindings_path", path ?? DefaultPath); PlayerPrefs.Save(); }

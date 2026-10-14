@@ -10,7 +10,7 @@ public class DebugHUD : MonoBehaviour
         bool info = HudVisible(car);   // H toggles the grey info boxes (telemetry / FFB / joints); the bottom input strip is always shown
         var rb = car.GetComponent<Rigidbody>();
         string g = car.dt.gear == 0 ? "N" : car.dt.gear < 0 ? "R" : car.dt.gear.ToString();
-        string s = $"{car.p.profile} (P)  tire {car.p.tirePreset}\n" + $"{rb.velocity.magnitude * MphPerMs,3:0} mph  {car.engine.rpm,4:0} rpm  gear {g}  MAP {car.engine.map:0.00}  thr {car.engine.throttleArea:0.000}\n" +
+        string s = $"handling baseline (single)  tire {car.p.tirePreset}\n" + $"{rb.velocity.magnitude * MphPerMs,3:0} mph  {car.engine.rpm,4:0} rpm  gear {g}  MAP {car.engine.map:0.00}  thr {car.engine.throttleArea:0.000}\n" +
                    $"T {car.throttle:0.00} B {car.brake:0.00} C {car.clutch:0.00}  starter {car.engine.starterTorque,3:0}  cslip {car.dt.clutchSlip:0.0}  steer {car.steer:0.0}°\n";
         foreach (var w in new[] { car.FL, car.FR, car.RL, car.RR })
             s += $"{w.name}: Fz {w.Fz,5:0} SR {w.slipRatio,6:0.000} SA {w.alphaRelaxed * Mathf.Rad2Deg,5:0.0} Fx {w.force.x,5:0} Fy {w.force.y,5:0} trv {w.travel * 1000f,3:0}mm\n";
@@ -50,7 +50,7 @@ public class DebugHUD : MonoBehaviour
             GUI.color = Mathf.Abs(n) > cap ? Color.red : Color.green; GUI.DrawTexture(n >= 0 ? new Rect(cx, y, Mathf.Min(n, 1f) * bw, 7f) : new Rect(cx + Mathf.Max(n, -1f) * bw, y, -Mathf.Max(n, -1f) * bw, 7f), Texture2D.whiteTexture);
             GUI.color = Color.white; GUI.DrawTexture(new Rect(cx - 1f, y - 2f, 2f, 11f), Texture2D.whiteTexture); GUI.DrawTexture(new Rect(cx + cap * bw, y - 2f, 2f, 11f), Texture2D.whiteTexture); GUI.DrawTexture(new Rect(cx - cap * bw, y - 2f, 2f, 11f), Texture2D.whiteTexture);
         }
-        if (info) { Box(8f, UiSurface.Height - 230f, JointText(car).TrimEnd('\n')); GUI.Label(new Rect(8, UiSurface.Height - 56f, 1200, 16), "W/S throttle/brake | A/D steer | E/Q shift | LShift clutch | Space handbrake | I ign | hold T starter | R reset | Backspace reset to start | P profile | C cam | H hide info | F1/Esc settings", mono); }
+        if (info) { Box(8f, UiSurface.Height - 230f, JointText(car).TrimEnd('\n')); GUI.Label(new Rect(8, UiSurface.Height - 56f, 1200, 16), "W/S throttle/brake | A/D steer | E/Q shift | LShift clutch | Space handbrake | I ign | hold T starter | R reset | Backspace reset to start | C cam | H hide info | F1/Esc settings", mono); }
     }
     public const float MphPerMs = 2.236936f;   // display only: 1 m/s = 2.236936 mph (exact by definition of the mile); physics stays SI
     static double F(double c) => TireThermal.CToF(c);
