@@ -9,6 +9,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [2026-10-13] (PT)
 
+### Fixed
+- **Audio: engine audible on overrun again with the air-path engine** (22:11 PT). Cause: the exhaust level model (8aa2941) scaled with p_EVO ~ MAP and was tuned for the old ~0.22 bar closed-throttle MAP; the physical air-path engine (ece5ae0) gives a physically correct 0.02-0.06 bar on overrun, so the engine fell 16-22 dB under WOT (in-game coastdown, 3rd/4th from 5000 rpm) and was inaudible. Combusting/limiter/rpm were correct; tires were silent on the straight (not masking); no wind source exists.
+  - Fix (`CarAudio.cs` `ExhaustAmp`): the tailpipe source is the pressure step at exhaust-valve opening |p_EVO - p_back| (p_back 1.05 atm, **E**): +3.95 atm blowdown at WOT; on overrun a reverse pulse of ~0.95 atm (exhaust gas back into the near-vacuum cylinder), weighted 0.47 (**E**: cool rarefaction, damped by cat/muffler), plus an exhaust-stroke displacement term 0.4 atm (**E**) so part-load cruise never nulls; level ~ source^0.75 as before.
+  - Result: overrun 7.3-9.1 dB under WOT through both in-game coastdowns (was 15.7-22.7 dB); fuel-cut motoring ~8 dB under. Pitch = firing frequency rpm/30 (within 0.1 Hz). No intake hiss, smooth filtered engine, noise-only tire and pause gate unchanged.
+  - `EngineOverrunAudioTests` (real Engine coastdown: overrun 6-10 dB under WOT, pitch tracks rpm, fuel cut audible); `OfflineMapZero` 0.22 -> 0.03 (real overrun MAP). `-audiocoast` player flag (with `-smoketest -scenario audiocoast`) logs an in-game coastdown with engine/tire RMS.
+
 ### Changed
 - **Engine: physical air-path throttle model** (20:55 PT). Replaces the normalised throttle/manifold model in `Engine.cs`:
   - Pedal drives the primary butterfly through a linear cable lever (E). A progressive link opens the secondary late (two-stage CIS body 35/44 mm, **SD**). Closed plate 7 deg, full open 90 deg, secondary starts at a primary angle of 60 deg, Cd 0.8: all **E**.
