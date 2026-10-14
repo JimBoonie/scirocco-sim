@@ -105,7 +105,7 @@ public class InputMapper
     public static bool Skip(InputDevice d) => d is Mouse || d is Pointer || d is Sensor;
     public static Binding FromControl(InputControl c, bool wildcard)
     {
-        var d = c.device; var b = new Binding { control = c.path.Substring(d.path.Length + 1) };
+        var d = c.device; var b = new Binding { control = c.path.Length > d.path.Length + 1 && c.path.StartsWith(d.path + "/") ? c.path.Substring(d.path.Length + 1) : c.name };   // guard: a control path that is not "<device path>/<control>" (e.g. the device itself) threw ArgumentOutOfRangeException (startIndex)
         if (wildcard && (d is Keyboard || d is Gamepad)) { b.layout = Category(d); }
         else
         {
