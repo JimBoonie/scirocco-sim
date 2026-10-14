@@ -10,6 +10,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [2026-10-13] (PT)
 
 ### Changed
+- **Engine: physical air-path throttle model** (20:55 PT). Replaces the normalised throttle/manifold model in `Engine.cs`:
+  - Pedal drives the primary butterfly through a linear cable lever (E). A progressive link opens the secondary late (two-stage CIS body 35/44 mm, **SD**). Closed plate 7 deg, full open 90 deg, secondary starts at a primary angle of 60 deg, Cd 0.8: all **E**.
+  - Plate area uses Heywood's butterfly formula (including the shaft). Flow through each plate uses the compressible isentropic orifice equation, choked below the critical pressure ratio.
+  - Manifold pressure fills and empties isothermally, dp/dt = RT/V (mdot_in - mdot_out). The manifold volume of 2.5 L is **E**.
+  - Cylinder air = VE(rpm) x rho_manifold x Vd x rpm/120, with Vd = 1781 cc (**S**). The old coupling of air demand to revLimit is removed.
+  - Torque = eta_i x air per cycle x LHV/AFR/(4 pi) - friction - pumping. Friction is Chen-Flynn FMEP with coefficients from Heywood's correlation; pumping is (p_amb - p_man) Vd/(4 pi).
+  - **Part-throttle curves are extrapolated from the WOT curve (D/E).** VE(rpm) is derived so that steady WOT brake torque reproduces the sourced curve. The curve at any other pedal position then follows from the airflow physics, not from scaling the WOT curve. This follows Niels Heusinkveld's argument: at a fixed throttle, torque falls with rpm and crosses zero. No part-throttle dyno data exists.
+  - The idle governor is removed. The idle bypass area is derived at load time from steady closed-pedal net torque = 0 at idleRpm (**D**). Idle is self-restoring. idleRpm changes 850 -> 900 (**S**: DX 900 +- 100 rpm).
+  - The rev limiter now cuts fuel (**S**: DX fuel-pump-relay cut at 6500-6900 rpm) instead of closing the throttle.
+  - Removed: throttleFlowCoeff, throttleLeakArea, idleMaxPedal, manifoldRate, pumpingTorque, frictionTorqueBase/PerKrpm. mapZeroTorque is kept for audio only.
+  - At 3000 rpm: 10% pedal gives -9 N m (was -32), zero torque at ~13.5% pedal (was ~16%), 30% pedal gives 74 N m (was 114 N m).
+  - Tests: new `EngineAirPathTests`.
 - Handling baseline re-solve (20:44 PT, approved by Taylor): kept only the 3df3038 estimates that do not conflict with sourced/derived data.
   - Dropped: front lower-arm pivots z +20 mm (back to 0.195 / 0.205 m, E). The sourced 0.379 m tie rod with inner point (-0.09949, ±0.22160, 0.35594) was fitted for this height. Front bump steer -18.4 → +0.55 deg/m, front RC 188 → 134 mm, camber gain -37.9 → -32.4 deg/m.
   - Dropped: beam shear centre x -2.00 m (back to -2.06, E). -2.00 moved rear ground camber-vs-roll to 0.96 and rear RC to 11 mm, away from the D targets 0.85 / 180 mm. Now 0.80 / 55 mm.

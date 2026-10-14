@@ -11,24 +11,9 @@ public class CarParams : ScriptableObject
     public float trackFront = 1.404f, trackRear = 1.372f;  // (S)
     [Header("Suspension (suspension_params.json; S/SD/D/E tags)")]
     public SuspensionTables kin;
-    public enum HandlingProfile { Baseline, ProposedUndersteer }
-    [Header("Handling profile (runtime toggle: P key)")]
-    public HandlingProfile profile = HandlingProfile.Baseline;   // Baseline = best estimate of the real car. ProposedUndersteer = PROPOSAL (see README)
-    public SuspensionTables kinProposed;                          // tables/compliance re-solved with the proposed hardpoints/bush rates
-    // Proposed-understeer physical inputs (set from sensitivity study; each one documented in README/RESULTS). Not real data.
-    public float propArbFront = 7200f, propTwistBeamRoll = 8520f, propWheelRateFront = 15500f, propWheelRateRear = 11900f;
-    public float propSteeringStiffness = 12000f, propPneumaticTrail0 = 0.035f;
-    public CarParams ForProfile(HandlingProfile h)
-    {
-        var c = Instantiate(this); c.profile = h;
-        if (h == HandlingProfile.ProposedUndersteer)
-        {
-            if (kinProposed) c.kin = kinProposed;
-            c.arbFront = propArbFront; c.twistBeamRoll = propTwistBeamRoll; c.wheelRateFront = propWheelRateFront; c.wheelRateRear = propWheelRateRear;
-            c.steeringStiffness = propSteeringStiffness; c.pneumaticTrail0 = propPneumaticTrail0;
-        }
-        return c.ApplyTirePreset();
-    }                            // baked kinematic tables (kinematics/solve_kinematics.py)
+    // Single handling baseline (2026-10-13). The former 'ProposedUndersteer' profile is now the only set of inputs; there is no profile
+    // switch. Its values are ESTIMATES (E) inside the estimated uncertainty, chosen by Taylor for the understeer balance; not sourced data.
+    public CarParams RuntimeCopy() => Instantiate(this).ApplyTirePreset();   // runtime copy (tire preset applied); asset untouched                            // baked kinematic tables (kinematics/solve_kinematics.py)
     public float hubDropDesign = 0.30f;                     // corner transform -> wheel centre at design ride height (layout only)
     public float wheelRateFront = 15500f, wheelRateRear = 11900f;   // N/m (D from SD/E spring rates x MR^2)
     public float bumpTravelF = 0.08f, reboundTravelF = 0.09f, bumpTravelR = 0.085f, reboundTravelR = 0.09f; // m (E)
@@ -38,8 +23,8 @@ public class CarParams : ScriptableObject
     public float[] damperV = { 0f, 0.05f, 0.1f, 0.3f, 1.0f };
     public float[] damperBumpF = { 0f, 90f, 170f, 330f, 700f }, damperReboundF = { 0f, 200f, 380f, 700f, 1300f };
     public float[] damperBumpR = { 0f, 70f, 130f, 260f, 560f }, damperReboundR = { 0f, 160f, 300f, 560f, 1050f };
-    public float arbFront = 4500f;                          // N/m per unit travel difference (D: 16 mm bar)
-    public float twistBeamRoll = 10650f;                    // N/m equiv. (D: 350 Nm/deg beam + 19 mm bar / track^2)
+    public float arbFront = 7200f;                          // N/m per unit travel difference (E: within the estimated range, chosen by Taylor for the understeer balance; 16 mm SD bar derivation gave 4500, 18 mm SD reported on some trims ~7200)
+    public float twistBeamRoll = 8520f;                     // N/m equiv. (E: 0.8 x the D/E 10650 = 350 Nm/deg beam + 19 mm SD bar / track^2; within the estimated range, chosen by Taylor for the understeer balance)
     [Header("Alignment (VW table, S)")]
     public float staticCamberF = 0.333f, staticCamberR = -1.25f;   // deg (+20', -1d15')
     public float toeTotalF = -0.25f, toeTotalR = 0.333f;           // deg total, + = toe-in (-15', +20')
@@ -71,7 +56,7 @@ public class CarParams : ScriptableObject
     [Header("Engine 1.8 8v DX 112PS (S peak, E curve)")]
     public float[] rpmPoints = { 800, 1500, 2000, 3000, 3500, 4000, 5000, 5800, 6300, 6700 };
     public float[] torquePoints = { 95, 120, 135, 150, 153, 152, 146, 135.6f, 125, 0 }; // Nm WOT; 5800 point 138->135.6 (D) so peak power = 112 PS (S) exactly (was 114 PS)
-    public float idleRpm = 850f, revLimit = 6500f, stallRpm = 350f, engineInertia = 0.13f; // kg m^2 incl flywheel (E); stallRpm = lowest speed with stable combustion when running (E)
+    public float idleRpm = 900f, revLimit = 6500f, stallRpm = 350f, engineInertia = 0.13f; // idleRpm 900 (S: DX with idle boost 900+-100, VW Golf Mk1 K-Jet tech data); kg m^2 incl flywheel (E); stallRpm = lowest speed with stable combustion when running (E)
     [Header("Starter (Bosch EF 12 V 0.95 kW, 0 001 208 416, listed for Scirocco 53B 1.8)")]
     public float starterPowerW = 950f;          // W rated (S: Bosch listing)
     public int starterPinionTeeth = 9;          // (S: Bosch listing)
@@ -80,26 +65,40 @@ public class CarParams : ScriptableObject
     public float starterArmatureInertia = 0.0006f; // kg m^2 armature + pinion (E), reflected x ratio^2 while engaged
     public float minFiringRpm = 150f;           // cranking speed above which K-Jetronic start enrichment + spark fire the engine (E)
     // Linear DC-motor model: T_motor = T0 (1 - w/w0), max power at w0/2 -> T0 = 4 P / w0 (D). Overrunning clutch: no negative torque.
-    [Header("Throttle / manifold model (E, see Engine.cs)")]
-    public float throttleFlowCoeff = 4.7f;   // choked-flow capacity / max engine demand (E: ~50 mm throttle body vs 1.8 L @ 6500)
-    public float throttleLeakArea = 0.004f;  // closed-throttle leak
-    public float idleMaxPedal = 0.12f;       // idle valve authority
-    public float manifoldRate = 25f;         // manifold filling speed (1/s, normalised)
-    public float mapZeroTorque = 0.22f;      // MAP (bar-ish) at which indicated torque reaches zero
-    public float pumpingTorque = 10f;        // extra closed-throttle pumping loss at MAP=0 (Nm)
-    public float frictionTorqueBase = 12f, frictionTorquePerKrpm = 4f;   // closed-throttle drag (E)
+    [Header("Air path: throttle body, manifold, cylinders (see Engine.cs; sources in diagnostics/throttle_model/SOURCES.md)")]
+    public float displacement = 1.781e-3f;     // m^3 swept (S: Bentley 09 Engine, 1781 cc; 81.0 x 86.4 mm)
+    public float ambientPressure = 101325f;   // Pa (S: ISA sea level)
+    public float ambientTemperature = 293.15f; // K intake/manifold air, isothermal manifold (E)
+    public float airGasConstant = 287.05f, airGamma = 1.4f;   // J/(kg K), cp/cv dry air (S)
+    public float primaryBore = 0.035f;        // m, 1st-stage butterfly (SD: 35/44 mm two-stage body, measured Scirocco 1.8 8V, prodracing.com)
+    public float secondaryBore = 0.044f;      // m, 2nd-stage butterfly (SD: same; Golf A2 GTI/RD/HT bodies listed 35/52)
+    public float throttleShaftDia = 0.008f;   // m (E)
+    public float closedPlateDeg = 7f;         // plate angle from bore-normal when closed on its stop (E: not published; Bentley: stop screw = paper + 1/4 turn)
+    public float fullOpenPlateDeg = 90f;      // plate parallel to bore at full-throttle stop (E; Bentley: pedal floor -> plate at stop within 1 mm)
+    public float secondaryStartDeg = 60f;     // primary angle at which the progressive link starts the secondary (E: delayed opening is S-forum, angle not published)
+    public float throttleDischargeCoeff = 0.8f; // C_d of the plate orifice (E)
+    public float manifoldVolume = 2.5e-3f;    // m^3 throttle-to-valve volume (E)
+    public float indicatedEfficiency = 0.40f; // gross indicated fuel conversion efficiency (E)
+    public float fuelLhv = 43.4e6f, airFuelRatio = 14.7f;   // J/kg gasoline LHV (S: Heywood App. D), stoichiometric AFR (S; K-Jet WOT enrichment ignored, E)
+    // Chen-Flynn FMEP = A + B*Pmax + C*N + D*N^2 (N in krpm). A,C,D from Heywood (1988) 4-cyl SI total-friction correlation 0.97 + 0.15 N + 0.05 N^2 bar (WOT, incl. WOT pumping) (S-SD);
+    // B = 0.005 (Chen & Flynn 1965 typical, E) with Pmax scaled by MAP, A reduced by B*Pmax_WOT so WOT FMEP is unchanged (D).
+    public float fmepA = 0.67e5f, fmepB = 0.005f, fmepCPerKrpm = 0.15e5f, fmepDPerKrpm2 = 0.05e5f; // Pa
+    public float peakCylPressureWot = 60e5f;  // Pa (E)
+    public float mapZeroTorque = 0.22f;       // audio-only load scaling (CarAudio); no longer used by the engine physics
     [Header("Drivetrain")] public float[] gearRatios = { 3.455f, 2.118f, 1.444f, 1.129f, 0.894f }; // (S) 4Y box
     public float reverseRatio = 3.17f, finalDrive = 3.667f, drivetrainEff = 0.90f;
     public float clutchMaxTorque = 260f;                    // (E) ~1.7x peak
     public float shiftTime = 0.25f;                          // s neutral during shift (E)
     [Header("Brakes/Steering")] public float brakeTorqueFront = 1400f, brakeTorqueRear = 300f; // rear reduced 500->300 (E): rear drums + pressure regulator; 500 locked rears first // per wheel (E)
-    public float steeringRatio = 17.32f, handwheelLockDeg = 634.7f; // ratio S [A2]; lock = mean sourced road-wheel lock 36.645 x 17.32 (D) = 3.53 turns (S quotes '3.5', rounded)
-    public float maxSteerAngle = 36.645f;                   // nominal road-wheel lock = mean of sourced 40d22'/32d55' (S [A1]); was 630/17.32 = 36.37, which gave 40.04/32.70 (sourced lock wins)
-    public float ackA = -0.01043f, ackB = 0.003059f;        // half inner/outer difference g(d)=A d + B d^2, fitted to S data: 20->18d10', lock 40d22'/32d55'
+    public float handwheelLockDeg = 634.7f;                 // 3.53 turns lock-to-lock (S quotes '3.5'; 634.7 D, kept from the sourced lock data)
+    public float rackPerHandwheelDeg = 0.1081e-3f;          // m rack per handwheel deg, constant pinion (D: symmetric +-68.6 mm rack stop at 634.7 deg,
+                                                            // the travel that gives the sourced lock 40d22'/32d55' with the fitted tie rods, proposed_geometry_fix.md)
+    // per-wheel road angles come from the kinematics (SteeringLinkage); derived for the test driver / keyboard (D):
+    public float MeanLockDeg => SteeringLinkage.MeanAngle(this, handwheelLockDeg);
     // Steering-system compliance: the kingpin moments of both front tires (SteeringTorque: full vector model, geometry from hardpoints)
     // twists column/rack/tie rods against the driver-held handwheel and reduces road-wheel angle. 0 stiffness = off.
-    public float steeringStiffness = 20000f;   // Nm/rad at the road wheels, both sides combined (E: column ~150 Nm/rad x 17.32^2 ~ 45k in series with rack/tie-rod mounts)
-    public float pneumaticTrail0 = 0.025f;     // m at zero slip (E: ~1/6 of a ~0.14 m contact patch), falls linearly to 0 at peakSlipTrail
+    public float steeringStiffness = 12000f;   // Nm/rad at the road wheels, both sides combined (E: low end, within the estimated range, chosen by Taylor for the understeer balance; was 20000 E. C/D 1982 'slightly rubbery'. Estimate basis: column ~150 Nm/rad x on-centre linkage ratio ~19.3^2 ~ 56k in series with rack/tie-rod mounts)
+    public float pneumaticTrail0 = 0.035f;     // m at zero slip (E: period-tire-typical, within the estimated range, chosen by Taylor for the understeer balance; was 0.025 E = ~1/6 of a ~0.14 m contact patch), falls linearly to 0 at peakSlipTrail
     public float peakSlipTrail = 0.15f;        // rad (E)
     // Steering system at the column (E, manual rack; used for force feedback only): Coulomb friction and viscous damping
     public float columnFriction = 0.6f;       // N m at the handwheel (E: column bearings + rack/pinion + tie-rod joints)

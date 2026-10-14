@@ -128,7 +128,7 @@ MonoBehaviour:
   - 135.6
   - 125
   - 0
-  idleRpm: 850
+  idleRpm: 900
   revLimit: 6500
   stallRpm: 350
   engineInertia: 0.13
@@ -138,14 +138,7 @@ MonoBehaviour:
   starterNoLoadRpm: 5000
   starterArmatureInertia: 0.0006
   minFiringRpm: 150
-  throttleFlowCoeff: 4.7
-  throttleLeakArea: 0.004
-  idleMaxPedal: 0.12
-  manifoldRate: 25
   mapZeroTorque: 0.22
-  pumpingTorque: 10
-  frictionTorqueBase: 12
-  frictionTorquePerKrpm: 4
   gearRatios:
   - 3.455
   - 2.118
