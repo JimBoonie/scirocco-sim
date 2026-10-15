@@ -9,6 +9,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [2026-10-14] (PT)
 
+### Changed (second pass part 2: TireScrub hand-written headers, PT 2026-10-14)
+
+- TireScrub.cs: every function now has a real description with units for each parameter and return value; locals, parameters and loop variables renamed to full words (`frameIndex`, `tireIndex`, `centerHz`, `qualityFactor`, ...). No behaviour change: 113/113 tests, 15 scenarios row-identical, 0.785 g.
+
 ### Changed (second pass part 1: overrides keys, retired enum slot, sync_tools, hand-written headers, PT 2026-10-14)
 
 - `-overrides` keys now use `carParams.<field>` (was `p.<field>`); `tools/visco_smoke.py` and docs updated. Note: `visco_smoke.py` BASE builds from before this change still expect the old `p.` keys.
