@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# @description - Metrics from visco_smoke.py runs. usage: visco_metrics.py <smoke_dir> -> metrics.csv + markdown table on stdout
+# @param {String} arguments - command-line arguments (usage: visco_metrics.py <smoke_dir> -> metrics.csv + markdown table on stdout)
+# @return {Int} - process exit status (0 = success)
 """Metrics from visco_smoke.py runs. usage: visco_metrics.py <smoke_dir> -> metrics.csv + markdown table on stdout"""
 import sys, os, re, glob, numpy as np, pandas as pd
 S = sys.argv[1]; R = 40.0

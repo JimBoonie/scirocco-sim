@@ -1,4 +1,7 @@
 #!/bin/bash
+# @description - Builds the Linux player (SciroccoSetup.BuildLinux) then runs the powerstep scenario.
+# @param {String} arguments - command-line arguments (see the script body)
+# @return {Int} - process exit status (0 = success)
 L=/workspace/scirocco_sim/builds/logs; cd /workspace/scirocco_sim/unity/SciroccoSimDemo
 unity --no-banner --non-interactive build . --target StandaloneLinux64 --execute-method SciroccoSetup.BuildLinux -o /workspace/scirocco_sim/builds/linux/SciroccoSimDemo.x86_64 > $L/lb.out 2>&1; echo "BUILD_EXIT $?" > $L/statusp.txt
 P=$L/pstep100; rm -rf $P; mkdir -p $P; cd /workspace/scirocco_sim/builds/linux

@@ -1,3 +1,7 @@
+#!/usr/bin/env python3
+# @description - Re-applies the Laguna v1.2 plus off-track/camera round (2026-10-12 PT) on top of the v1.1 project state.
+# @param {String} arguments - command-line arguments (see the script body)
+# @return {Int} - process exit status (0 = success)
 # Re-applies the Laguna v1.2 + off-track/camera round (2026-10-12 22:xx PT) on top of the v1.1-round project state.
 import os, shutil, pickle, numpy as np
 P='/workspace/scirocco_sim/unity/SciroccoSimDemo'; S='/workspace/tracks/laguna_seca/output'; A=P+'/Assets/Tracks/LagunaSeca'; R=P+'/Assets/Scripts'

@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# @description - Plots of the Experimental (viscoelastic) compound from the EditMode dump (VISCO_DUMP=<dir> unity test ... ViscoTireTests.DumpCurves).
+# @param {String} arguments - command-line arguments (usage: visco_plots.py <dump_dir> <out_dir>)
+# @return {Int} - process exit status (0 = success)
 """Plots of the Experimental (viscoelastic) compound from the EditMode dump (VISCO_DUMP=<dir> unity test ... ViscoTireTests.DumpCurves).
 usage: visco_plots.py <dump_dir> <out_dir>"""
 import sys, pandas as pd, matplotlib; matplotlib.use('Agg'); import matplotlib.pyplot as plt

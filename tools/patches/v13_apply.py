@@ -1,3 +1,7 @@
+#!/usr/bin/env python3
+# @description - Laguna Seca v1.3 import (2026-10-12 PT): new FBX/RAW data, 2049 Unity Terrain (collider + visual), Terrain_* meshes stripped.
+# @param {String} arguments - command-line arguments (see the script body)
+# @return {Int} - process exit status (0 = success)
 # Laguna Seca v1.3 import (2026-10-12 23:xx PT): new FBX/RAWs, 2049 Unity Terrain (collider + visual), Terrain_* meshes stripped from the scene, Corkscrew edge-gap check.
 import os, shutil, pickle, numpy as np
 P='/workspace/scirocco_sim/unity/SciroccoSimDemo'; S='/workspace/tracks/laguna_seca/output'; A=P+'/Assets/Tracks/LagunaSeca'; R=P+'/Assets/Scripts'

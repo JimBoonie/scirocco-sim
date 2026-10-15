@@ -1,4 +1,7 @@
 #!/bin/bash
+# @description - Runs the Unity EditMode test suite in batchmode and writes unit_tests.xml plus a TEST_EXIT status line.
+# @param {String} arguments - command-line arguments (see the script body)
+# @return {Int} - process exit status (0 = success)
 L=/workspace/scirocco_sim/builds/logs; P=/workspace/scirocco_sim/unity/SciroccoSimDemo; R=/workspace/scirocco_sim/builds; D=/workspace/scirocco_sim/dist; cd $P
 unity --no-banner --non-interactive test . --mode EditMode --output $R/unit_tests.xml > $L/t.out 2>&1; echo "TEST_EXIT $?" > $L/rest.txt
 rm -rf $R/windows/SciroccoSimDemo; unity --no-banner --non-interactive build . --target StandaloneWindows64 --execute-method SciroccoSetup.BuildWindows -o $R/windows/SciroccoSimDemo/SciroccoSimDemo.exe > $L/wb.out 2>&1; echo "WIN_EXIT $?" >> $L/rest.txt

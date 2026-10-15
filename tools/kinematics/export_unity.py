@@ -1,3 +1,7 @@
+#!/usr/bin/env python3
+# @description - Write tables.json + compliance.json into a C# static filler (Assets/Scripts/Editor/SuspensionTablesData.cs).
+# @param {String} arguments - command-line arguments (see the script body)
+# @return {Int} - process exit status (0 = success)
 """Write tables.json + compliance.json into a C# static filler (Assets/Scripts/Editor/SuspensionTablesData.cs).
 fields() is reused by sensitivity.py to produce runtime override files (-overrides) for perturbed inputs."""
 import json, os

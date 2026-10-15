@@ -1,4 +1,7 @@
 #!/bin/bash
+# @description - Final verification run: rebuilds the Linux player through run_linux.sh and runs the scenario set.
+# @param {String} arguments - command-line arguments (see the script body)
+# @return {Int} - process exit status (0 = success)
 L=/workspace/scirocco_sim/builds/logs; rm -f $L/status.txt $L/rest.txt $L/bump.txt
 ./run_linux.sh
 cd /workspace/scirocco_sim/builds/linux

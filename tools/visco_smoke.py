@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# @description - Headless smoke comparison Default vs Experimental (viscoelastic) compound + one-at-a-time ablations.
+# @param {String} arguments - command-line arguments (usage: visco_smoke.py <out_dir> <base_build_dir> <new_build_dir>   (Linux players; -overrides fil)
+# @return {Int} - process exit status (0 = success)
 """Headless smoke comparison Default vs Experimental (viscoelastic) compound + one-at-a-time ablations.
 usage: visco_smoke.py <out_dir> <base_build_dir> <new_build_dir>   (Linux players; -overrides files written per config)"""
 import os, sys, subprocess, itertools

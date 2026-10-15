@@ -1,3 +1,7 @@
+#!/usr/bin/env python3
+# @description - Offline suspension kinematics for Scirocco II (A1 platform).
+# @param {String} arguments - command-line arguments (see the script body)
+# @return {Int} - process exit status (0 = success)
 """Offline suspension kinematics for Scirocco II (A1 platform).
 Inputs: ../suspension_params.json (hardpoints tagged S/SD/D/E; many hardpoints are ESTIMATES -> results inherit that).
 Vehicle frame: x fwd, y left, z up, origin on ground at front axle centreline. Left side solved; right mirrored.

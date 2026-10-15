@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# @description - Fit of the complex-modulus model of the Experimental (viscoelastic) compound (ViscoTire.cs). Run: python3 tools/visco_fit.py
+# @param {String} arguments - command-line arguments (see the script body)
+# @return {Int} - process exit status (0 = success)
 """Fit of the complex-modulus model of the Experimental (viscoelastic) compound (ViscoTire.cs). Run: python3 tools/visco_fit.py
 Model (reference temperature Tg, WLF shift):  E*(w) = Eg + (E0 - Eg)/(1 + (i w tauG)^a)^b   (polymer, Havriliak-Negami)
                                              + 1.5 E0 (i w / w_ref)^n                      (filler network, fractional element)

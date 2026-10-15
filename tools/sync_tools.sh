@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# @description - Refresh tools/ from the working tree at /workspace/scirocco_sim (source of truth).
+# @param {String} arguments - command-line arguments (see the script body)
+# @return {Int} - process exit status (0 = success)
 # Refresh tools/ from the working tree at /workspace/scirocco_sim (source of truth).
 set -euo pipefail
 SRC="${1:-/workspace/scirocco_sim}"; DST="$(cd "$(dirname "$0")" && pwd)"

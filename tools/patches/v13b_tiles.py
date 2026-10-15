@@ -1,3 +1,7 @@
+#!/usr/bin/env python3
+# @description - v1.3b: tiled terrain to keep the Windows .7z < 25,000,000 bytes. Inner tiles = exact node subsets of the 2049 RAW (0.93 m) over the track
+# @param {String} arguments - command-line arguments (see the script body)
+# @return {Int} - process exit status (0 = success)
 # v1.3b: tiled terrain to keep the Windows .7z < 25,000,000 bytes. Inner tiles = exact node subsets of the 2049 RAW (0.93 m) over the track
 # area; outer = 513 RAW over the full 1.9 km, lowered 1.5 m under the inner rectangle, border nodes set to the 2049 values.
 R='/workspace/scirocco_sim/unity/SciroccoSimDemo/Assets/Scripts'

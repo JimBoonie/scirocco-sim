@@ -9,6 +9,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [2026-10-14] (PT)
 
+### Changed (readability pass 4/6: tools scripts, PT 20:35)
+
+- All `tools/**/*.py` and `*.sh`: correct shebang (`#!/usr/bin/env python3`, `#!/bin/bash`, `#!/usr/bin/env bash`), executable bit on shell scripts, and a `# @description / # @param / # @return` header comment. Comment-only change; no code lines touched.
+
 ### Changed (readability pass 3/6: steering linkage / torque / suspension tables, PT 20:10)
 
 - `SteeringLinkage.cs`, `SteeringTorque.cs`, `SuspensionTables.cs`: full-word identifiers, `@description/@param/@return` headers, equation comments. Serialized table field names deliberately unchanged. No behaviour change (117/117 edit-mode tests; 15 scenarios, 0 deviations in all CSV rows, bit-identical). Names in `docs/RENAMES.md`.

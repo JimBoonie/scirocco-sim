@@ -1,4 +1,7 @@
 #!/bin/bash
+# @description - handling battery with CSV export: run_battery.sh <bindir> <outdir> <seq|par> [extra args, e.g. -thermal -tirewarm]
+# @param {String} arguments - command-line arguments (see the script body)
+# @return {Int} - process exit status (0 = success)
 # handling battery with CSV export: run_battery.sh <bindir> <outdir> <seq|par> [extra args, e.g. -thermal -tirewarm]
 B=$1; O=$2; M=$3; shift 3; mkdir -p $O; H="sc,t,x,z,v,ax,ay,r,beta,steer,thr,brk,gear,rpm,FzFL,FzFR,FzRL,FzRR,wFL,wFR,wRL,wRR,pitch,roll,phase"
 cd $B; for s in skidpad rampsteer stepsteer lanechange brake brakethr brakeinturn liftoff; do

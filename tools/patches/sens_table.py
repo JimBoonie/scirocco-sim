@@ -1,3 +1,7 @@
+#!/usr/bin/env python3
+# @description - Builds the understeer sensitivity table from the PSTEP steady-state lines of the run_sens.sh logs.
+# @param {String} arguments - command-line arguments (see the script body)
+# @return {Int} - process exit status (0 = success)
 import re,glob,os,sys
 def get(f):
     s=open(f).read(); st=re.search(r'PSTEP steady.*',s); t1=re.search(r'PSTEP t\+1\.00s.*',s)
