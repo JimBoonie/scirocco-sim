@@ -78,7 +78,7 @@ public class ExperimentalSettingsTabTests
         var oldLoaded = JsonUtility.FromJson<BindingProfile>(oldJson);
         Assert.IsFalse(oldLoaded.experimentalDrivelineEnabled); Assert.IsFalse(oldLoaded.experimentalTransmissionEnabled); Assert.AreEqual(BindingProfile.CurrentVersion, oldLoaded.version);
         for (int item = 0; item <= ExperimentalSettingsTab.ItemCount + 1; item++) { ExperimentalSettingsTab.Adjust(drivelineOnly, item, 1, true); ExperimentalSettingsTab.Adjust(transmissionOnly, item, 1, true); }
-        Assert.IsFalse(transmissionOnly.experimentalDrivelineEnabled, "menu actions never touch the driveline placeholder"); Assert.IsFalse(drivelineOnly.experimentalTransmissionEnabled, "menu actions never touch the transmission placeholder");
+        Assert.IsTrue(transmissionOnly.experimentalTransmissionEnabled, "menu actions never touch the transmission placeholder"); Assert.IsFalse(drivelineOnly.experimentalTransmissionEnabled, "menu actions never touch the transmission placeholder"); Assert.IsFalse(drivelineOnly.experimentalDrivelineEnabled, "Select toggled the driveline model off again (the driveline toggle is real now)");
     }
     // @description - Runs one IMGUI pass headlessly as an IMGUIContainer would, through the VR mouse dispatch.
     // @param {EventType} eventType - IMGUI event type of this pass
