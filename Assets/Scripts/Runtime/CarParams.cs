@@ -57,7 +57,7 @@ public class CarParams : ScriptableObject
     public CarParams ApplyTirePreset()
     {
         if (tirePreset == TirePreset.ModernSummer) return this;
-        var c = Instantiate(this); c.tirePreset = TirePreset.ModernSummer; c.lateralPeakFrictionCoefficient = 1.00f; c.longitudinalPeakFrictionCoefficient = 1.05f; c.lateralStiffnessCoefficient = 13f; c.longitudinalStiffnessCoefficient = 16f; c.relaxationLength = 0.55f; return c;
+        var modernSummerCopy = Instantiate(this); modernSummerCopy.tirePreset = TirePreset.ModernSummer; modernSummerCopy.lateralPeakFrictionCoefficient = 1.00f; modernSummerCopy.longitudinalPeakFrictionCoefficient = 1.05f; modernSummerCopy.lateralStiffnessCoefficient = 13f; modernSummerCopy.longitudinalStiffnessCoefficient = 16f; modernSummerCopy.relaxationLength = 0.55f; return modernSummerCopy;
     }
     [Header("Engine 1.8 8v DX 112PS (S peak, E curve)")]
     public float[] rpmPoints = { 800, 1500, 2000, 3000, 3500, 4000, 5000, 5800, 6300, 6700 };

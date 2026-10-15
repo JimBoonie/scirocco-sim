@@ -9,7 +9,8 @@ OUT, BASE, NEW = sys.argv[1:4]
 SCEN = ['skidpad', 'stepsteer', 'brakethr', 'liftoff', 'lagunatherm']
 FLAGS = ['viscoHysteresisEnabled', 'viscoAdhesionEnabled', 'viscoWilliamsLandelFerryEnabled', 'viscoFlashTemperatureEnabled', 'viscoPayneEffectEnabled', 'viscoRateStiffnessEnabled', 'viscoLoadRelaxationEnabled', 'viscoRollingResistanceEnabled', 'viscoBulkHeatEnabled']
 EXP = ['carParams.tireCompound=ExperimentalViscoelastic']
-CFG = {'base_off': (BASE, []), 'base_th': (BASE, ['carParams.tireThermal=true']), 'new_off': (NEW, []), 'new_th': (NEW, ['carParams.tireThermal=true']),
+LEGACY_PREFIX = lambda keys: [key.replace('carParams.', 'p.', 1) for key in keys]   # the BASE player predates the carParams. override-key rename and still reads p.<field>
+CFG = {'base_off': (BASE, []), 'base_th': (BASE, LEGACY_PREFIX(['carParams.tireThermal=true'])), 'new_off': (NEW, []), 'new_th': (NEW, ['carParams.tireThermal=true']),
        'exp_off': (NEW, EXP), 'exp_th': (NEW, EXP + ['carParams.tireThermal=true'])}
 for f in FLAGS: CFG['abl_' + f] = (NEW, EXP + ['carParams.tireThermal=true', f'carParams.{f}=false'])
 only = os.environ.get('ONLY'); cfgs = [c for c in CFG if not only or c in only.split(',')]

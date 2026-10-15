@@ -75,7 +75,7 @@ public class TireThermal
     static readonly double SkinBulkConductance = RubberConductivity * ZoneArea / (0.5 * SkinThickness + 0.5 * (TreadDepth - SkinThickness));
     static readonly double BulkCarcassConductance = RubberConductivity * TreadWidth * TreadCircumference / (0.5 * (TreadDepth - SkinThickness) + 0.5 * CarcassThickness);
     static readonly double LateralConductance = RubberConductivity * SkinThickness * TreadCircumference / (TreadWidth / 3.0);
-    static readonly double TireEffusivity = System.Math.Sqrt(RubberConductivity * RubberDensity * RubberSpecificHeat), RoadEffusivity = System.Math.Sqrt(AsphaltConductivity * AsphaltDensity * AsphaltSpecificHeat);
+    static readonly double TireEffusivity = System.Math.Sqrt(RubberConductivity * RubberDensity * RubberSpecificHeat), RoadEffusivity = System.Math.Sqrt(AsphaltConductivity * AsphaltDensity * AsphaltSpecificHeat);   // thermal effusivity sqrt(k rho c) in W s^0.5 / (m^2 K) of tire rubber and asphalt (S: material data)
     // friction-heat share into the tire (SD): 1.0 = rubber friction is mostly viscoelastic hysteresis, dissipated inside the rubber
     // (Persson 2006 flash-temperature theory; TRT puts all friction power into the tread surface). Interface (Blok) split would be
     // e_t/(e_t+e_r) = 0.29 (BlokShare) -> bench replica only 43 C vs 100-120 C measured; 1.0 gives 116 C (see research doc).
@@ -130,17 +130,17 @@ public class TireThermal
     public static double OuterConvectionCoefficient(double speed, double temperatureDifference)
     {
         double diameter = 2.0 * UnloadedRadius, reynolds = System.Math.Max(speed, 0.0) * diameter / AirKinematicViscosity;
-        double forcedNusselt = 0.3 + 0.62 * System.Math.Sqrt(reynolds) * System.Math.Pow(AirPrandtlNumber, 1.0 / 3) / System.Math.Pow(1 + System.Math.Pow(0.4 / AirPrandtlNumber, 2.0 / 3), 0.25) * System.Math.Pow(1 + System.Math.Pow(reynolds / 282000.0, 5.0 / 8), 4.0 / 5);
+        double forcedNusselt = 0.3 + 0.62 * System.Math.Sqrt(reynolds) * System.Math.Pow(AirPrandtlNumber, 1.0 / 3) / System.Math.Pow(1 + System.Math.Pow(0.4 / AirPrandtlNumber, 2.0 / 3), 0.25) * System.Math.Pow(1 + System.Math.Pow(reynolds / 282000.0, 5.0 / 8), 4.0 / 5);   // forced convection over a cylinder, Churchill-Bernstein correlation (S), dimensionless Nusselt number
         double rayleigh = 9.81 / (AmbientTemperature + 273.15) * System.Math.Max(System.Math.Abs(temperatureDifference), 0.1) * diameter * diameter * diameter / (AirKinematicViscosity * AirKinematicViscosity / AirPrandtlNumber);
-        double naturalNusselt = System.Math.Pow(0.60 + 0.387 * System.Math.Pow(rayleigh, 1.0 / 6) / System.Math.Pow(1 + System.Math.Pow(0.559 / AirPrandtlNumber, 9.0 / 16), 8.0 / 27), 2);
-        return System.Math.Pow(forcedNusselt * forcedNusselt * forcedNusselt + naturalNusselt * naturalNusselt * naturalNusselt, 1.0 / 3) * AirConductivity / diameter;
+        double naturalNusselt = System.Math.Pow(0.60 + 0.387 * System.Math.Pow(rayleigh, 1.0 / 6) / System.Math.Pow(1 + System.Math.Pow(0.559 / AirPrandtlNumber, 9.0 / 16), 8.0 / 27), 2);   // natural convection, Churchill-Chu correlation (S), dimensionless Nusselt number
+        return System.Math.Pow(forcedNusselt * forcedNusselt * forcedNusselt + naturalNusselt * naturalNusselt * naturalNusselt, 1.0 / 3) * AirConductivity / diameter;   // mixed convection: cube-root blend of forced and natural Nusselt numbers, times air conductivity / diameter = W/(m^2 K)
     }
 
     // @description - road conduction coefficient: two semi-infinite bodies brought into contact for t_c = L / V give the mean flux 2 e_eff dT / sqrt(pi t_c) (D)
     // @param {double} speed - rolling speed in m/s (floor 0.5)
     // @param {double} contactLength - contact patch length in m (floor 1 mm)
     // @return {double} - heat transfer coefficient in W/(m^2 K)
-    public static double RoadConductionCoefficient(double speed, double contactLength) => 2.0 * EffectiveEffusivity / System.Math.Sqrt(System.Math.PI * System.Math.Max(contactLength, 1e-3) / System.Math.Max(speed, 0.5));
+    public static double RoadConductionCoefficient(double speed, double contactLength) => 2.0 * EffectiveEffusivity / System.Math.Sqrt(System.Math.PI * System.Math.Max(contactLength, 1e-3) / System.Math.Max(speed, 0.5));   // transient conduction into the road for a contact time L/v: 2 e / sqrt(pi t), W/(m^2 K) (S: semi-infinite solid)
 
     // @description - splits the load over the three tread zones with an elastic foundation: deflection d0 + y tan(camber), y outward (D); normalised so the shares sum to 1
     // @param {double} verticalLoad - wheel load in N
@@ -227,7 +227,7 @@ public class TireThermal
     // @description - bench curve alone (Alcazar Vargas 2022): mu = mu_max + 1 - cosh((T - T_opt) / T_disp), temperature held inside its measured range
     // @param {double} temperature - tread temperature in degC
     // @return {double} - friction coefficient
-    public static double BenchFriction(double temperature) { temperature = System.Math.Min(System.Math.Max(temperature, BenchFitLowTemperature), BenchFitHighTemperature); return PeakFriction + 1.0 - System.Math.Cosh((temperature - OptimalTemperature) / TemperatureDispersion); }
+    public static double BenchFriction(double temperature) { temperature = System.Math.Min(System.Math.Max(temperature, BenchFitLowTemperature), BenchFitHighTemperature); return PeakFriction + 1.0 - System.Math.Cosh((temperature - OptimalTemperature) / TemperatureDispersion); }   // bench friction versus temperature: 1 - cosh curve around the optimum, peak at PeakFriction (D: fitted)
 
     // @description - road-test relation (Tambellini 2019 slope, full grip at/below the road reference temperature): mu = mu_max (1 - s (T - T_ref))
     // @param {double} temperature - road/tread temperature in degC

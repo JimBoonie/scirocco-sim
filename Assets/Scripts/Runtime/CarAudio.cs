@@ -57,12 +57,12 @@ public class AudioPauseGate
 }
 public abstract class SynthBase : MonoBehaviour
 {
-    protected CarController car; protected float sr; protected System.Random rng = new System.Random(1984);
+    protected CarController car; protected float sampleRateHz; protected System.Random rng = new System.Random(1984);
     // @description - Connects the synthesiser to the car and sets the sample rate (the audio output rate unless one is given, which tests and offline renders use).
     // @param {CarController} carController - car whose state drives the sound
     // @param {float} sampleRate - sample rate in hertz, or 0 to use the audio output rate
     // @return {Void} - nothing
-    public virtual void Init(CarController carController, float sampleRate = 0f) { car = carController; sr = sampleRate > 0f ? sampleRate : AudioSettings.outputSampleRate; }
+    public virtual void Init(CarController carController, float sampleRate = 0f) { car = carController; sampleRateHz = sampleRate > 0f ? sampleRate : AudioSettings.outputSampleRate; }
     // @description - One sample of white noise, uniform between -1 and 1, from the synth's fixed-seed generator.
     // @return {float} - noise sample (full-scale units)
     protected float Noise() => (float)rng.NextDouble() * 2f - 1f;
@@ -109,7 +109,7 @@ public class EngineSynth : SynthBase
     // @param {bool} isCombusting - true if the engine is combusting (also sets the ignition on)
     // @param {float} manifoldPressureRatio - manifold pressure ratio (dimensionless, 1 = ambient); a negative value derives it from the load
     // @return {Void} - nothing
-    public void SetOfflineState(float sampleRate, float engineRpm, float engineLoad, float throttleArea, bool isCombusting = true, float manifoldPressureRatio = -1f) { sr = sampleRate; rpm = engineRpm; load = engineLoad; mapBar = manifoldPressureRatio >= 0f ? manifoldPressureRatio : OfflineMapZero + engineLoad * (1f - OfflineMapZero); thrArea = throttleArea; combusting = isCombusting; ignition = isCombusting; crankAmp = 1f; }
+    public void SetOfflineState(float sampleRate, float engineRpm, float engineLoad, float throttleArea, bool isCombusting = true, float manifoldPressureRatio = -1f) { sampleRateHz = sampleRate; rpm = engineRpm; load = engineLoad; mapBar = manifoldPressureRatio >= 0f ? manifoldPressureRatio : OfflineMapZero + engineLoad * (1f - OfflineMapZero); thrArea = throttleArea; combusting = isCombusting; ignition = isCombusting; crankAmp = 1f; }
     float[] mono = new float[0]; readonly AudioPauseGate pause = new AudioPauseGate();
     // @description - Unity audio callback for the engine source: renders the mono engine sound, publishes its RMS level for the tire limiter, multiplies it onto every channel of the carrier and applies the pause fade.
     // @param {float[]} data - interleaved audio buffer supplied by Unity, modified in place
@@ -122,7 +122,7 @@ public class EngineSynth : SynthBase
         double sumOfSquares = 0; for (int i = 0; i < frameCount; i++) sumOfSquares += mono[i] * mono[i];
         TireSoundDsp.EngineRms = (float)System.Math.Sqrt(sumOfSquares / System.Math.Max(1, frameCount));   // tire ceiling reference (engine synth output, pre-spatial)
         for (int i = 0; i < frameCount; i++) for (int channelIndex = 0; channelIndex < channelCount; channelIndex++) data[i * channelCount + channelIndex] *= mono[i];
-        pause.Apply(data, frameCount, channelCount, CarAudio.Paused, sr);
+        pause.Apply(data, frameCount, channelCount, CarAudio.Paused, sampleRateHz);
     }
     // Exhaust level model v2 -> v3 below (overrun fix after the physical air-path Engine, ece5ae0). v1 scaled level with p_EVO itself, assuming
     // closed-throttle MAP ~0.22 bar; the air-path engine gives the physically correct ~0.02-0.05 bar on overrun at 3000-5000 rpm, which
@@ -173,14 +173,14 @@ public class EngineSynth : SynthBase
         float amp = ExhaustAmp(mapBar, fired) * (fired ? 1f : crankAmp);
         float burble = fired ? (1f - load) * Mathf.Clamp01((rpm - 1300f) / 2000f) : 0f;   // overrun pumping/burble: weak, lean, late-burning closed-throttle charges vary cycle to cycle
         float rough = combusting ? 0.06f * load + 0.22f * burble : 0.3f;   // per-cycle pulse variation, now subtle + smoothed (was 0.35 x load as a hard per-cycle amplitude step = grain)
-        float lowpassCoefficient = OnePole(700f + 5500f * load, sr);     // softer (darker) off load, but the firing fundamental + low harmonics stay audible   // (no intake sound: the old white-noise intake hiss was removed on request)
+        float lowpassCoefficient = OnePole(700f + 5500f * load, sampleRateHz);     // softer (darker) off load, but the firing fundamental + low harmonics stay audible   // (no intake sound: the old white-noise intake hiss was removed on request)
         float norm = 0f; for (int k = 1; k <= Harm; k++) norm += 1f / Mathf.Pow(k, tilt); norm += 0.25f;   // peak of the harmonic sum -> keeps the pulse train within +-1
-        float amplitudeSmoothing = OnePole(30f, sr), jitterSmoothing = OnePole(Mathf.Max(20f, 1.5f * firingHz), sr);   // amplitude smoothing; jitter glides over ~1/3 cycle instead of stepping
+        float amplitudeSmoothing = OnePole(30f, sampleRateHz), jitterSmoothing = OnePole(Mathf.Max(20f, 1.5f * firingHz), sampleRateHz);   // amplitude smoothing; jitter glides over ~1/3 cycle instead of stepping
         float meshHz = starterRps * 9f;                    // starter gear-mesh whine = pinion teeth x armature rev/s (9 teeth, S)
         if (clicks > 0) { clickEnv = 1f; clicks = 0; }
         for (int i = 0; i < sampleCount; i++)
         {
-            double previousPhase = phase; phase += firingHz / sr; if (phase >= 1.0) { phase -= 1.0; jitter = 1f + rough * Noise(); if (sputter && rng.NextDouble() < 0.5) jitter = 3f * (float)rng.NextDouble(); if (jitter < 0.2f) jitter = 0.2f; }
+            double previousPhase = phase; phase += firingHz / sampleRateHz; if (phase >= 1.0) { phase -= 1.0; jitter = 1f + rough * Noise(); if (sputter && rng.NextDouble() < 0.5) jitter = 3f * (float)rng.NextDouble(); if (jitter < 0.2f) jitter = 0.2f; }
             float phaseRadians = (float)(phase * 2.0 * System.Math.PI), harmonicSum = 0f;
             for (int k = 1; k <= Harm; k++) harmonicSum += Mathf.Sin(k * phaseRadians) / Mathf.Pow(k, tilt);
             harmonicSum += 0.25f * Mathf.Sin(0.5f * phaseRadians);           // half order: cylinder-to-cylinder imbalance
@@ -189,10 +189,10 @@ public class EngineSynth : SynthBase
             float starterWhine = 0f;
             if (starterRps > 0f || starter)
             {
-                motorPhase += meshHz / sr; if (motorPhase > 1f) motorPhase -= 1f; starterPhase += (rpm / 60f * 2f) / sr; if (starterPhase > 1f) starterPhase -= 1f;
+                motorPhase += meshHz / sampleRateHz; if (motorPhase > 1f) motorPhase -= 1f; starterPhase += (rpm / 60f * 2f) / sampleRateHz; if (starterPhase > 1f) starterPhase -= 1f;
                 starterWhine = 0.18f * Mathf.Sin(motorPhase * 2f * Mathf.PI) * (0.7f + 0.3f * Mathf.Sin(starterPhase * 2f * Mathf.PI)) + 0.05f * Noise();   // whine modulated by compression strokes
             }
-            float click = 0f; if (clickEnv > 1e-3f) { click = clickEnv * Noise() * 0.6f; clickEnv *= Mathf.Exp(-1f / (0.004f * sr)); }
+            float click = 0f; if (clickEnv > 1e-3f) { click = clickEnv * Noise() * 0.6f; clickEnv *= Mathf.Exp(-1f / (0.004f * sampleRateHz)); }
             lp += lowpassCoefficient * (engineSample - lp); lp2 += lowpassCoefficient * (lp - lp2);   // 2-pole lowpass (12 dB/oct): smoother, no fizzy top
             float outputSample = SoftClip(lp2 + starterWhine + click);
             buf[i] = outputSample;
@@ -210,7 +210,7 @@ public class TireSynth : SynthBase
     // @return {Void} - nothing
     public override void Init(CarController car, float sampleRate = 0f)
     {
-        base.Init(car, sampleRate); dsp = new TireSoundDsp(sr);
+        base.Init(car, sampleRate); dsp = new TireSoundDsp(sampleRateHz);
         var audioSource = GetComponent<AudioSource>(); if (audioSource) { audioSource.spatialBlend = 0f; audioSource.panStereo = 0f; }
     }
     // @description - Feeds the tire synthesiser with the latest wheel state every frame.
@@ -243,7 +243,7 @@ public class TireSynth : SynthBase
     // @param {float[]} data - interleaved audio buffer supplied by Unity, modified in place
     // @param {int} channelCount - channels per frame
     // @return {Void} - nothing
-    void OnAudioFilterRead(float[] data, int channelCount) { if (dsp == null) return; dsp.Render(data, data.Length / channelCount, channelCount, CarAudio.TireVolume); pause.Apply(data, data.Length / channelCount, channelCount, CarAudio.Paused, sr); }
+    void OnAudioFilterRead(float[] data, int channelCount) { if (dsp == null) return; dsp.Render(data, data.Length / channelCount, channelCount, CarAudio.TireVolume); pause.Apply(data, data.Length / channelCount, channelCount, CarAudio.Paused, sampleRateHz); }
 }
 
 /// In-game overrun diagnostic (player flag -audiocoast, used with -smoketest -scenario audiocoast): WOT up to 5000 rpm in 3rd, lift and coast
@@ -255,23 +255,23 @@ public class AudioCoastProbe : MonoBehaviour
     // @description - Starts the -audiocoast diagnostic probe after the scene loads when that command line flag is present.
     // @return {Void} - nothing
     static void Boot() { if (System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-audiocoast") >= 0) DontDestroyOnLoad(new GameObject("AudioCoastProbe").AddComponent<AudioCoastProbe>().gameObject); }
-    CarController car; EngineSynth eng; TireSynth tire; float t, next, wotDb = float.NaN; int stage; const float Fs = 48000f; readonly float[] eb = new float[4800], tb = new float[9600];
+    CarController car; EngineSynth eng; TireSynth tire; float elapsedTime, next, wotDb = float.NaN; int stage; const float SampleRate = 48000f; readonly float[] engineBuffer = new float[4800], tireBuffer = new float[9600];
     // @description - Drives the -audiocoast overrun test: wide open throttle to 5000 rpm in 3rd, then coasting down to 2300 rpm, repeated in 4th gear, logging engine state and the offline-rendered engine and tire RMS every 0.1 s, then quits.
     // @return {Void} - nothing
     void FixedUpdate()
     {
         if (!car) { car = FindObjectOfType<CarController>(); if (!car || car.engine == null) return;
-            eng = new GameObject("probeEng").AddComponent<EngineSynth>(); eng.Init(car, Fs); tire = new GameObject("probeTire").AddComponent<TireSynth>(); tire.Init(car, Fs); }
-        t += Time.fixedDeltaTime; if (t < 3.5f) return;
+            eng = new GameObject("probeEng").AddComponent<EngineSynth>(); eng.Init(car, SampleRate); tire = new GameObject("probeTire").AddComponent<TireSynth>(); tire.Init(car, SampleRate); }
+        elapsedTime += Time.fixedDeltaTime; if (elapsedTime < 3.5f) return;
         int gear = stage < 2 ? 3 : 4; var engine = car.engine;
         if (stage == 0 || stage == 2) { car.throttle = 1f; if (car.drivetrain.gear == gear && engine.rpm >= 5000f) { stage++; Debug.Log($"COAST start gear {gear}"); } }
         else { car.throttle = 0f; car.brake = 0f; if (engine.rpm < 2300f) { stage++; Debug.Log($"COAST end gear {gear}"); if (stage >= 4) { Debug.Log("COAST done"); Application.Quit(0); } } }
-        if (t < next) return; next = t + 0.1f;
-        eng.Sample(0.1f); eng.Render(eb, eb.Length); double engineSumOfSquares = 0; for (int i = 2400; i < eb.Length; i++) engineSumOfSquares += eb[i] * eb[i]; float engineRms = Mathf.Sqrt((float)(engineSumOfSquares / 2400));
-        tire.Feed(); tire.RenderOffline(tb, 4800, engineRms); double tireSumOfSquares = 0; for (int i = 4800; i < tb.Length; i++) tireSumOfSquares += tb[i] * tb[i]; float tireRms = Mathf.Sqrt((float)(tireSumOfSquares / 4800));
+        if (elapsedTime < next) return; next = elapsedTime + 0.1f;
+        eng.Sample(0.1f); eng.Render(engineBuffer, engineBuffer.Length); double engineSumOfSquares = 0; for (int i = 2400; i < engineBuffer.Length; i++) engineSumOfSquares += engineBuffer[i] * engineBuffer[i]; float engineRms = Mathf.Sqrt((float)(engineSumOfSquares / 2400));
+        tire.Feed(); tire.RenderOffline(tireBuffer, 4800, engineRms); double tireSumOfSquares = 0; for (int i = 4800; i < tireBuffer.Length; i++) tireSumOfSquares += tireBuffer[i] * tireBuffer[i]; float tireRms = Mathf.Sqrt((float)(tireSumOfSquares / 4800));
         float engineDb = 20f * Mathf.Log10(engineRms + 1e-9f), tireDb = 20f * Mathf.Log10(tireRms + 1e-9f); if (car.throttle > 0.99f && engine.rpm > 4500f) wotDb = engineDb;
         var body = car.GetComponent<Rigidbody>();
         Debug.Log(string.Format(System.Globalization.CultureInfo.InvariantCulture, "COAST,{0:0.0},{1},{2},{3:0},{4:0.0},{5:0.000},{6:0.00},{7},{8},{9:0.0},{10:0.0},{11:0.0},{12:0.0}",
-            t, stage, car.drivetrain.gear, engine.rpm, body ? body.velocity.magnitude * 3.6f : 0f, engine.manifoldPressureRatio, Mathf.Clamp01((engine.manifoldPressureRatio - car.carParams.mapZeroTorque) / (1f - car.carParams.mapZeroTorque)), engine.combusting, engine.limiter, engineDb, tireDb, wotDb - engineDb, car.throttle));
+            elapsedTime, stage, car.drivetrain.gear, engine.rpm, body ? body.velocity.magnitude * 3.6f : 0f, engine.manifoldPressureRatio, Mathf.Clamp01((engine.manifoldPressureRatio - car.carParams.mapZeroTorque) / (1f - car.carParams.mapZeroTorque)), engine.combusting, engine.limiter, engineDb, tireDb, wotDb - engineDb, car.throttle));
     }
 }

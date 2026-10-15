@@ -14,9 +14,9 @@ public class FfbController : MonoBehaviour
     readonly float[] clipHistory = new float[1000]; int clipHistoryIndex;   // 1 s at 1 kHz
 #if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
     [DllImport("SciroccoFFB")] static extern int FFB_Enumerate();
-    [DllImport("SciroccoFFB")] static extern int FFB_DeviceName(int i, byte[] buf, int len);
-    [DllImport("SciroccoFFB")] static extern int FFB_Start(int i, IntPtr hwnd);
-    [DllImport("SciroccoFFB")] static extern void FFB_Set(float v);
+    [DllImport("SciroccoFFB")] static extern int FFB_DeviceName(int deviceIndex, byte[] buffer, int length);
+    [DllImport("SciroccoFFB")] static extern int FFB_Start(int deviceIndex, IntPtr windowHandle);
+    [DllImport("SciroccoFFB")] static extern void FFB_Set(float command);
     [DllImport("SciroccoFFB")] static extern void FFB_Stop();
     [DllImport("SciroccoFFB")] static extern void FFB_Shutdown();
     [DllImport("SciroccoFFB")] static extern IntPtr FFB_LastError();
@@ -24,11 +24,11 @@ public class FfbController : MonoBehaviour
 #else
     // @description - Non-Windows stand-ins for the native SciroccoFFB.dll (DirectInput force feedback exists on Windows only): enumerate reports "unavailable" and device name/start do nothing.
     // @return {int} - -1 (no force-feedback support on this platform)
-    static int FFB_Enumerate() => -1; static int FFB_DeviceName(int i, byte[] b, int l) => 0; static int FFB_Start(int i, IntPtr h) => 0;
+    static int FFB_Enumerate() => -1; static int FFB_DeviceName(int deviceIndex, byte[] buffer, int length) => 0; static int FFB_Start(int deviceIndex, IntPtr windowHandle) => 0;
     // @description - Non-Windows no-op stand-ins for FFB_Set, FFB_Stop, FFB_Shutdown and FFB_LastError of the native plugin.
-    // @param {float} v - constant-force command, -1..1 (ignored)
+    // @param {float} command - constant-force command, -1..1 (ignored)
     // @return {Void} - nothing
-    static void FFB_Set(float v) { } static void FFB_Stop() { } static void FFB_Shutdown() { } static IntPtr FFB_LastError() => IntPtr.Zero;
+    static void FFB_Set(float command) { } static void FFB_Stop() { } static void FFB_Shutdown() { } static IntPtr FFB_LastError() => IntPtr.Zero;
     const bool platformOk = false;
 #endif
     public string[] devices = new string[0];

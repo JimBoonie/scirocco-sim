@@ -116,3 +116,12 @@ Reflection and CLI strings reference member names (`SmokeTest -overrides carPara
 - `InputMapper.E()` -> `GetEdgeState()`; `DebugHUD.F()` -> `ToFahrenheit()`; `DebugHUD.FJ`/`RJ` -> `FrontJointNames`/`RearJointNames`.
 - SmokeTest fields: `sc` -> `scenario`, `rb` -> `body`, `t` -> `elapsedTime`, `R` -> `skidpadRadius`, `K1` -> `curvatureAtOneSecond`; `U()` -> `FrictionUsage()`; `tm_FallResets()` -> `FallResetCount()`.
 - TrackManager `cs` -> `creditStyle`.
+
+## Second pass (part 4)
+
+- TrackSetup: `MultiTC` -> `MultiTerrainRaycaster`; `C0`/`R0` -> `InnerColumnStart`/`InnerRowStart`; lambda and local names spelled out.
+- SciroccoSetup `Make(x, z)` -> `Make(lateralPosition, longitudinalPosition)`; `router.vr` -> `router.vrManager`.
+- InputRouter: `vr` -> `vrManager`, `st` -> `labelStyle`, GpSlider lambdas `g`/`v` -> `settings`/`value`.
+- TireScrub (TireSoundDsp): `fs` -> `sampleRateHz`, `cR/cV/cFz` -> `currentRatio/currentSpeed/currentLoad`, `sR/sG` -> `smoothedRatio/smoothedGain`, `tR/tV/tFz` -> `targetRatio/targetSpeed/targetLoad`, filter states `x1..dzB` -> `mainInputHistory1..broadOutputHistory2`, `ph` -> `noisePhase`; `TireScrubLaw.ScrubRatio` parameters spelled out.
+- SmokeTest: `OffSpots.s` -> `distanceAlong`, `kN` -> `kerbSampleCounts`, `gT` -> `grassPhaseStartTime`, `oT` -> `offPhaseStartTime`.
+- Tests: helper names `Db` -> `MeanPowerDecibels`, `Pitch` -> `MeasurePitchHz`, `Render` -> `RenderEngineSynth`/`RenderTireSound`, `Rms` -> `RootMeanSquare`, `Goertzel` -> `GoertzelAmplitude`, `P()` -> `CreateCarParams()`, `Ctx` -> `CreateSteerContext`, `NM` -> `CreateMapperWithoutDebounce`, `A` -> `GetAxis`, `Chattery` -> `CreateChatteryMapper`, `Json` -> `BuildDescriptorJson`, `Log` -> `LogSteer`/`LogThermal`, `FormattableString` -> `JoinInvariant`.

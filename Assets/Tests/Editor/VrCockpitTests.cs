@@ -2,36 +2,36 @@
 using NUnit.Framework; using UnityEngine;
 public class VrCockpitTests
 {
-    // @description - Eye point inside cabin.
+    // @description - Verifies that the cockpit eye point is 0.85 to 1.16 m above ground (under the 1.28 m roof with head clearance), between the axles, left of the centreline (left-hand drive), and that the steering wheel is ahead of and below the eye.
     // @return {Void} - nothing
     [Test] public void EyePoint_Inside_Cabin()
     {
-        var p = ScriptableObject.CreateInstance<CarParams>(); var e = Cockpit.EyePoint(p); float g = Cockpit.GroundY(p);
-        float eyeH = e.y - g; Debug.Log($"eye above ground {eyeH:0.000} m, behind front axle {p.wheelbase * 0.5f - e.z:0.000} m, lateral {e.x:0.000} m");
+        var carParams = ScriptableObject.CreateInstance<CarParams>(); var eyePoint = Cockpit.EyePoint(carParams); float groundHeight = Cockpit.GroundY(carParams);
+        float eyeH = eyePoint.y - groundHeight; Debug.Log($"eye above ground {eyeH:0.000} m, behind front axle {carParams.wheelbase * 0.5f - eyePoint.z:0.000} m, lateral {eyePoint.x:0.000} m");
         Assert.Greater(eyeH, 0.85f); Assert.Less(eyeH, 1.28f - 0.12f);          // below the 1.28 m roof (S) with head clearance
-        Assert.Less(e.z, p.wheelbase * 0.5f); Assert.Greater(e.z, -p.wheelbase * 0.5f); // between the axles
-        Assert.Less(e.x, 0f);                                                     // LHD: left of centreline
-        var w = Cockpit.WheelCentre(p); Assert.Greater(w.z, e.z); Assert.Less(w.y, e.y);   // wheel ahead of and below the eye
+        Assert.Less(eyePoint.z, carParams.wheelbase * 0.5f); Assert.Greater(eyePoint.z, -carParams.wheelbase * 0.5f); // between the axles
+        Assert.Less(eyePoint.x, 0f);                                                     // LHD: left of centreline
+        var wheelCentre = Cockpit.WheelCentre(carParams); Assert.Greater(wheelCentre.z, eyePoint.z); Assert.Less(wheelCentre.y, eyePoint.y);   // wheel ahead of and below the eye
     }
-    // @description - Leaving vr restores flat fov and projection.
+    // @description - Verifies that leaving VR restores the flat camera: 60 deg field of view and the plain perspective matrix after a wide custom matrix, RestoreFlatCamera sets 75 deg and clamps 200 deg to the maximum, the 16:9 horizontal field of view is 91.5 deg, and the profile default is 60 deg.
     // @return {Void} - nothing
     [Test] public void Leaving_VR_Restores_Flat_Fov_And_Projection()
     {
-        var go = new GameObject("cam"); var c = go.AddComponent<Camera>(); c.aspect = 16f / 9f;
-        c.fieldOfView = 105f; c.projectionMatrix = Matrix4x4.Perspective(105f, 1f, 0.02f, 1000f);   // what VR left behind (wide, custom matrix)
-        c.SetStereoProjectionMatrix(Camera.StereoscopicEye.Left, Matrix4x4.Perspective(110f, 0.9f, 0.02f, 1000f));
-        var vr = go.AddComponent<VrManager>(); vr.cam = c;
-        vr.StopVR("test");                                                    // no router -> default 60 deg
-        Assert.AreEqual(60f, c.fieldOfView, 1e-3);
-        var expect = Matrix4x4.Perspective(60f, c.aspect, c.nearClipPlane, c.farClipPlane);
-        for (int i = 0; i < 16; i++) Assert.AreEqual(expect[i], c.projectionMatrix[i], 1e-3, "projection matrix reset to the flat perspective");
-        VrManager.RestoreFlatCamera(c, 75f); Assert.AreEqual(75f, c.fieldOfView, 1e-3);
-        VrManager.RestoreFlatCamera(c, 200f); Assert.AreEqual(BindingProfile.FovMax, c.fieldOfView, 1e-3, "clamped");
+        var cameraObject = new GameObject("cam"); var camera = cameraObject.AddComponent<Camera>(); camera.aspect = 16f / 9f;
+        camera.fieldOfView = 105f; camera.projectionMatrix = Matrix4x4.Perspective(105f, 1f, 0.02f, 1000f);   // what VR left behind (wide, custom matrix)
+        camera.SetStereoProjectionMatrix(Camera.StereoscopicEye.Left, Matrix4x4.Perspective(110f, 0.9f, 0.02f, 1000f));
+        var vrManager = cameraObject.AddComponent<VrManager>(); vrManager.cam = camera;
+        vrManager.StopVR("test");                                                    // no router -> default 60 deg
+        Assert.AreEqual(60f, camera.fieldOfView, 1e-3);
+        var expectedMatrix = Matrix4x4.Perspective(60f, camera.aspect, camera.nearClipPlane, camera.farClipPlane);
+        for (int i = 0; i < 16; i++) Assert.AreEqual(expectedMatrix[i], camera.projectionMatrix[i], 1e-3, "projection matrix reset to the flat perspective");
+        VrManager.RestoreFlatCamera(camera, 75f); Assert.AreEqual(75f, camera.fieldOfView, 1e-3);
+        VrManager.RestoreFlatCamera(camera, 200f); Assert.AreEqual(BindingProfile.FovMax, camera.fieldOfView, 1e-3, "clamped");
         Assert.AreEqual(91.5f, VrManager.HorizontalFov(60f, 16f / 9f), 0.2f);
         Assert.AreEqual(60f, new BindingProfile().flatFovDeg);
-        Object.DestroyImmediate(go);
+        Object.DestroyImmediate(cameraObject);
     }
-    // @description - Tire volume saved.
+    // @description - Verifies that the tire volume setting defaults to 1 and is part of the saved profile JSON.
     // @return {Void} - nothing
     [Test] public void Tire_Volume_Saved()
     {
@@ -40,23 +40,23 @@ public class VrCockpitTests
 }
 public class UncalibratedPedalTests : UnityEngine.InputSystem.InputTestFixture
 {
-    // @description - Uncalibrated clutch resting at plus1 reads zero keyboard throttle wins.
+    // @description - Verifies that a bound but never calibrated pedal resting at +1 reads 0 % (and 100 % when pressed to -1), and that its idle state does not hold back the keyboard throttle.
     // @return {Void} - nothing
     [Test] public void Uncalibrated_Clutch_Resting_At_Plus1_Reads_Zero_Keyboard_Throttle_Wins()
     {
         UnityEngine.InputSystem.InputSystem.RegisterLayout<UnityEngine.InputSystem.Joystick>("FakeSprint", new UnityEngine.InputSystem.Layouts.InputDeviceMatcher().WithProduct("Fake Sprint"));
-        var ped = UnityEngine.InputSystem.InputSystem.AddDevice(new UnityEngine.InputSystem.Layouts.InputDeviceDescription { product = "Fake Sprint" });
-        var kb = UnityEngine.InputSystem.InputSystem.AddDevice<UnityEngine.InputSystem.Keyboard>();
-        var pr = InputMapper.Defaults(); var ax = (UnityEngine.InputSystem.Controls.AxisControl)ped["stick/x"];
-        pr.Get(InAction.Clutch).Add(new Binding { layout = ped.layout, product = "Fake Sprint", control = "stick/x", calibration = new AxisCalibration { min = -1f, max = 1f } });   // bound, never calibrated
-        pr.Get(InAction.Throttle).Add(new Binding { layout = ped.layout, product = "Fake Sprint", control = "stick/y", calibration = new AxisCalibration { min = -1f, max = 1f } });
-        var m = new InputMapper(pr);
-        Set(ax, 1f); InputSystemUpdate(); Assert.AreEqual(0f, m.Axis(InAction.Clutch), 1e-3f);   // rest at +1 -> 0 %, not 100 %
-        Set(ax, -1f); InputSystemUpdate(); Assert.AreEqual(1f, m.Axis(InAction.Clutch), 1e-3f);  // fully pressed
-        Press(kb.wKey); InputSystemUpdate(); Assert.AreEqual(1f, m.Axis(InAction.Throttle), 1e-3f); // idle pedal at rest does not hold keyboard throttle at 0
-        m.Dispose();
+        var pedalDevice = UnityEngine.InputSystem.InputSystem.AddDevice(new UnityEngine.InputSystem.Layouts.InputDeviceDescription { product = "Fake Sprint" });
+        var keyboard = UnityEngine.InputSystem.InputSystem.AddDevice<UnityEngine.InputSystem.Keyboard>();
+        var profile = InputMapper.Defaults(); var axis = (UnityEngine.InputSystem.Controls.AxisControl)pedalDevice["stick/x"];
+        profile.Get(InAction.Clutch).Add(new Binding { layout = pedalDevice.layout, product = "Fake Sprint", control = "stick/x", calibration = new AxisCalibration { min = -1f, max = 1f } });   // bound, never calibrated
+        profile.Get(InAction.Throttle).Add(new Binding { layout = pedalDevice.layout, product = "Fake Sprint", control = "stick/y", calibration = new AxisCalibration { min = -1f, max = 1f } });
+        var mapper = new InputMapper(profile);
+        Set(axis, 1f); InputSystemUpdate(); Assert.AreEqual(0f, mapper.Axis(InAction.Clutch), 1e-3f);   // rest at +1 -> 0 %, not 100 %
+        Set(axis, -1f); InputSystemUpdate(); Assert.AreEqual(1f, mapper.Axis(InAction.Clutch), 1e-3f);  // fully pressed
+        Press(keyboard.wKey); InputSystemUpdate(); Assert.AreEqual(1f, mapper.Axis(InAction.Throttle), 1e-3f); // idle pedal at rest does not hold keyboard throttle at 0
+        mapper.Dispose();
     }
-    // @description - Input system update.
+    // @description - Processes all pending Input System events so queued test input takes effect.
     // @return {Void} - nothing
     static void InputSystemUpdate() => UnityEngine.InputSystem.InputSystem.Update();
 }

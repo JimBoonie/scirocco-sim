@@ -80,8 +80,8 @@ public class CarController : MonoBehaviour
     { transform.position += Vector3.up; transform.rotation = Quaternion.Euler(0f, transform.eulerAngles.y, 0f); body.velocity = Vector3.zero; body.angularVelocity = Vector3.zero; foreach (var wheel in new[] { frontLeftWheel, frontRightWheel, rearLeftWheel, rearRightWheel }) if (wheel) wheel.ResetState(); Teleported?.Invoke(this); }
     /// raised after any reset / teleport (R, reset to start, fall-safety respawn): cameras snap, look offsets cleared
     float cachedPeakTorqueRpm = -1f;
-    float PeakTorqueRpm { get { if (cachedPeakTorqueRpm < 0f) { int k = 0; for (int i = 1; i < carParams.torquePoints.Length; i++) if (carParams.torquePoints[i] > carParams.torquePoints[k]) k = i; cachedPeakTorqueRpm = carParams.rpmPoints[k]; } return cachedPeakTorqueRpm; } }
-    public static event System.Action<CarController> Teleported; public static void RaiseTeleported(CarController c) => Teleported?.Invoke(c);
+    float PeakTorqueRpm { get { if (cachedPeakTorqueRpm < 0f) { int peakIndex = 0; for (int i = 1; i < carParams.torquePoints.Length; i++) if (carParams.torquePoints[i] > carParams.torquePoints[peakIndex]) peakIndex = i; cachedPeakTorqueRpm = carParams.rpmPoints[peakIndex]; } return cachedPeakTorqueRpm; } }
+    public static event System.Action<CarController> Teleported; public static void RaiseTeleported(CarController NONE) => Teleported?.Invoke(NONE);
     // @description - Reads an optional legacy input axis, returning 0 when the axis is not defined in the Input Manager.
     // @param {string} axisName - Input Manager axis name
     // @return {float} - axis value, or 0 if absent

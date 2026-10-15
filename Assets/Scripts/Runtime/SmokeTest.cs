@@ -311,7 +311,7 @@ public class SmokeTest : MonoBehaviour
         if (lagFail) { if (scenario == "lagunatherm") { ThermLog("FAIL " + lagWhy); } Next(99); }
     }
     // ---- kerb test: per-wheel surface under the contact (SurfaceTag of the collider hit) and its load / travel; kerb vs asphalt
-    bool kerbMode; readonly float[] kN = new float[2], kFz = new float[2], kFz2 = new float[2], kTrMin = { 9f, 9f }, kTrMax = { -9f, -9f }, kdFz = new float[2]; readonly float[] lastFz = new float[4];
+    bool kerbMode; readonly float[] kerbSampleCounts = new float[2], kFz = new float[2], kFz2 = new float[2], kTrMin = { 9f, 9f }, kTrMax = { -9f, -9f }, kdFz = new float[2]; readonly float[] lastFz = new float[4];
     int kerbHitObjects;
     // @description - Kerb test sampling: for each grounded wheel finds the surface tag under it and accumulates sample count, vertical load statistics, suspension travel range and load change rate, separately for kerb and asphalt.
     // @return {Void} - nothing
@@ -323,35 +323,35 @@ public class SmokeTest : MonoBehaviour
             var wheel = wheels[i]; float loadRate = Mathf.Abs(wheel.verticalLoad - lastFz[i]) / Time.fixedDeltaTime; lastFz[i] = wheel.verticalLoad;
             if (!wheel.grounded || !Physics.Raycast(wheel.transform.position, -wheel.transform.up, out var hit, 1.5f)) continue;
             var surface = SurfaceTag.Of(hit.collider); int surfaceIndex = surface == SurfaceType.Kerb ? 0 : surface == SurfaceType.Asphalt ? 1 : -1; if (surfaceIndex < 0) continue;
-            kN[surfaceIndex]++; kFz[surfaceIndex] += wheel.verticalLoad; kFz2[surfaceIndex] += wheel.verticalLoad * wheel.verticalLoad; kTrMin[surfaceIndex] = Mathf.Min(kTrMin[surfaceIndex], wheel.travel); kTrMax[surfaceIndex] = Mathf.Max(kTrMax[surfaceIndex], wheel.travel); kdFz[surfaceIndex] += loadRate;
+            kerbSampleCounts[surfaceIndex]++; kFz[surfaceIndex] += wheel.verticalLoad; kFz2[surfaceIndex] += wheel.verticalLoad * wheel.verticalLoad; kTrMin[surfaceIndex] = Mathf.Min(kTrMin[surfaceIndex], wheel.travel); kTrMax[surfaceIndex] = Mathf.Max(kTrMax[surfaceIndex], wheel.travel); kdFz[surfaceIndex] += loadRate;
         }
     }
     // @description - Prints the kerb versus asphalt statistics and the PASS or FAIL result (needs at least 200 kerb samples, a kerb load rate above 1.5 times the asphalt rate and no fall resets), then quits.
     // @return {Void} - nothing
     void KerbReport()
     {
-        string Describe(int surfaceIndex) { float sampleCount = Mathf.Max(1f, kN[surfaceIndex]), meanLoad = kFz[surfaceIndex] / sampleCount, loadDeviation = Mathf.Sqrt(Mathf.Max(0f, kFz2[surfaceIndex] / sampleCount - meanLoad * meanLoad)); return $"{kN[surfaceIndex]:0} wheel-samples, Fz mean {meanLoad:0} N sd {loadDeviation:0} N, mean |dFz/dt| {kdFz[surfaceIndex] / sampleCount / 1000f:0.0} kN/s, travel {kTrMin[surfaceIndex] * 1000f:0}..{kTrMax[surfaceIndex] * 1000f:0} mm"; }
-        float kerbSamples = Mathf.Max(1f, kN[0]), asphaltSamples = Mathf.Max(1f, kN[1]); float kerbRate = kdFz[0] / kerbSamples, asphaltRate = kdFz[1] / asphaltSamples;
-        bool ok = kN[0] >= 200 && kerbRate > 1.5f * asphaltRate && TrackManager.Instance.FallResets == 0;
+        string Describe(int surfaceIndex) { float sampleCount = Mathf.Max(1f, kerbSampleCounts[surfaceIndex]), meanLoad = kFz[surfaceIndex] / sampleCount, loadDeviation = Mathf.Sqrt(Mathf.Max(0f, kFz2[surfaceIndex] / sampleCount - meanLoad * meanLoad)); return $"{kerbSampleCounts[surfaceIndex]:0} wheel-samples, Fz mean {meanLoad:0} N sd {loadDeviation:0} N, mean |dFz/dt| {kdFz[surfaceIndex] / sampleCount / 1000f:0.0} kN/s, travel {kTrMin[surfaceIndex] * 1000f:0}..{kTrMax[surfaceIndex] * 1000f:0} mm"; }
+        float kerbSamples = Mathf.Max(1f, kerbSampleCounts[0]), asphaltSamples = Mathf.Max(1f, kerbSampleCounts[1]); float kerbRate = kdFz[0] / kerbSamples, asphaltRate = kdFz[1] / asphaltSamples;
+        bool ok = kerbSampleCounts[0] >= 200 && kerbRate > 1.5f * asphaltRate && TrackManager.Instance.FallResets == 0;
         Debug.Log("KERB on kerb: " + Describe(0)); Debug.Log("KERB on asphalt: " + Describe(1));
         Debug.Log($"LAGUNAKERB RESULT {(ok ? "PASS" : "FAIL")} kerb load-rate ratio {kerbRate / Mathf.Max(1e-3f, asphaltRate):0.0}x asphalt (need >1.5x, >=200 kerb samples), drove {lagDist:0} m, fall resets {TrackManager.Instance.FallResets}");
         quitting = true; Application.Quit(ok ? 0 : 3);
     }
     // ---- off-road rest test: teleport onto grass/runoff at several places (beside the track and far away), let the car settle 4 s on the brake,
     // check all wheels hit a surface, the car is at rest, and its height matches the DEM terrain under it (TerrainData height + ride height).
-    int gIdx = -1; int gFails; float gT, gDiagNext; readonly System.Collections.Generic.List<string> gRows = new System.Collections.Generic.List<string>();
+    int gIdx = -1; int gFails; float grassPhaseStartTime, gDiagNext; readonly System.Collections.Generic.List<string> gRows = new System.Collections.Generic.List<string>();
     // @description - Returns the test positions for the off-road rest test: points beside the track at several corners and three far-field points, each placed high above the ground so the car is dropped onto the surface.
     // @param {int} pointIndex - index of the test point
     // @param {string} name - receives a description of the point
-    // @return {Vector3} - world position in metres (zero vector when k is past the last point)
+    // @return {Vector3} - world position in metres (zero vector when pointIndex is past the last point)
     Vector3 GrassPoint(int pointIndex, out string name)
     {
-        var ti = TrackManager.Instance.info; var c = ti.Centreline; int n = c.Count;
+        var trackInfo = TrackManager.Instance.info; var centreline = trackInfo.Centreline; int pointCount = centreline.Count;
         Vector3 OffsetFromCentreline(float distanceAlong, float side, float extra, out string description, string label)
         {
-            int index = Mathf.RoundToInt(distanceAlong / 2f) % n; var forward = c[(index + 1) % n] - c[index]; forward.y = 0f; forward.Normalize(); var right = new Vector3(forward.z, 0f, -forward.x);
-            float edge = side > 0 ? ti.HalfWidths[index].y : ti.HalfWidths[index].x; description = $"{label} (s={distanceAlong:0} m, {(side > 0 ? "right" : "left")} {edge + extra:0} m from centreline)";
-            var point = c[index] + right * side * (edge + extra); point.y = 200f; return point;
+            int index = Mathf.RoundToInt(distanceAlong / 2f) % pointCount; var forward = centreline[(index + 1) % pointCount] - centreline[index]; forward.y = 0f; forward.Normalize(); var right = new Vector3(forward.z, 0f, -forward.x);
+            float edge = side > 0 ? trackInfo.HalfWidths[index].y : trackInfo.HalfWidths[index].x; description = $"{label} (s={distanceAlong:0} m, {(side > 0 ? "right" : "left")} {edge + extra:0} m from centreline)";
+            var point = centreline[index] + right * side * (edge + extra); point.y = 200f; return point;
         }
         switch (pointIndex)
         {
@@ -404,14 +404,14 @@ public class SmokeTest : MonoBehaviour
         car.throttle = 0f; car.brake = 1f; car.steer = 0f; car.handbrake = true;
         var trackManager = TrackManager.Instance;
         if (gIdx == 0 && elapsedTime >= gDiagNext) { gDiagNext = elapsedTime + 0.25f; if (!car.GetComponent<ContactDiag>()) car.gameObject.AddComponent<ContactDiag>(); var wheels = new[] { car.frontLeftWheel, car.frontRightWheel, car.rearLeftWheel, car.rearRightWheel }; string wheelText = "";
-            foreach (var w in wheels) wheelText += $" [{(w.grounded ? w.Hit.collider.name.Substring(0, 8) : "air")} Fz {w.verticalLoad:0} om {w.angularVelocity:0.00} sr {w.slipRatio:0.00} sa {w.slipAngle * 57.3f:0.0} F {w.force.x:0}/{w.force.y:0} Tb {w.brakeTorque:0}]";
-            Debug.Log($"GDIAG t {elapsedTime - gT:0.00} v {body.velocity.ToString("F2")} up {car.transform.up.ToString("F2")}{wheelText}"); }
-        if (gIdx >= 0 && !gHave2 && elapsedTime - gT >= 2f) { gPos2 = body.position; gHave2 = true; }
-        if (gIdx < 0 || elapsedTime - gT > 4f)
+            foreach (var wheelState in wheels) wheelText += $" [{(wheelState.grounded ? wheelState.Hit.collider.name.Substring(0, 8) : "air")} Fz {wheelState.verticalLoad:0} om {wheelState.angularVelocity:0.00} sr {wheelState.slipRatio:0.00} sa {wheelState.slipAngle * 57.3f:0.0} F {wheelState.force.x:0}/{wheelState.force.y:0} Tb {wheelState.brakeTorque:0}]";
+            Debug.Log($"GDIAG t {elapsedTime - grassPhaseStartTime:0.00} v {body.velocity.ToString("F2")} up {car.transform.up.ToString("F2")}{wheelText}"); }
+        if (gIdx >= 0 && !gHave2 && elapsedTime - grassPhaseStartTime >= 2f) { gPos2 = body.position; gHave2 = true; }
+        if (gIdx < 0 || elapsedTime - grassPhaseStartTime > 4f)
         {
             if (gIdx >= 0) GrassMeasure(speed);
             gIdx++; var position = GrassPoint(gIdx, out _); if (position == Vector3.zero) { LagunaGrassReport(); Next(99); return; }
-            trackManager.Place(position, 30f * gIdx); gT = elapsedTime; gHave2 = false;
+            trackManager.Place(position, 30f * gIdx); grassPhaseStartTime = elapsedTime; gHave2 = false;
             if (Physics.Raycast(position + Vector3.up * 30f, Vector3.down, out var hit, 600f)) Debug.Log($"GRASSDBG place hit '{hit.collider.name}' layer {hit.collider.gameObject.layer} at {hit.point} rb {body.position}");
         }
     }
@@ -440,9 +440,9 @@ public class SmokeTest : MonoBehaviour
     void LagunaGrassReport() { foreach (var row in gRows) Debug.Log(row); Debug.Log($"LAGUNAGRASS RESULT {(gFails == 0 ? "PASS" : "FAIL")} {gRows.Count - gFails}/{gRows.Count} points, fall resets {FallResetCount()}"); }
     // ---- off-track at speed: start on the road 150 m upstream at 132 km/h (wheel spin matched), coast in neutral, steer off the asphalt onto runoff/grass/terrain.
     // Checks every physics step: car never below the heightmap (fall-through), a collider always under the car, no fall-safety reset.
-    int oIdx = -1, oFails, oResets0; float oT, oMinAboveDem, oMinV, oMaxOff; int oNoSurf, oSteps; string oName; readonly System.Collections.Generic.List<string> oRows = new System.Collections.Generic.List<string>();
+    int oIdx = -1, oFails, oResets0; float offPhaseStartTime, oMinAboveDem, oMinV, oMaxOff; int oNoSurf, oSteps; string oName; readonly System.Collections.Generic.List<string> oRows = new System.Collections.Generic.List<string>();
     readonly System.Collections.Generic.Dictionary<string, int> oSurf = new System.Collections.Generic.Dictionary<string, int>();
-    static readonly (float s, float side, string name)[] OffSpots = {   // s of the run-off point, side +1 right / -1 left
+    static readonly (float distanceAlong, float side, string name)[] OffSpots = {   // s of the run-off point, side +1 right / -1 left
         (2440f, -1f, "wide LEFT before the Corkscrew (T8 approach)"), (3330f, 1f, "outside RIGHT of T11 exit"), (260f, 1f, "outside RIGHT of T1"),
         (2600f, 1f, "Corkscrew exit RIGHT (T8A)"), (1990f, 1f, "outside RIGHT of T6"), (2440f, 1f, "RIGHT before the Corkscrew") };
     // @description - Off-track at speed test: starts on the road 150 m upstream at 132 km/h with matched wheel spin, coasts in neutral and steers off the asphalt onto runoff, grass or terrain at each listed spot. Each step checks that the car stays above the heightmap and that a collider is under it.
@@ -451,26 +451,26 @@ public class SmokeTest : MonoBehaviour
     void LagunaOff(float speed)
     {
         var trackManager = TrackManager.Instance; var trackInfo = trackManager.info; var centreline = trackInfo.Centreline; int pointCount = centreline.Count;
-        if (oIdx < 0 || elapsedTime - oT > 7f)
+        if (oIdx < 0 || elapsedTime - offPhaseStartTime > 7f)
         {
             if (oIdx >= 0) OffReport1();
             oIdx++; if (oIdx >= OffSpots.Length) { foreach (var row in oRows) Debug.Log(row); Debug.Log($"LAGUNAOFF RESULT {(oFails == 0 ? "PASS" : "FAIL")} {OffSpots.Length - oFails}/{OffSpots.Length} runs, fall resets {trackManager.FallResets}"); Next(99); return; }
-            var startSpot = OffSpots[oIdx]; int startIndex = ((int)((startSpot.s - 150f) / 2f) + pointCount) % pointCount; var forward = centreline[(startIndex + 1) % pointCount] - centreline[startIndex]; forward.y = 0f;
+            var startSpot = OffSpots[oIdx]; int startIndex = ((int)((startSpot.distanceAlong - 150f) / 2f) + pointCount) % pointCount; var forward = centreline[(startIndex + 1) % pointCount] - centreline[startIndex]; forward.y = 0f;
             trackManager.Place(centreline[startIndex], Mathf.Atan2(forward.x, forward.z) * Mathf.Rad2Deg);
             body.velocity = car.transform.forward * (132f / 3.6f); foreach (var wheel in new[] { car.frontLeftWheel, car.frontRightWheel, car.rearLeftWheel, car.rearRightWheel }) wheel.angularVelocity = 132f / 3.6f / car.carParams.wheelRadius;
-            oT = elapsedTime; oMinAboveDem = 99f; oNoSurf = 0; oSteps = 0; oMaxOff = 0f; oMinV = 999f; oName = startSpot.name; oResets0 = trackManager.FallResets; oSurf.Clear();
+            offPhaseStartTime = elapsedTime; oMinAboveDem = 99f; oNoSurf = 0; oSteps = 0; oMaxOff = 0f; oMinV = 999f; oName = startSpot.name; oResets0 = trackManager.FallResets; oSurf.Clear();
         }
-        var spot = OffSpots[oIdx]; Vector3 p = body.position; int nearestIndex = trackInfo.Nearest(p, out float lateralOffset);
+        var spot = OffSpots[oIdx]; Vector3 bodyPosition = body.position; int nearestIndex = trackInfo.Nearest(bodyPosition, out float lateralOffset);
         // target line: centreline until 120 m before the spot, then ramps out to edge + 25 m on the chosen side by the spot, stays there
-        float distanceToSpot = (nearestIndex * 2f - spot.s + 3600f + 1800f) % 3600f - 1800f;   // signed distance to the spot along the lap (m)
+        float distanceToSpot = (nearestIndex * 2f - spot.distanceAlong + 3600f + 1800f) % 3600f - 1800f;   // signed distance to the spot along the lap (m)
         float rampFraction = Mathf.Clamp01((distanceToSpot + 120f) / 120f); int targetIndex = (nearestIndex + 12) % pointCount; var headingDirection = centreline[(targetIndex + 1) % pointCount] - centreline[targetIndex]; headingDirection.y = 0f; headingDirection.Normalize(); var right = new Vector3(headingDirection.z, 0f, -headingDirection.x);
         float edge = spot.side > 0 ? trackInfo.HalfWidths[targetIndex].y : trackInfo.HalfWidths[targetIndex].x; var target = centreline[targetIndex] + right * spot.side * rampFraction * (edge + 25f);
-        Vector3 localTarget = car.transform.InverseTransformPoint(new Vector3(target.x, p.y, target.z)); float alpha = Mathf.Atan2(localTarget.x, localTarget.z);
+        Vector3 localTarget = car.transform.InverseTransformPoint(new Vector3(target.x, bodyPosition.y, target.z)); float alpha = Mathf.Atan2(localTarget.x, localTarget.z);
         car.steer = Mathf.Clamp(Mathf.Atan(2f * car.carParams.wheelbase * Mathf.Sin(alpha) / Mathf.Max(1f, localTarget.magnitude)) * Mathf.Rad2Deg, -car.carParams.MeanLockDeg, car.carParams.MeanLockDeg);
         car.throttle = 0f; car.brake = 0f; car.handbrake = false; car.drivetrain.SelectGear(0);
         oSteps++; float edgeHere = lateralOffset > 0 ? trackInfo.HalfWidths[nearestIndex].y : trackInfo.HalfWidths[nearestIndex].x; oMaxOff = Mathf.Max(oMaxOff, Mathf.Abs(lateralOffset) - edgeHere);
-        { float terrainHeight = TrackManager.TerrainHeightAt(p, out _); if (!float.IsNaN(terrainHeight)) oMinAboveDem = Mathf.Min(oMinAboveDem, p.y - terrainHeight); }
-        if (Physics.Raycast(p + Vector3.up * 2f, Vector3.down, out var hit, 10f)) { var surfaceName = SurfaceTag.Of(hit.collider).ToString(); oSurf[surfaceName] = oSurf.TryGetValue(surfaceName, out var count) ? count + 1 : 1; } else { oNoSurf++; if (oNoSurf == 1 || oNoSurf == 300) { var hs = Physics.RaycastAll(p + Vector3.up * 2f, Vector3.down, 100f); string hl = ""; foreach (var hh in hs) hl += $" {hh.collider.name}@{hh.point.y:0.00}"; Debug.Log($"OFFDIAG no collider: t {elapsedTime:0.00} pos {p.ToString("F2")} vel {body.velocity.ToString("F1")} terrain(finest) {TrackManager.TerrainHeightAt(p, out _):0.00} hits<=100m:{hl}"); } }
+        { float terrainHeight = TrackManager.TerrainHeightAt(bodyPosition, out _); if (!float.IsNaN(terrainHeight)) oMinAboveDem = Mathf.Min(oMinAboveDem, bodyPosition.y - terrainHeight); }
+        if (Physics.Raycast(bodyPosition + Vector3.up * 2f, Vector3.down, out var hit, 10f)) { var surfaceName = SurfaceTag.Of(hit.collider).ToString(); oSurf[surfaceName] = oSurf.TryGetValue(surfaceName, out var count) ? count + 1 : 1; } else { oNoSurf++; if (oNoSurf == 1 || oNoSurf == 300) { var hitsAlongRay = Physics.RaycastAll(bodyPosition + Vector3.up * 2f, Vector3.down, 100f); string hitList = ""; foreach (var rayHit in hitsAlongRay) hitList += $" {rayHit.collider.name}@{rayHit.point.y:0.00}"; Debug.Log($"OFFDIAG no collider: t {elapsedTime:0.00} pos {bodyPosition.ToString("F2")} vel {body.velocity.ToString("F1")} terrain(finest) {TrackManager.TerrainHeightAt(bodyPosition, out _):0.00} hits<=100m:{hitList}"); } }
         if (Mathf.Abs(lateralOffset) - edgeHere > 2f) oMinV = Mathf.Min(oMinV, speed);
     }
     // @description - Evaluates one off-track run (no fall resets, always a surface under the car, never below the heightmap, went at least 5 m beyond the asphalt) and stores the result row.
@@ -480,7 +480,7 @@ public class SmokeTest : MonoBehaviour
         var trackManager = TrackManager.Instance; int resets = trackManager.FallResets - oResets0; float ride = car.carParams.hubDropDesign + car.carParams.wheelRadius;
         bool ok = resets == 0 && oNoSurf == 0 && oMinAboveDem > ride - 0.5f && oMaxOff > 5f;
         if (!ok) oFails++;
-        oRows.Add($"OFF {(ok ? "PASS" : "FAIL")} {oName}: entered at 132 km/h, max {oMaxOff:0.0} m beyond the asphalt edge, slowest off-track {oMinV * 3.6f:0} km/h, min (car origin - heightmap) {oMinAboveDem:0.00} m (ride height {ride:0.00}), steps with no collider under car {oNoSurf}/{oSteps}, fall resets {resets}, surfaces under car: {string.Join(", ", System.Linq.Enumerable.Select(oSurf, kv => $"{kv.Key} {100f * kv.Value / Mathf.Max(1, oSteps):0}%"))}");
+        oRows.Add($"OFF {(ok ? "PASS" : "FAIL")} {oName}: entered at 132 km/h, max {oMaxOff:0.0} m beyond the asphalt edge, slowest off-track {oMinV * 3.6f:0} km/h, min (car origin - heightmap) {oMinAboveDem:0.00} m (ride height {ride:0.00}), steps with no collider under car {oNoSurf}/{oSteps}, fall resets {resets}, surfaces under car: {string.Join(", ", System.Linq.Enumerable.Select(oSurf, surfaceEntry => $"{surfaceEntry.Key} {100f * surfaceEntry.Value / Mathf.Max(1, oSteps):0}%"))}");
     }
     // @description - Prints the Laguna track-following result (distance, time, laps, top speed, share of time with all wheels grounded, worst track edge excursion and clearance) and the PASS or FAIL verdict.
     // @return {Void} - nothing

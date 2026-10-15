@@ -22,7 +22,7 @@ public static class HidReportFilter
     {
         if (installed) return; installed = true;
         InputSystem.onEvent += OnEvent;
-        InputSystem.onDeviceChange += (d, c) => { if (c == InputDeviceChange.Added || c == InputDeviceChange.Removed || c == InputDeviceChange.Reconnected) { infos.Remove(d.deviceId); LogDevices($"device {c}: {d.displayName}"); } };
+        InputSystem.onDeviceChange += (device, change) => { if (change == InputDeviceChange.Added || change == InputDeviceChange.Removed || change == InputDeviceChange.Reconnected) { infos.Remove(device.deviceId); LogDevices($"device {change}: {device.displayName}"); } };
         LogDevices("startup");
     }
     // @description - Unhooks the event filter and forgets all cached device information (used by tests).

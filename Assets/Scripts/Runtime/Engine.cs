@@ -126,15 +126,15 @@ public class Engine
     public float NetPositiveRpm { get; private set; }
 
     // @description - piecewise-linear interpolation, clamped to the end values
-    // @param {float[]} xs - ascending sample positions
-    // @param {float[]} ys - sample values (same length as xs)
-    // @param {float} x - position to evaluate
+    // @param {float[]} positions - ascending sample positions
+    // @param {float[]} values - sample values (same length as positions)
+    // @param {float} position - position to evaluate
     // @return {float} - interpolated value
-    static float InterpolateLinear(float[] xs, float[] ys, float x)
+    static float InterpolateLinear(float[] positions, float[] values, float position)
     {
-        if (x <= xs[0]) return ys[0];
-        for (int i = 1; i < xs.Length; i++) if (x < xs[i]) return Mathf.Lerp(ys[i - 1], ys[i], (x - xs[i - 1]) / (xs[i] - xs[i - 1]));
-        return ys[ys.Length - 1];
+        if (position <= positions[0]) return values[0];
+        for (int i = 1; i < positions.Length; i++) if (position < positions[i]) return Mathf.Lerp(values[i - 1], values[i], (position - positions[i - 1]) / (positions[i] - positions[i - 1]));
+        return values[values.Length - 1];
     }
 
     // @description - sourced/estimated wide-open-throttle brake torque curve
@@ -157,9 +157,9 @@ public class Engine
     {
         float closedPlateAngle = carParams.closedPlateDeg * Mathf.Deg2Rad; if (plateAngle <= closedPlateAngle) return 0f;
         float shaftToBore = carParams.throttleShaftDia / boreDiameter, cosPlate = Mathf.Cos(plateAngle), cosClosed = Mathf.Cos(closedPlateAngle), shaftTerm;
-        float tail = -shaftToBore * Mathf.Sqrt(1f - shaftToBore * shaftToBore) + Mathf.Asin(shaftToBore);
-        if (cosPlate > shaftToBore * cosClosed) shaftTerm = shaftToBore / cosPlate * Mathf.Sqrt(cosPlate * cosPlate - shaftToBore * shaftToBore * cosClosed * cosClosed) - cosPlate / cosClosed * Mathf.Asin(shaftToBore * cosClosed / cosPlate) + tail; else shaftTerm = tail;
-        return Mathf.PI * boreDiameter * boreDiameter / 4f * (1f - cosPlate / cosClosed + 2f / Mathf.PI * shaftTerm);
+        float tail = -shaftToBore * Mathf.Sqrt(1f - shaftToBore * shaftToBore) + Mathf.Asin(shaftToBore);   // shaft end-cap term of the butterfly area formula (S: Heywood 1988), shaftToBore = a = d/D, dimensionless
+        if (cosPlate > shaftToBore * cosClosed) shaftTerm = shaftToBore / cosPlate * Mathf.Sqrt(cosPlate * cosPlate - shaftToBore * shaftToBore * cosClosed * cosClosed) - cosPlate / cosClosed * Mathf.Asin(shaftToBore * cosClosed / cosPlate) + tail; else shaftTerm = tail;   // full shaft term while the plate edge clears the shaft, otherwise only the end-cap term (dimensionless)
+        return Mathf.PI * boreDiameter * boreDiameter / 4f * (1f - cosPlate / cosClosed + 2f / Mathf.PI * shaftTerm);   // open area in m^2 = pi D^2/4 x (1 - cos(a)/cos(a0) + 2/pi x shaft term) (S: Heywood 1988)
     }
 
     // @description - pedal -> plate angles: linear cable lever (E) for the primary plate, progressive link opens the secondary plate late
@@ -184,15 +184,15 @@ public class Engine
     // @return {float} - dimensionless flow function Psi
     public float OrificeFlowFunction(float pressureRatio)
     {
-        float gamma = carParams.airGamma, criticalPressureRatio = Mathf.Pow(2f / (gamma + 1f), gamma / (gamma - 1f)); pressureRatio = Mathf.Clamp(pressureRatio, criticalPressureRatio, 1f);
-        return Mathf.Sqrt(Mathf.Max(0f, 2f * gamma / (gamma - 1f) * (Mathf.Pow(pressureRatio, 2f / gamma) - Mathf.Pow(pressureRatio, (gamma + 1f) / gamma))));
+        float gamma = carParams.airGamma, criticalPressureRatio = Mathf.Pow(2f / (gamma + 1f), gamma / (gamma - 1f)); pressureRatio = Mathf.Clamp(pressureRatio, criticalPressureRatio, 1f);   // choked (critical) pressure ratio (2/(g+1))^(g/(g-1)), about 0.53 for air; flow stops rising below it (S: isentropic nozzle flow)
+        return Mathf.Sqrt(Mathf.Max(0f, 2f * gamma / (gamma - 1f) * (Mathf.Pow(pressureRatio, 2f / gamma) - Mathf.Pow(pressureRatio, (gamma + 1f) / gamma))));   // flow function Psi, dimensionless; mass flow = Cd x A x p0 / sqrt(R T0) x Psi (S)
     }
 
     // @description - compressible mass flow through the throttle orifice: Cd A p0 / sqrt(R T0) Psi(p_man/p0)
     // @param {float} area - open flow area in m^2
     // @param {float} manifoldPressureNow - manifold absolute pressure in Pa
     // @return {float} - air mass flow into the manifold in kg/s
-    float ThrottleMassFlow(float area, float manifoldPressureNow) => carParams.throttleDischargeCoeff * area * carParams.ambientPressure / Mathf.Sqrt(carParams.airGasConstant * carParams.ambientTemperature) * OrificeFlowFunction(manifoldPressureNow / carParams.ambientPressure);
+    float ThrottleMassFlow(float area, float manifoldPressureNow) => carParams.throttleDischargeCoeff * area * carParams.ambientPressure / Mathf.Sqrt(carParams.airGasConstant * carParams.ambientTemperature) * OrificeFlowFunction(manifoldPressureNow / carParams.ambientPressure);   // kg/s = Cd x area (m^2) x p_ambient (Pa) / sqrt(R x T_ambient) x Psi(p_manifold / p_ambient) (S: isentropic orifice flow)
 
     // @description - fresh-charge fraction (see header): ideal-cycle residual expansion (r_c - (p_e/p_i)^(1/n)) / (r_c - 1) minus the volume
     //   of exhaust gas blown back through the valve-overlap curtain, both at manifold pressure. The backflow term is isentropic orifice flow through
@@ -204,13 +204,13 @@ public class Engine
     public float FreshFraction(float engineRpm, float manifoldPressureNow)
     {
         manifoldPressureNow = Mathf.Max(manifoldPressureNow, 1f); float compressionRatio = carParams.compressionRatio;
-        float fraction = (compressionRatio - Mathf.Pow(carParams.exhaustBackPressure / manifoldPressureNow, 1f / carParams.residualExpansionExponent)) / (compressionRatio - 1f);
+        float fraction = (compressionRatio - Mathf.Pow(carParams.exhaustBackPressure / manifoldPressureNow, 1f / carParams.residualExpansionExponent)) / (compressionRatio - 1f);   // ideal-cycle fresh-charge fraction (r_c - (p_exhaust/p_manifold)^(1/n)) / (r_c - 1), dimensionless (S)
         if (engineRpm > 0f)
         {
             float overlapTime = carParams.valveOverlapDeg * Mathf.Deg2Rad / (engineRpm * Mathf.PI / 30f), curtainArea = Mathf.PI * carParams.exhaustValveDia * carParams.valveLiftAtTdc / 2f;   // triangular lift -> mean curtain
             float gasConstantTimesTemperature = carParams.airGasConstant * carParams.overlapGasTemperature;
-            float backflowMass = carParams.throttleDischargeCoeff * curtainArea * carParams.exhaustBackPressure / Mathf.Sqrt(gasConstantTimesTemperature) * OrificeFlowFunction(Mathf.Min(1f, manifoldPressureNow / carParams.exhaustBackPressure)) * overlapTime;
-            fraction -= backflowMass * gasConstantTimesTemperature / manifoldPressureNow / (carParams.displacement / carParams.cylinders);
+            float backflowMass = carParams.throttleDischargeCoeff * curtainArea * carParams.exhaustBackPressure / Mathf.Sqrt(gasConstantTimesTemperature) * OrificeFlowFunction(Mathf.Min(1f, manifoldPressureNow / carParams.exhaustBackPressure)) * overlapTime;   // kg of exhaust gas pushed back through the overlap curtain = orifice flow x overlap time (s)
+            fraction -= backflowMass * gasConstantTimesTemperature / manifoldPressureNow / (carParams.displacement / carParams.cylinders);   // backflow volume at manifold pressure (m^3, ideal gas m R T / p) as a fraction of one cylinder's displacement
         }
         return Mathf.Max(0f, fraction);
     }

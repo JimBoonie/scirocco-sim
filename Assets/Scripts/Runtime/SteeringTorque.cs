@@ -34,11 +34,11 @@ public static class SteeringTorque
     static Vector3 ToVector3(float[] values) => values != null && values.Length == 3 ? new Vector3(values[0], values[1], values[2]) : Vector3.zero;
 
     // NOTE: math is done in a plain right-handed (x fwd, y left, z up) frame stored in Vector3 (x,y,z) -> no Unity axis conventions.
-    // @description - cross product a x b in the right-handed frame
-    // @param {Vector3} a - first vector
-    // @param {Vector3} b - second vector
-    // @return {Vector3} - a x b
-    static Vector3 CrossProduct(Vector3 a, Vector3 b) => new Vector3(a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x);
+    // @description - cross product first x second in the right-handed frame
+    // @param {Vector3} first - first vector
+    // @param {Vector3} second - second vector
+    // @return {Vector3} - first x second
+    static Vector3 CrossProduct(Vector3 first, Vector3 second) => new Vector3(first.y * second.z - first.z * second.y, first.z * second.x - first.x * second.z, first.x * second.y - first.y * second.x);
 
     // @description - rotates a vector about a unit axis (Rodrigues' formula: v cos + (k x v) sin + k (k.v)(1 - cos))
     // @param {Vector3} vector - vector to rotate

@@ -28,12 +28,12 @@ public class VrPanel : MonoBehaviour
     // @description - Creates an unlit quad that shows a render texture, with its collider removed and put on the ignore-raycast layer.
     // @param {string} objectName - name of the quad object
     // @param {Material} material - receives the material created for the quad
-    // @param {RenderTexture} rt - render texture to display
+    // @param {RenderTexture} renderTexture - render texture to display
     // @return {Transform} - the transform of the new quad
-    Transform Quad(string objectName, out Material material, RenderTexture rt)
+    Transform Quad(string objectName, out Material material, RenderTexture renderTexture)
     {
         var quadObject = GameObject.CreatePrimitive(PrimitiveType.Quad); quadObject.name = objectName; Destroy(quadObject.GetComponent<Collider>()); quadObject.layer = 2;
-        material = new Material(Shader.Find("Unlit/Texture")) { mainTexture = rt }; quadObject.GetComponent<MeshRenderer>().sharedMaterial = material; return quadObject.transform;
+        material = new Material(Shader.Find("Unlit/Texture")) { mainTexture = renderTexture }; quadObject.GetComponent<MeshRenderer>().sharedMaterial = material; return quadObject.transform;
     }
     // @description - Creates the HUD and menu textures and quads once the cockpit eye anchor exists. The HUD sits right of the wheel over the centre console, the menu straight ahead at eye height (offsets in metres relative to the eye anchor).
     // @return {Void} - nothing

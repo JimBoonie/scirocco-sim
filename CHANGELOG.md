@@ -9,6 +9,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [2026-10-14] (PT)
 
+### Changed (second pass part 4: editor scripts, tests, runtime leftovers, physics comments, PT 2026-10-14 21:35)
+
+- Editor scripts (LfsPointerCheck, XrSetup, SciroccoSetup, TrackSetup, SuspensionTablesData) and the `export_unity.py` template: hand-written headers, full-word locals, lambda parameters and loop variables (`MultiTC` -> `MultiTerrainRaycaster`, `C0/R0` -> `InnerColumnStart/InnerRowStart`).
+- All 15 test files: hand-written test and helper descriptions (what is checked, units, tolerances, why), real parameter texts, full-word locals; helper renames (for example `Db` -> `MeanPowerDecibels`, `Goertzel` -> `GoertzelAmplitude`, `P()` -> `CreateCarParams()`). JSON field names of `steer_ref.json` stay as in the Python reference.
+- Runtime leftovers renamed (Engine, FfbController, ViscoTire, TireScrub, SteeringTorque, SuspensionTables, CarAudio, CarController, CarParams, HidReportFilter, VrManager, VrPanel, SmokeTest, InputRouter `vr` -> `vrManager`, `st` -> `labelStyle`).
+- `in`/`ref`/`out` removed from the `@param` types in WheelCorner.
+- Physics comments with equation, units and source tags added for the throttle area, orifice flow, residual-gas and backflow terms (Engine), the magic formula and combined-slip weights (PacejkaTire), the viscoelastic modulus, roughness spectrum, contact area and flash temperature (ViscoTire), the convection correlations and road conduction (TireThermal), and slip speed, slip angle and the friction ellipse (WheelCorner).
+- `tools/visco_smoke.py`: the BASE configurations now translate `carParams.` override keys to the legacy `p.` prefix.
+- No behaviour change (comments, names, headers only).
+
 ### Changed (second pass part 3: input, VR, audio, HUD, track, SmokeTest headers and locals, PT 2026-10-14 21:50)
 
 - Hand-written headers (what, units, why) and full-word locals/parameters/loop variables for InputBindings, InputRouter, CarAudio, VrManager, VrPanel, DebugHUD, TrackManager and SmokeTest.

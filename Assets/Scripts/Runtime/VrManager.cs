@@ -41,9 +41,9 @@ public class VrManager : MonoBehaviour
         Shot();
     }
     // @description - Switches VR on or off from the settings menu (ignored while a start is in progress).
-    // @param {bool} on - true to start VR, false to stop it
+    // @param {bool} enabled - true to start VR, false to stop it
     // @return {Void} - nothing
-    public void SetEnabled(bool on) { if (busy) return; if (on && !Active) StartCoroutine(StartVR()); else if (!on && Active) StopVR("VR off (settings)"); }
+    public void SetEnabled(bool enabled) { if (busy) return; if (enabled && !Active) StartCoroutine(StartVR()); else if (!enabled && Active) StopVR("VR off (settings)"); }
     // @description - Coroutine that initialises OpenXR and starts the HMD display. On every failure (XR not configured, no runtime or HMD, display did not start) it stays on the flat screen and writes the reason to the status text. On success it keeps simulating when unfocused, disables vsync (the compositor paces frames), switches to the cockpit camera and recentres.
     // @return {IEnumerator} - coroutine enumerator
     IEnumerator StartVR()
@@ -142,12 +142,12 @@ public class VrManager : MonoBehaviour
         }
     }
     // @description - Adds (once) and enables or disables the head tracking driver that moves the camera with the HMD. When tracking turns off in the cockpit the camera is put back at the anchor origin.
-    // @param {bool} on - true to track the headset pose, false to stop
+    // @param {bool} trackingEnabled - true to track the headset pose, false to stop
     // @return {Void} - nothing
-    void EnsureTracking(bool on)
+    void EnsureTracking(bool trackingEnabled)
     {
 #if ENABLE_VR
-        if (on && tpd == null)
+        if (trackingEnabled && tpd == null)
         {
             var trackedPoseDriver = cam.gameObject.AddComponent<UnityEngine.InputSystem.XR.TrackedPoseDriver>();
             trackedPoseDriver.positionInput = new InputActionProperty(new InputAction("HeadPos", InputActionType.Value, "<XRHMD>/centerEyePosition", expectedControlType: "Vector3"));
@@ -157,8 +157,8 @@ public class VrManager : MonoBehaviour
             trackedPoseDriver.positionInput.action.Enable(); trackedPoseDriver.rotationInput.action.Enable(); tpd = trackedPoseDriver;
         }
 #endif
-        if (tpd) tpd.enabled = on;
-        if (!on && cam && cockpit && cam.transform.parent == cockpit.recenter) { cam.transform.localPosition = Vector3.zero; cam.transform.localRotation = Quaternion.identity; }
+        if (tpd) tpd.enabled = trackingEnabled;
+        if (!trackingEnabled && cam && cockpit && cam.transform.parent == cockpit.recenter) { cam.transform.localPosition = Vector3.zero; cam.transform.localRotation = Quaternion.identity; }
     }
     // @description - Recentres the cockpit view on the current head position so the driver looks straight ahead.
     // @return {Void} - nothing

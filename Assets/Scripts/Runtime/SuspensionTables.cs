@@ -25,16 +25,16 @@ public class SuspensionTables : ScriptableObject
     // steering: rack travel grid (m, + = rack to the left) and left-wheel road angle [travel x rack] (deg, + = points right, bump steer included; D)
     public float[] rackGrid, frontToeTravelRack;   // kingpin axis (unit) and contact patch / wheel centre relative to its ground point (left frame, D)
 
-    // @description - piecewise-linear interpolation y(x), clamped to the end values; 0 if the table is empty
-    // @param {float[]} xs - ascending sample positions
-    // @param {float[]} ys - sample values
-    // @param {float} x - position to evaluate
+    // @description - piecewise-linear interpolation value(position), clamped to the end values; 0 if the table is empty
+    // @param {float[]} positions - ascending sample positions
+    // @param {float[]} values - sample values
+    // @param {float} position - position to evaluate
     // @return {float} - interpolated value
-    public static float Interpolate1D(float[] xs, float[] ys, float x)
+    public static float Interpolate1D(float[] positions, float[] values, float position)
     {
-        if (xs == null || xs.Length == 0) return 0f;
-        if (x <= xs[0]) return ys[0]; int count = xs.Length; if (x >= xs[count - 1]) return ys[count - 1];
-        int index = 1; while (x > xs[index]) index++; return Mathf.Lerp(ys[index - 1], ys[index], (x - xs[index - 1]) / (xs[index] - xs[index - 1]));
+        if (positions == null || positions.Length == 0) return 0f;
+        if (position <= positions[0]) return values[0]; int count = positions.Length; if (position >= positions[count - 1]) return values[count - 1];
+        int index = 1; while (position > positions[index]) index++; return Mathf.Lerp(values[index - 1], values[index], (position - positions[index - 1]) / (positions[index] - positions[index - 1]));
     }
 
     // @description - front camber change vs body from the baked [travel x steer] grid, bilinear interpolation
@@ -65,13 +65,13 @@ public class SuspensionTables : ScriptableObject
         return Mathf.Lerp(Mathf.Lerp(lowLow, lowHigh, rackFraction), Mathf.Lerp(highLow, highHigh, rackFraction), travelFraction);
     }
 
-    // @description - fractional grid index of x in an ascending grid (clamped to 0 .. count-1)
+    // @description - fractional grid index of position in an ascending grid (clamped to 0 .. count-1)
     // @param {float[]} grid - ascending grid positions
-    // @param {float} x - position
+    // @param {float} position - position
     // @return {float} - index of the lower grid point plus the fraction towards the next
-    static float GridIndex(float[] grid, float x)
+    static float GridIndex(float[] grid, float position)
     {
-        int count = grid.Length; if (x <= grid[0]) return 0f; if (x >= grid[count - 1]) return count - 1;
-        int index = 1; while (x > grid[index]) index++; return index - 1 + (x - grid[index - 1]) / (grid[index] - grid[index - 1]);
+        int count = grid.Length; if (position <= grid[0]) return 0f; if (position >= grid[count - 1]) return count - 1;
+        int index = 1; while (position > grid[index]) index++; return index - 1 + (position - grid[index - 1]) / (grid[index] - grid[index - 1]);
     }
 }

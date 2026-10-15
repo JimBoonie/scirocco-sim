@@ -186,16 +186,16 @@ public class WheelCorner : MonoBehaviour
     // @description - Applies the viscoelastic (Experimental) compound: grip factor, rate-dependent stiffness, load-dependent relaxation length and rolling-resistance scale.
     // @param {float} longitudinalSpeed - contact-patch speed along the wheel heading, m/s
     // @param {float} lateralSpeed - contact-patch speed across the wheel heading, m/s
-    // @param {ref float} relaxationLength - relaxation length in m, scaled in place
-    // @param {ref TireScale} scale - Pacejka scale factors, scaled in place
-    // @param {ref float} rollingResistanceScale - rolling-resistance multiplier, set here
+    // @param {float} relaxationLength - relaxation length in m, scaled in place
+    // @param {TireScale} scale - Pacejka scale factors, scaled in place
+    // @param {float} rollingResistanceScale - rolling-resistance multiplier, set here
     // @return {Void} - nothing
     void ViscoUpdate(float longitudinalSpeed, float lateralSpeed, ref float relaxationLength, ref TireScale scale, ref float rrScale)
     {
         viscoFlags = ViscoTire.FromParams(carParams); if (viscoReferenceSlipSpeed < 0) viscoReferenceSlipSpeed = ViscoTire.VsRef(carParams);
         double gripTemperature = thermal != null ? thermal.GripTemp() : TireThermal.OptimalTemperature;              // base coefficients = tyre at its optimum (D, as TireThermal)
         double contactPressure = thermal != null ? System.Math.Max(thermal.gaugePressure, 20000.0) : TireThermal.NominalGaugePressure;   // nominal contact pressure ~ inflation
-        double slipSpeedX = longitudinalSpeed - angularVelocity * carParams.wheelRadius, slipSpeed = System.Math.Sqrt(slipSpeedX * slipSpeedX + lateralSpeed * lateralSpeed);
+        double slipSpeedX = longitudinalSpeed - angularVelocity * carParams.wheelRadius, slipSpeed = System.Math.Sqrt(slipSpeedX * slipSpeedX + lateralSpeed * lateralSpeed);   // slip speed in m/s: longitudinal part is travel speed minus wheel surface speed (omega x r), lateral part is the sideways speed
         double gripFactor = ViscoTire.GripFactor(slipSpeed, gripTemperature, contactPressure, viscoReferenceSlipSpeed, viscoFlags, out double flashTemperatureRise);
         scale.longitudinalFriction *= (float)gripFactor; scale.lateralFriction *= (float)gripFactor; viscoGripFactor = (float)gripFactor; viscoFlashTemperatureRise = (float)flashTemperatureRise;
         float loadClamped = Mathf.Max(verticalLoad, 1f); double stiffnessFactor = 1.0;
@@ -225,7 +225,7 @@ public class WheelCorner : MonoBehaviour
     // @param {float} longitudinalSpeed - speed along the wheel heading, m/s
     // @param {float} longitudinalForce - tire longitudinal force without rolling resistance, N
     // @param {float} lateralForce - tire lateral force, N
-    // @param {in TireScale} scale - Pacejka scale factors
+    // @param {TireScale} scale - Pacejka scale factors
     // @return {float} - power dissipated in the tread bulk, W
     float BulkHysteresisPower(float longitudinalSpeed, float longitudinalForce, float lateralForce, in TireScale scale)
     {
@@ -260,7 +260,7 @@ public class WheelCorner : MonoBehaviour
         float slipDenominator = Mathf.Max(Mathf.Abs(longitudinalSpeed), blendSpeed);
         float magicFormulaSlipRatio = Mathf.Clamp((angularVelocity * carParams.wheelRadius - longitudinalSpeed) / slipDenominator, -1.5f, 1.5f);
         slipRatio = magicFormulaSlipRatio;
-        slipAngle = Mathf.Atan2(lateralSpeed, Mathf.Max(Mathf.Abs(longitudinalSpeed), 0.5f));
+        slipAngle = Mathf.Atan2(lateralSpeed, Mathf.Max(Mathf.Abs(longitudinalSpeed), 0.5f));   // slip angle in rad = atan(lateral speed / longitudinal speed), speed floored at 0.5 m/s to stay finite at standstill
         float relaxationLength = carParams.relaxationLength, rollingResistanceScale = 1f; TireScale effectiveScale = thermalScale;   // Default compound: exactly the original values
         bool isViscoCompound = carParams.tireCompound == CarParams.TireCompound.ExperimentalViscoelastic;
         if (isViscoCompound) ViscoUpdate(longitudinalSpeed, lateralSpeed, ref relaxationLength, ref effectiveScale, ref rollingResistanceScale);
@@ -271,7 +271,7 @@ public class WheelCorner : MonoBehaviour
         float wheelSpeedKmh = longitudinalSpeed * 3.6f, rollingResistanceForce = (carParams.rollingResistanceCoefficient + carParams.rollingResistanceSpeedSquaredCoefficient * wheelSpeedKmh * wheelSpeedKmh) * verticalLoad * thermalScale.rollingResistance * Mathf.Clamp(longitudinalSpeed, -1f, 1f);
         if (isViscoCompound) rollingResistanceForce *= rollingResistanceScale;   // speed-dependent radial-tire RR (Wong form, E)
         force.x -= rollingResistanceForce;
-        float contactSpeed = Mathf.Sqrt(longitudinalSpeed * longitudinalSpeed + lateralSpeed * lateralSpeed);
+        float contactSpeed = Mathf.Sqrt(longitudinalSpeed * longitudinalSpeed + lateralSpeed * lateralSpeed);   // magnitude of the contact patch velocity in m/s
         float pacejkaWeight = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.5f * blendSpeed, blendSpeed, contactSpeed)); stickModelWeight = 1f - pacejkaWeight;
         float patchRelaxationLength = relaxationLength, absoluteLongitudinalSpeed = Mathf.Abs(longitudinalSpeed);
         if (pacejkaWeight >= 1f)
@@ -289,7 +289,7 @@ public class WheelCorner : MonoBehaviour
             float corneringStiffness = carParams.lateralStiffnessCoefficient * thermalScale.lateralStiffness * carParams.nominalVerticalLoad * Mathf.Sin(2f * Mathf.Atan(loadClamped / (carParams.lateralStiffnessLoadCoefficient * thermalScale.lateralStiffnessLoadSaturation * carParams.nominalVerticalLoad)));       // Ky = dFy/dalpha at 0
             float patchStiffnessX = longitudinalSlipStiffness / patchRelaxationLength, patchStiffnessY = corneringStiffness / patchRelaxationLength;
             float cornerMass = Mathf.Max(unsprungStaticLoad, 1f) / 9.81f;
-            float patchDampingX = 2f * StickZeta * Mathf.Sqrt(patchStiffnessX * cornerMass), patchDampingY = 2f * StickZeta * Mathf.Sqrt(patchStiffnessY * cornerMass);
+            float patchDampingX = 2f * StickZeta * Mathf.Sqrt(patchStiffnessX * cornerMass), patchDampingY = 2f * StickZeta * Mathf.Sqrt(patchStiffnessY * cornerMass);   // critical-damping ratio zeta: c = 2 zeta sqrt(k m) in N s/m for the stick-slip patch spring-damper
             float wheelRadius = carParams.wheelRadius, stickBlend = 1f - pacejkaWeight;
             // wheel spin: Fx = w*Fpac + b*(kx*dx - cx*(vx - angularVelocity*R)); damping term implicit (stiff vs the wheel inertia at 2 kHz)
             float implicitDampingTerm = substep * stickBlend * patchDampingX * wheelRadius * wheelRadius / rotationalInertia;

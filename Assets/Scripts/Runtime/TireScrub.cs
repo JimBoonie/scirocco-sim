@@ -96,9 +96,9 @@ public static class TireSoundTuning
     // @return {float} - load gate between 0 and 1.4 (dimensionless)
     public static float LoadGate(float verticalLoad) { float loadRatio = verticalLoad / LoadRefN; return loadRatio <= 0f ? 0f : System.Math.Min(1.4f, (float)System.Math.Sqrt(loadRatio)); }
     // @description - Converts decibels to a linear amplitude ratio: 10^(dB/20).
-    // @param {float} db - level in decibels
+    // @param {float} decibels - level in decibels
     // @return {float} - linear amplitude ratio (dimensionless)
-    public static float Db(float db) => (float)System.Math.Pow(10.0, db / 20.0);
+    public static float Db(float decibels) => (float)System.Math.Pow(10.0, decibels / 20.0);
     // @description - Gain that keeps the summed tire sound at or below the engine loudness plus CeilingDb, so tires never drown out the engine.
     // @param {float} tireRms - RMS level of the mixed tire sound (full-scale units)
     // @param {float} engineRms - RMS level of the engine sound (full-scale units)
@@ -107,12 +107,12 @@ public static class TireSoundTuning
 }
 public class TireSoundDsp
 {
-    public readonly float fs; readonly System.Random rng;
-    readonly float[] cR = new float[4], cV = new float[4], cFz = new float[4];
-    readonly float[] sR = new float[4], sG = new float[4];
-    readonly double[] ph = new double[4]; readonly float[] per = new float[4];
-    readonly float[] x1 = new float[4], x2 = new float[4], y1 = new float[4], y2 = new float[4], z1 = new float[4], z2 = new float[4];
-    readonly object gate = new object(); readonly float[] tR = new float[4], tV = new float[4], tFz = new float[4];
+    public readonly float sampleRateHz; readonly System.Random rng;
+    readonly float[] currentRatio = new float[4], currentSpeed = new float[4], currentLoad = new float[4];
+    readonly float[] smoothedRatio = new float[4], smoothedGain = new float[4];
+    readonly double[] noisePhase = new double[4]; readonly float[] per = new float[4];
+    readonly float[] mainInputHistory1 = new float[4], mainInputHistory2 = new float[4], mainOutputHistory1 = new float[4], mainOutputHistory2 = new float[4], broadInputHistory1 = new float[4], broadInputHistory2 = new float[4];
+    readonly object gate = new object(); readonly float[] targetRatio = new float[4], targetSpeed = new float[4], targetLoad = new float[4];
     public static volatile float EngineRms;
     public float ceilGain = 1f, lastTireRms, lastPreCeilRms;
     public bool ceilingOn = true;
@@ -120,13 +120,13 @@ public class TireSoundDsp
     // @param {float} sampleRate - audio sample rate in hertz
     // @param {int} seed - seed of the noise generator (fixed so the sound is repeatable)
     // @return {Void} - nothing (constructor)
-    public TireSoundDsp(float sampleRate, int seed = 1984) { fs = sampleRate; rng = new System.Random(seed); for (int tireIndex = 0; tireIndex < 4; tireIndex++) { per[tireIndex] = 1f; ph[tireIndex] = rng.NextDouble(); } }
+    public TireSoundDsp(float sampleRate, int seed = 1984) { sampleRateHz = sampleRate; rng = new System.Random(seed); for (int tireIndex = 0; tireIndex < 4; tireIndex++) { per[tireIndex] = 1f; noisePhase[tireIndex] = rng.NextDouble(); } }
     // @description - Hands the latest physics values to the audio thread (thread-safe); the audio thread smooths towards them.
     // @param {float[]} ratio - scrub ratio per tire (dimensionless), 4 entries in order front-left, front-right, rear-left, rear-right
     // @param {float} speed - car speed in metres per second, applied to all tires
-    // @param {float[]} fz - vertical load per tire in newtons, 4 entries in the same order
+    // @param {float[]} verticalLoad - vertical load per tire in newtons, 4 entries in the same order
     // @return {Void} - nothing
-    public void SetTargets(float[] ratio, float speed, float[] fz) { lock (gate) { for (int tireIndex = 0; tireIndex < 4; tireIndex++) { tR[tireIndex] = ratio[tireIndex]; tV[tireIndex] = speed; tFz[tireIndex] = fz[tireIndex]; } } }
+    public void SetTargets(float[] ratio, float speed, float[] verticalLoad) { lock (gate) { for (int tireIndex = 0; tireIndex < 4; tireIndex++) { targetRatio[tireIndex] = ratio[tireIndex]; targetSpeed[tireIndex] = speed; targetLoad[tireIndex] = verticalLoad[tireIndex]; } } }
     // @description - One sample of white noise, uniform between -1 and 1.
     // @return {float} - noise sample (full-scale units)
     float Noise() => (float)rng.NextDouble() * 2f - 1f;
@@ -160,27 +160,27 @@ public class TireSoundDsp
     // @return {Void} - nothing
     public void Render(float[] data, int frameCount, int channelCount, float slider, float engineRms = -1f)
     {
-        lock (gate) { System.Array.Copy(tR, cR, 4); System.Array.Copy(tV, cV, 4); System.Array.Copy(tFz, cFz, 4); }
+        lock (gate) { System.Array.Copy(targetRatio, currentRatio, 4); System.Array.Copy(targetSpeed, currentSpeed, 4); System.Array.Copy(targetLoad, currentLoad, 4); }
         float engineLevel = engineRms >= 0f ? engineRms : EngineRms;
-        float parameterSmoothing = K(fs, TireSoundTuning.ParamTau);
+        float parameterSmoothing = K(sampleRateHz, TireSoundTuning.ParamTau);
         double sumOfSquares = 0;
         for (int frameIndex = 0; frameIndex < frameCount; frameIndex++)
         {
             float leftSample = 0f, rightSample = 0f;
             for (int tireIndex = 0; tireIndex < 4; tireIndex++)
             {
-                sR[tireIndex] += parameterSmoothing * (cR[tireIndex] - sR[tireIndex]); float scrubRatio = sR[tireIndex];
-                float targetGain = TireSoundTuning.Gain(scrubRatio) * TireSoundTuning.SpeedGate(cV[tireIndex]) * TireSoundTuning.LoadGate(cFz[tireIndex]);
-                sG[tireIndex] += parameterSmoothing * (targetGain - sG[tireIndex]);
-                if (sG[tireIndex] < 1e-6f) continue;
+                smoothedRatio[tireIndex] += parameterSmoothing * (currentRatio[tireIndex] - smoothedRatio[tireIndex]); float scrubRatio = smoothedRatio[tireIndex];
+                float targetGain = TireSoundTuning.Gain(scrubRatio) * TireSoundTuning.SpeedGate(currentSpeed[tireIndex]) * TireSoundTuning.LoadGate(currentLoad[tireIndex]);
+                smoothedGain[tireIndex] += parameterSmoothing * (targetGain - smoothedGain[tireIndex]);
+                if (smoothedGain[tireIndex] < 1e-6f) continue;
                 float centerHz = TireSoundTuning.ToneHz(scrubRatio) * (float)System.Math.Pow(2.0, (tireIndex - 1.5) * TireSoundTuning.TireSpreadCents / 1200.0);
                 float qualityFactor = TireSoundTuning.ToneQ(scrubRatio);
                 // white(+-1) through a peak-gain bandpass of bandwidth f0/q has RMS 0.577 sqrt(pi BW/fs): normalise the main band to ~unit RMS
-                float noiseNormalization = 1f / (0.577f * (float)System.Math.Sqrt(System.Math.PI * centerHz / qualityFactor / fs));
+                float noiseNormalization = 1f / (0.577f * (float)System.Math.Sqrt(System.Math.PI * centerHz / qualityFactor / sampleRateHz));
                 float excitation = Noise() * noiseNormalization;
-                float mainBand = Bp(excitation, centerHz, qualityFactor, fs, ref x1[tireIndex], ref x2[tireIndex], ref y1[tireIndex], ref y2[tireIndex]);
-                float broadBand = Bp(excitation, TireSoundTuning.BroadMul * centerHz, TireSoundTuning.BroadQ, fs, ref z1[tireIndex], ref z2[tireIndex], ref dzA[tireIndex], ref dzB[tireIndex]) * (float)System.Math.Sqrt(TireSoundTuning.BroadQ / (qualityFactor * TireSoundTuning.BroadMul));
-                float tireSample = sG[tireIndex] * (mainBand + TireSoundTuning.BroadLevel * broadBand) * 0.9f;
+                float mainBand = Bp(excitation, centerHz, qualityFactor, sampleRateHz, ref mainInputHistory1[tireIndex], ref mainInputHistory2[tireIndex], ref mainOutputHistory1[tireIndex], ref mainOutputHistory2[tireIndex]);
+                float broadBand = Bp(excitation, TireSoundTuning.BroadMul * centerHz, TireSoundTuning.BroadQ, sampleRateHz, ref broadInputHistory1[tireIndex], ref broadInputHistory2[tireIndex], ref broadOutputHistory1[tireIndex], ref broadOutputHistory2[tireIndex]) * (float)System.Math.Sqrt(TireSoundTuning.BroadQ / (qualityFactor * TireSoundTuning.BroadMul));
+                float tireSample = smoothedGain[tireIndex] * (mainBand + TireSoundTuning.BroadLevel * broadBand) * 0.9f;
                 float panPosition = (TireSoundTuning.Pan[tireIndex] + 1f) * 0.5f;
                 leftSample += tireSample * (float)System.Math.Cos(panPosition * 0.5 * System.Math.PI); rightSample += tireSample * (float)System.Math.Sin(panPosition * 0.5 * System.Math.PI);
             }
@@ -190,7 +190,7 @@ public class TireSoundDsp
         }
         float blockRms = (float)System.Math.Sqrt(sumOfSquares / System.Math.Max(1, frameCount)); lastPreCeilRms = blockRms;
         float target = ceilingOn ? TireSoundTuning.CeilingGain(blockRms, engineLevel) : 1f;
-        float blockDuration = frameCount / fs, limiterTimeConstant = target < ceilGain ? TireSoundTuning.CeilingAttack : TireSoundTuning.CeilingRelease;
+        float blockDuration = frameCount / sampleRateHz, limiterTimeConstant = target < ceilGain ? TireSoundTuning.CeilingAttack : TireSoundTuning.CeilingRelease;
         float startGain = ceilGain, endGain = target < ceilGain ? target : ceilGain + (target - ceilGain) * (1f - (float)System.Math.Exp(-blockDuration / limiterTimeConstant));
         double sumOfSquaresAfterLimit = 0;
         for (int frameIndex = 0; frameIndex < frameCount; frameIndex++)
@@ -201,29 +201,29 @@ public class TireSoundDsp
         }
         ceilGain = endGain; lastTireRms = (float)System.Math.Sqrt(sumOfSquaresAfterLimit / System.Math.Max(1, frameCount));
     }
-    readonly float[] dzA = new float[4], dzB = new float[4];
+    readonly float[] broadOutputHistory1 = new float[4], broadOutputHistory2 = new float[4];
 }
 #if UNITY_5_3_OR_NEWER
 /// scrubRatio and Pacejka peak finding (kept from v1; these are physics, not audio constants)
 public static class TireScrubLaw
 {
     // @description - Combined slip measure for the tire sound: sqrt((slipAngle/peakSlipAngle)^2 + (slipRatio/peakSlipRatio)^2). 1 means the tire is at its grip peak. Peaks are floored (0.05 rad, 0.04) to avoid dividing by near zero.
-    // @param {float} alphaRad - slip angle in radians
-    // @param {float} kappa - longitudinal slip ratio (dimensionless)
-    // @param {float} apRad - slip angle at peak lateral force in radians
-    // @param {float} kp - slip ratio at peak longitudinal force (dimensionless)
+    // @param {float} slipAngleRad - slip angle in radians
+    // @param {float} slipRatio - longitudinal slip ratio (dimensionless)
+    // @param {float} peakSlipAngleRad - slip angle at peak lateral force in radians
+    // @param {float} peakSlipRatio - slip ratio at peak longitudinal force (dimensionless)
     // @return {float} - combined scrub ratio (dimensionless)
-    public static float ScrubRatio(float alphaRad, float kappa, float apRad, float kp) { float peakAngle = UnityEngine.Mathf.Max(0.05f, apRad), peakRatio = UnityEngine.Mathf.Max(0.04f, kp); float angleFraction = UnityEngine.Mathf.Abs(alphaRad) / peakAngle, ratioFraction = UnityEngine.Mathf.Abs(kappa) / peakRatio; return UnityEngine.Mathf.Sqrt(angleFraction * angleFraction + ratioFraction * ratioFraction); }
+    public static float ScrubRatio(float slipAngleRad, float slipRatio, float peakSlipAngleRad, float peakSlipRatio) { float peakAngle = UnityEngine.Mathf.Max(0.05f, peakSlipAngleRad), peakRatio = UnityEngine.Mathf.Max(0.04f, peakSlipRatio); float angleFraction = UnityEngine.Mathf.Abs(slipAngleRad) / peakAngle, ratioFraction = UnityEngine.Mathf.Abs(slipRatio) / peakRatio; return UnityEngine.Mathf.Sqrt(angleFraction * angleFraction + ratioFraction * ratioFraction); }
     // @description - Finds the slip angle at which the tire model gives its maximum lateral force at the given load (numeric search).
     // @param {CarParams} carParams - car parameter set holding the tire coefficients
-    // @param {float} fz - vertical tire load in newtons
+    // @param {float} verticalLoad - vertical tire load in newtons
     // @return {float} - slip angle of peak lateral force in radians
-    public static float PeakAlpha(CarParams carParams, float fz) => Peak(slipAngle => UnityEngine.Mathf.Abs(PacejkaTire.PureLat(carParams, slipAngle, UnityEngine.Mathf.Max(fz, 1f), 0f)), 0.002f, 0.6f);
+    public static float PeakAlpha(CarParams carParams, float verticalLoad) => Peak(slipAngle => UnityEngine.Mathf.Abs(PacejkaTire.PureLat(carParams, slipAngle, UnityEngine.Mathf.Max(verticalLoad, 1f), 0f)), 0.002f, 0.6f);
     // @description - Finds the slip ratio at which the tire model gives its maximum longitudinal force at the given load (numeric search).
     // @param {CarParams} carParams - car parameter set holding the tire coefficients
-    // @param {float} fz - vertical tire load in newtons
+    // @param {float} verticalLoad - vertical tire load in newtons
     // @return {float} - slip ratio of peak longitudinal force (dimensionless)
-    public static float PeakKappa(CarParams carParams, float fz) => Peak(slipRatio => UnityEngine.Mathf.Abs(PacejkaTire.PureLong(carParams, slipRatio, UnityEngine.Mathf.Max(fz, 1f))), 0.002f, 1.0f);
+    public static float PeakKappa(CarParams carParams, float verticalLoad) => Peak(slipRatio => UnityEngine.Mathf.Abs(PacejkaTire.PureLong(carParams, slipRatio, UnityEngine.Mathf.Max(verticalLoad, 1f))), 0.002f, 1.0f);
     // @description - Finds the argument of the maximum of a single-peak function: a coarse 60-step scan, then a golden-section refinement (40 iterations) around the best step.
     // @param {float} lowerBound - lower search bound
     // @param {float} upperBound - upper search bound

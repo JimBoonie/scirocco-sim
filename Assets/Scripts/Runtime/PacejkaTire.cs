@@ -11,7 +11,7 @@ public static class PacejkaTire
     // @param {float} slip - x, the slip input (rad for slip angle, dimensionless for slip ratio)
     // @return {float} - force in N
     static float MagicFormula(float stiffnessFactor, float shapeFactor, float peakFactor, float curvatureFactor, float slip)
-    { float stiffnessTimesSlip = stiffnessFactor * slip; return peakFactor * Mathf.Sin(shapeFactor * Mathf.Atan(stiffnessTimesSlip - curvatureFactor * (stiffnessTimesSlip - Mathf.Atan(stiffnessTimesSlip)))); }
+    { float stiffnessTimesSlip = stiffnessFactor * slip; return peakFactor * Mathf.Sin(shapeFactor * Mathf.Atan(stiffnessTimesSlip - curvatureFactor * (stiffnessTimesSlip - Mathf.Atan(stiffnessTimesSlip)))); }   // Pacejka magic formula F = D sin(C atan(B x - E (B x - atan(B x)))); B stiffness, C shape, D peak (N), E curvature (S: Pacejka)
 
     // @description - pure lateral force with no tyre scaling (all scale factors 1)
     // @param {CarParams} carParams - tyre coefficients
@@ -33,7 +33,7 @@ public static class PacejkaTire
     {
         float normalisedLoadChange = (verticalLoad - carParams.nominalVerticalLoad) / carParams.nominalVerticalLoad;   // dfz
         float peakFactor = (carParams.lateralPeakFrictionCoefficient + carParams.lateralPeakFrictionLoadSlope * normalisedLoadChange) * scale.lateralFriction * (1f - 4f * camberAngle * camberAngle) * verticalLoad;
-        float corneringStiffness = carParams.lateralStiffnessCoefficient * scale.lateralStiffness * carParams.nominalVerticalLoad * Mathf.Sin(2f * Mathf.Atan(verticalLoad / (carParams.lateralStiffnessLoadCoefficient * scale.lateralStiffnessLoadSaturation * carParams.nominalVerticalLoad)));
+        float corneringStiffness = carParams.lateralStiffnessCoefficient * scale.lateralStiffness * carParams.nominalVerticalLoad * Mathf.Sin(2f * Mathf.Atan(verticalLoad / (carParams.lateralStiffnessLoadCoefficient * scale.lateralStiffnessLoadSaturation * carParams.nominalVerticalLoad)));   // cornering stiffness in N/rad: rises with load and saturates, c1 x Fz0 x sin(2 atan(Fz / (c2 x Fz0))) (S: Pacejka load dependence)
         float stiffnessFactor = corneringStiffness / (carParams.lateralShapeCoefficient * peakFactor + 1e-3f);
         return MagicFormula(stiffnessFactor, carParams.lateralShapeCoefficient, peakFactor, Mathf.Min(carParams.lateralCurvatureCoefficient, 0.99f), slipAngle) + carParams.camberThrustCoefficient * camberAngle * verticalLoad;
     }
@@ -80,8 +80,8 @@ public static class PacejkaTire
     public static Vector2 Combined(CarParams carParams, float slipRatio, float slipAngle, float verticalLoad, float camberAngle, in TireScale scale)
     {
         if (verticalLoad <= 0f) return Vector2.zero;
-        float longitudinalWeight = Mathf.Cos(Mathf.Atan(carParams.combinedSlipLongitudinalCoefficient * slipAngle));
-        float lateralWeight = Mathf.Cos(Mathf.Atan(carParams.combinedSlipLateralCoefficient * slipRatio));
+        float longitudinalWeight = Mathf.Cos(Mathf.Atan(carParams.combinedSlipLongitudinalCoefficient * slipAngle));   // combined slip: cos(atan(c x other slip)) reduces this force as the other slip grows (dimensionless weight, 0..1)
+        float lateralWeight = Mathf.Cos(Mathf.Atan(carParams.combinedSlipLateralCoefficient * slipRatio));   // same reduction for the lateral force as longitudinal slip grows (dimensionless weight, 0..1)
         return new Vector2(PureLong(carParams, slipRatio, verticalLoad, scale) * longitudinalWeight, PureLat(carParams, slipAngle, verticalLoad, camberAngle, scale) * lateralWeight);
     }
 }

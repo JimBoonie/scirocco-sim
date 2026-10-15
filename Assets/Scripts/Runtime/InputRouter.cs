@@ -3,7 +3,7 @@
 using System.Collections.Generic; using UnityEngine; using UnityEngine.InputSystem; using UnityEngine.InputSystem.Controls;
 public class InputRouter : MonoBehaviour
 {
-    public CarController car; public FollowCam cam; public InputMapper map; public bool menuOpen; public FfbController ffb; public VrManager vr; public VrPanel panel; public int navIndex;
+    public CarController car; public FollowCam cam; public InputMapper map; public bool menuOpen; public FfbController ffb; public VrManager vrManager; public VrPanel panel; public int navIndex;
     // capture / calibration state
     InAction? capturing; float captureT; Binding calibrating; float calMin, calMax; Vector2 scroll; string status = "";
     // @description - Creates the input mapper from the saved bindings. Disables the whole router in -smoketest runs because SmokeTest drives the car directly.
@@ -74,14 +74,14 @@ public class InputRouter : MonoBehaviour
         if (map.Pressed(InAction.Reset)) { car.ResetCar(); car.drivetrain.SelectGear(0); car.engine.SetRunning(!map.profile.startEngineOff);   // reset = respawn: neutral, engine as at spawn
  if (ffb) ffb.ResetRamp(); }
         if (map.Pressed(InAction.ResetToStart)) ResetToStart();
-        if (map.Pressed(InAction.Recenter) && vr) vr.Recenter();
-        if (map.Pressed(InAction.CameraToggle) && vr) vr.ToggleCamera();
+        if (map.Pressed(InAction.Recenter) && vrManager) vrManager.Recenter();
+        if (map.Pressed(InAction.CameraToggle) && vrManager) vrManager.ToggleCamera();
         if (map.Pressed(InAction.HudToggle)) { if (panel) panel.showHud = !panel.showHud; map.profile.hudVisible = !map.profile.hudVisible; InputMapper.Save(map.profile); status = map.profile.hudVisible ? "info HUD shown (H)" : "info HUD hidden (H)"; }
         float lookStickX = InputMapper.LookDeadzone(map.Axis(InAction.LookX)), lookStickY = InputMapper.LookDeadzone(map.Axis(InAction.LookY)); LookX = lookStickX;
         bool lookOn = Mathf.Abs(lookStickX) > 0.3f || Mathf.Abs(lookStickY) > 0.3f;
         if (lookOn && !lookWasOn) { LookSource = map.Source(Mathf.Abs(lookStickX) >= Mathf.Abs(lookStickY) ? InAction.LookX : InAction.LookY); Debug.Log($"[Input] look active: yaw {lookStickX * 120f:0} deg cockpit / {lookStickX * 180f:0} deg chase, from {LookSource}"); }
         if (!lookOn && lookWasOn) Debug.Log("[Input] look released"); lookWasOn = lookOn; if (!lookOn) LookSource = "";
-        if (vr) vr.FlatLook(lookStickX * 120f, lookStickY * 45f);   // flat cockpit head look (deg)
+        if (vrManager) vrManager.FlatLook(lookStickX * 120f, lookStickY * 45f);   // flat cockpit head look (deg)
         if (cam) { cam.lookYaw = lookStickX * 180f; cam.lookPitch = lookStickY * 30f; }   // camera orbit only (deg)
     }
     /// Reset to start: current track's start/finish spawn (yaw, zero velocity), neutral, engine as at spawn, FFB output cut and ramped back in
@@ -132,7 +132,7 @@ public class InputRouter : MonoBehaviour
         status = $"calibrated {action}: raw {binding.calibration.min:0.000}..{binding.calibration.max:0.000}  rest {(binding.calibration.hasRest ? binding.calibration.rest : binding.calibration.center):0.000}  invert {binding.calibration.invert}";
     }
     // ---------------- IMGUI settings menu ----------------
-    GUIStyle st;
+    GUIStyle labelStyle;
     // @description - Draws the settings menu with the IMGUI system, unless the VR panel is showing it instead.
     // @return {Void} - nothing
     void OnGUI() { if (VrPanel.Active) return; UiSurface.Begin(out var surfaceState); DrawMenu(); UiSurface.End(surfaceState); }
@@ -143,13 +143,13 @@ public class InputRouter : MonoBehaviour
     {
         if (map == null || !menuOpen) return;
         GUI.depth = -10;   // draw above the HUD
-        if (st == null) { st = new GUIStyle(GUI.skin.label) { fontSize = 13 }; st.normal.textColor = Color.white; }
+        if (labelStyle == null) { labelStyle = new GUIStyle(GUI.skin.label) { fontSize = 13 }; labelStyle.normal.textColor = Color.white; }
         var menuRect = new Rect(20, 16, UiSurface.Width - 40, UiSurface.Height - 32); GUI.color = new Color(0.18f, 0.2f, 0.24f, 1f); GUI.DrawTexture(menuRect, Texture2D.whiteTexture); GUI.color = Color.white; GUI.Box(menuRect, GUIContent.none);
         GUILayout.BeginArea(new Rect(menuRect.x + 10, menuRect.y + 8, menuRect.width - 20, menuRect.height - 16));
         var profile = map.profile; var carParams = car.carParams;
-        GUILayout.Label("SETTINGS  (F1/Esc/Start closes and saves; PgDn/Tab / PgUp or MenuTabNext/Prev = next/previous tab; gameplay buttons never switch tabs)   " + InputMapper.DefaultPath, st);
+        GUILayout.Label("SETTINGS  (F1/Esc/Start closes and saves; PgDn/Tab / PgUp or MenuTabNext/Prev = next/previous tab; gameplay buttons never switch tabs)   " + InputMapper.DefaultPath, labelStyle);
         int newTab = GUILayout.Toolbar(tab, Tabs, GUILayout.Height(28)); if (newTab != tab) { tab = newTab; scroll = Vector2.zero; }
-        GUILayout.Label(status, st);
+        GUILayout.Label(status, labelStyle);
         viewH = menuRect.height - 16f - 120f;
         if (scrollToNav && Event.current.type == EventType.Layout && navRect.height > 0f) { if (navRect.yMin < scroll.y) scroll.y = navRect.yMin; else if (navRect.yMax > scroll.y + viewH) scroll.y = navRect.yMax - viewH; scrollToNav = false; }
         scroll = GUILayout.BeginScrollView(scroll, GUILayout.ExpandHeight(true));   // full-height page: mouse wheel, scrollbar drag, navigation auto-scrolls
@@ -169,7 +169,7 @@ public class InputRouter : MonoBehaviour
         if (GUILayout.Button("Reset defaults", GUILayout.Width(120))) { map.profile = InputMapper.Defaults(); map.MarkDirty(); status = "defaults (not saved yet)"; }
         if (GUILayout.Button("Close", GUILayout.Width(100))) { menuOpen = false; InputMapper.Save(profile); if (ffb) ffb.TryOpen(); }
         GUILayout.EndHorizontal();
-        if (TrackManager.Instance && TrackManager.Instance.Credit.Length > 0) GUILayout.Label(TrackManager.Instance.Credit, st);
+        if (TrackManager.Instance && TrackManager.Instance.Credit.Length > 0) GUILayout.Label(TrackManager.Instance.Credit, labelStyle);
         GUILayout.EndArea();
     }
     // @description - Draws the Bindings tab: every action with its live value, a "+ Bind" button, and each bound control with its half-axis, steer source, negate and remove buttons.
@@ -177,18 +177,18 @@ public class InputRouter : MonoBehaviour
     // @return {Void} - nothing
     void DrawBindings(BindingProfile profile)
     {
-        GUILayout.Label("Devices: " + string.Join(" | ", DeviceNames()), st);
+        GUILayout.Label("Devices: " + string.Join(" | ", DeviceNames()), labelStyle);
         foreach (InAction action in System.Enum.GetValues(typeof(InAction)))
         {
             var slots = profile.Get(action); bool isBipolar = InputMapper.IsBipolar(action);
             GUILayout.BeginHorizontal();
-            GUILayout.Label($"{action}  = {(InputMapper.IsAxisAction(action) ? map.Axis(action).ToString("0.00") : (map.Held(action) ? "ON" : "off"))}", st, GUILayout.Width(190));
+            GUILayout.Label($"{action}  = {(InputMapper.IsAxisAction(action) ? map.Axis(action).ToString("0.00") : (map.Held(action) ? "ON" : "off"))}", labelStyle, GUILayout.Width(190));
             if (GUILayout.Button(capturing == action ? "move/press... (Esc / Shift+Esc clear)" : "+ Bind", GUILayout.Width(140))) { capturing = action; captureT = 0f; map.BeginCapture(); status = "move the axis fully / press the button"; }
             GUILayout.EndHorizontal();
             for (int i = 0; i < slots.Count; i++)
             {
                 var binding = slots[i]; GUILayout.BeginHorizontal(); GUILayout.Space(30);
-                GUILayout.Label($"{binding.Label}  raw {(binding.resolved != null ? InputMapper.Raw(binding.resolved).ToString("0.000") : "MISSING")}", st, GUILayout.Width(420));
+                GUILayout.Label($"{binding.Label}  raw {(binding.resolved != null ? InputMapper.Raw(binding.resolved).ToString("0.000") : "MISSING")}", labelStyle, GUILayout.Width(420));
                 if (!(binding.resolved is ButtonControl) && !isBipolar && GUILayout.Button(binding.calibration.half.ToString(), GUILayout.Width(70))) binding.calibration.half = (AxisHalf)(((int)binding.calibration.half + 1) % 3);
                 if (action == InAction.Steer && GUILayout.Button(binding.steerSource.ToString(), GUILayout.Width(60))) binding.steerSource = binding.steerSource == SteerSource.Wheel ? SteerSource.Stick : SteerSource.Wheel;
                 if (action == InAction.Steer) binding.negative = GUILayout.Toggle(binding.negative, "neg", GUILayout.Width(50));
@@ -202,7 +202,7 @@ public class InputRouter : MonoBehaviour
     // @return {Void} - nothing
     void DrawCalibration(BindingProfile profile)
     {
-        GUILayout.Label("Analog axes: raw device value vs mapped value. Pedals: Calibrate, press fully, release, Done (any raw range incl. -1..1 and inverted is auto-detected). Uncalibrated pedal axes read 0 at their rest position until calibrated. Load-cell brake: calibrate fully; the SmartControl curve passes through linearly.", st);
+        GUILayout.Label("Analog axes: raw device value vs mapped value. Pedals: Calibrate, press fully, release, Done (any raw range incl. -1..1 and inverted is auto-detected). Uncalibrated pedal axes read 0 at their rest position until calibrated. Load-cell brake: calibrate fully; the SmartControl curve passes through linearly.", labelStyle);
         DrawButtonDebounce(profile);
         diag = GUILayout.Toggle(diag, " Input diagnostics (every device/control feeding each action, raw values, HID report filter)");
         if (diag) DrawDiagnostics(profile);
@@ -215,11 +215,11 @@ public class InputRouter : MonoBehaviour
                 GUILayout.BeginHorizontal();
                 bool uncalibrated = binding.resolved != null && InputMapper.UncalibratedPedal(binding, isBipolar);
                 float mappedValue = binding.resolved == null ? 0f : uncalibrated ? InputMapper.RestRelative(binding) : binding.calibration.Normalize(InputMapper.Raw(binding.resolved), isBipolar);
-                GUILayout.Label($"{action}: {binding.Label}", st, GUILayout.Width(330));
-                GUILayout.Label($"raw {(binding.resolved != null ? InputMapper.Raw(binding.resolved).ToString("+0.000;-0.000") : "MISSING")}  mapped {(isBipolar ? mappedValue.ToString("+0.00;-0.00") : mappedValue.ToString("0.00"))} ({mappedValue * 100f,4:0}%)  {(binding.calibration.calibrated ? (binding.calibration.hasRest ? $"cal {binding.calibration.rest:0.00}->{binding.calibration.PressedEnd:0.00}" : $"cal {binding.calibration.min:0.00}..{binding.calibration.max:0.00}") : uncalibrated ? "NOT calibrated (rest-relative)" : "default range")}", st, GUILayout.Width(400));
+                GUILayout.Label($"{action}: {binding.Label}", labelStyle, GUILayout.Width(330));
+                GUILayout.Label($"raw {(binding.resolved != null ? InputMapper.Raw(binding.resolved).ToString("+0.000;-0.000") : "MISSING")}  mapped {(isBipolar ? mappedValue.ToString("+0.00;-0.00") : mappedValue.ToString("0.00"))} ({mappedValue * 100f,4:0}%)  {(binding.calibration.calibrated ? (binding.calibration.hasRest ? $"cal {binding.calibration.rest:0.00}->{binding.calibration.PressedEnd:0.00}" : $"cal {binding.calibration.min:0.00}..{binding.calibration.max:0.00}") : uncalibrated ? "NOT calibrated (rest-relative)" : "default range")}", labelStyle, GUILayout.Width(400));
                 binding.calibration.invert = GUILayout.Toggle(binding.calibration.invert, "inv", GUILayout.Width(45));   // with hasRest, toggling swaps which end counts as pressed
-                GUILayout.Label($"dz {binding.calibration.deadzone:0.00}", st, GUILayout.Width(55)); binding.calibration.deadzone = GUILayout.HorizontalSlider(binding.calibration.deadzone, 0f, 0.3f, GUILayout.Width(70));
-                if (calibrating == binding) { GUILayout.Label($"[{calMin:0.00} .. {calMax:0.00}]", st, GUILayout.Width(110)); if (GUILayout.Button(isBipolar ? "Done (centred)" : "Done (released)", GUILayout.Width(120))) FinishCalibration(action); }
+                GUILayout.Label($"dz {binding.calibration.deadzone:0.00}", labelStyle, GUILayout.Width(55)); binding.calibration.deadzone = GUILayout.HorizontalSlider(binding.calibration.deadzone, 0f, 0.3f, GUILayout.Width(70));
+                if (calibrating == binding) { GUILayout.Label($"[{calMin:0.00} .. {calMax:0.00}]", labelStyle, GUILayout.Width(110)); if (GUILayout.Button(isBipolar ? "Done (centred)" : "Done (released)", GUILayout.Width(120))) FinishCalibration(action); }
                 else if (binding.resolved != null && GUILayout.Button("Calibrate", GUILayout.Width(80))) { calibrating = binding; calMin = calMax = InputMapper.Raw(binding.resolved); status = isBipolar ? "turn fully both ways, centre, press Done" : "press fully, release, press Done"; }
                 GUILayout.EndHorizontal();
             }
@@ -231,20 +231,20 @@ public class InputRouter : MonoBehaviour
     // @return {Void} - nothing
     void DrawDiagnostics(BindingProfile profile)
     {
-        GUILayout.Label(HidReportFilter.DeviceReport(), st);
+        GUILayout.Label(HidReportFilter.DeviceReport(), labelStyle);
         foreach (var actionSlots in profile.actions)
         {
             int liveCount = 0; foreach (var binding in actionSlots.slots) if (binding.resolved != null) liveCount++;
             if (liveCount == 0) continue;
             var seen = new System.Collections.Generic.HashSet<InputDevice>(); bool multiDev = false;
             foreach (var binding in actionSlots.slots) if (binding.resolved != null && !(binding.resolved.device is Keyboard)) { if (seen.Count > 0 && !seen.Contains(binding.resolved.device)) multiDev = true; seen.Add(binding.resolved.device); }
-            GUILayout.Label($"{actionSlots.action}{(multiDev ? "   [fed by more than one non-keyboard device]" : "")}", st);
+            GUILayout.Label($"{actionSlots.action}{(multiDev ? "   [fed by more than one non-keyboard device]" : "")}", labelStyle);
             foreach (var binding in actionSlots.slots)
             {
-                if (binding.resolved == null) { GUILayout.Label($"     {binding.Label}  -> not connected", st); continue; }
+                if (binding.resolved == null) { GUILayout.Label($"     {binding.Label}  -> not connected", labelStyle); continue; }
                 var device = binding.resolved.device; bool isBipolar = InputMapper.IsBipolar(actionSlots.action);
                 string valueText = InputMapper.IsAxisAction(actionSlots.action) ? binding.calibration.Normalize(InputMapper.Raw(binding.resolved), isBipolar && !(binding.resolved is ButtonControl)).ToString("+0.000;-0.000") : (binding.debounceStableState ? "1" : "0");
-                GUILayout.Label($"     dev#{device.deviceId} '{device.displayName}'  {binding.resolved.path}  raw {InputMapper.Raw(binding.resolved):+0.0000;-0.0000}  -> {valueText}", st);
+                GUILayout.Label($"     dev#{device.deviceId} '{device.displayName}'  {binding.resolved.path}  raw {InputMapper.Raw(binding.resolved):+0.0000;-0.0000}  -> {valueText}", labelStyle);
             }
         }
     }
@@ -254,7 +254,7 @@ public class InputRouter : MonoBehaviour
     void DrawButtonDebounce(BindingProfile profile)
     {
         GUILayout.BeginHorizontal();
-        GUILayout.Label($"Optional button debounce {profile.debounceMs:0} ms (0 = off, default)", st, GUILayout.Width(420));
+        GUILayout.Label($"Optional button debounce {profile.debounceMs:0} ms (0 = off, default)", labelStyle, GUILayout.Width(420));
         profile.debounceMs = Mathf.Round(GUILayout.HorizontalSlider(profile.debounceMs, 0f, 30f, GUILayout.Width(160)));
         if (GUILayout.Button("Reset chatter", GUILayout.Width(110))) foreach (var actionSlots in profile.actions) foreach (var binding in actionSlots.slots) binding.chatterCount = 0;
         GUILayout.EndHorizontal();
@@ -264,7 +264,7 @@ public class InputRouter : MonoBehaviour
             foreach (var binding in actionSlots.slots)
             {
                 if (binding.resolved == null || binding.layout == "Keyboard") continue;
-                GUILayout.Label($"   {actionSlots.action}: {binding.Label}   raw {(binding.debounceRawState ? "1" : "0")}  debounced {(binding.debounceStableState ? "1" : "0")}  chatter {binding.chatterCount}", st);
+                GUILayout.Label($"   {actionSlots.action}: {binding.Label}   raw {(binding.debounceRawState ? "1" : "0")}  debounced {(binding.debounceStableState ? "1" : "0")}  chatter {binding.chatterCount}", labelStyle);
             }
         }
     }
@@ -276,25 +276,25 @@ public class InputRouter : MonoBehaviour
     {
         GUILayout.BeginHorizontal();
         float rotationDeg = profile.RotationDeg(carParams.handwheelLockDeg);
-        GUILayout.Label($"Wheel rotation lock-to-lock (= True Drive setting): {rotationDeg:0} deg {(profile.wheelRotationDeg <= 0f ? "(car default)" : "")}", st, GUILayout.Width(420));
+        GUILayout.Label($"Wheel rotation lock-to-lock (= True Drive setting): {rotationDeg:0} deg {(profile.wheelRotationDeg <= 0f ? "(car default)" : "")}", labelStyle, GUILayout.Width(420));
         float sliderRotationDeg = GUILayout.HorizontalSlider(rotationDeg, 180f, 2520f, GUILayout.Width(250)); if (sliderRotationDeg != rotationDeg) profile.wheelRotationDeg = Mathf.Round(sliderRotationDeg / 10f) * 10f;   // only when dragged (car value 1269 is not a multiple of 10)
         if (GUILayout.Button($"Car {2f * carParams.handwheelLockDeg:0}", GUILayout.Width(90))) profile.wheelRotationDeg = 0f;
         GUILayout.EndHorizontal();
         if (GUILayout.Toggle(profile.mapping == SteerMapping.RealColumn1to1, " 1:1 column (wheel angle = car steering-wheel angle, soft lock at your wheel's limit)")) profile.mapping = SteerMapping.RealColumn1to1;
         if (GUILayout.Toggle(profile.mapping == SteerMapping.ScaleToCarLock, " Scale to car lock")) profile.mapping = SteerMapping.ScaleToCarLock;
         float halfRotationDeg = profile.RotationDeg(carParams.handwheelLockDeg) * 0.5f, colAtLimit = profile.mapping == SteerMapping.RealColumn1to1 ? Mathf.Min(halfRotationDeg, carParams.handwheelLockDeg) : carParams.handwheelLockDeg;
-        GUILayout.Label($"  -> at your wheel's limit (±{halfRotationDeg:0}°): car column ±{colAtLimit:0}° = mean road wheel ±{SteeringLinkage.MeanAngle(carParams, colAtLimit):0.0}°; effective on-centre ratio {halfRotationDeg / colAtLimit * SteeringLinkage.CentreRatio(carParams):0.00}:1", st);
+        GUILayout.Label($"  -> at your wheel's limit (±{halfRotationDeg:0}°): car column ±{colAtLimit:0}° = mean road wheel ±{SteeringLinkage.MeanAngle(carParams, colAtLimit):0.0}°; effective on-centre ratio {halfRotationDeg / colAtLimit * SteeringLinkage.CentreRatio(carParams):0.00}:1", labelStyle);
         GUILayout.Space(8);
         profile.forceFeedbackEnabled = GUILayout.Toggle(profile.forceFeedbackEnabled, " Force feedback");
-        GUILayout.BeginHorizontal(); GUILayout.Label("Wheelbase max torque N m (SC2 Sport 17 / Pro 25 / Ultimate 32):", st, GUILayout.Width(420));
+        GUILayout.BeginHorizontal(); GUILayout.Label("Wheelbase max torque N m (SC2 Sport 17 / Pro 25 / Ultimate 32):", labelStyle, GUILayout.Width(420));
         string torqueText = GUILayout.TextField(profile.wheelbaseMaxTorqueNm > 0f ? profile.wheelbaseMaxTorqueNm.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) : "", GUILayout.Width(60));
         if (float.TryParse(torqueText, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float torqueValue)) profile.wheelbaseMaxTorqueNm = Mathf.Max(0f, torqueValue); else if (torqueText == "") profile.wheelbaseMaxTorqueNm = 0f;
         GUILayout.EndHorizontal();
-        GUILayout.BeginHorizontal(); GUILayout.Label($"Strength {profile.forceFeedbackStrengthPercent:0}%", st, GUILayout.Width(150)); profile.forceFeedbackStrengthPercent = Mathf.Round(GUILayout.HorizontalSlider(profile.forceFeedbackStrengthPercent, 0f, 100f, GUILayout.Width(200))); GUILayout.EndHorizontal();
-        GUILayout.BeginHorizontal(); GUILayout.Label($"Max output cap {profile.forceFeedbackMaxOutputPercent:0}%", st, GUILayout.Width(150)); profile.forceFeedbackMaxOutputPercent = Mathf.Round(GUILayout.HorizontalSlider(profile.forceFeedbackMaxOutputPercent, 0f, 100f, GUILayout.Width(200))); GUILayout.EndHorizontal();
+        GUILayout.BeginHorizontal(); GUILayout.Label($"Strength {profile.forceFeedbackStrengthPercent:0}%", labelStyle, GUILayout.Width(150)); profile.forceFeedbackStrengthPercent = Mathf.Round(GUILayout.HorizontalSlider(profile.forceFeedbackStrengthPercent, 0f, 100f, GUILayout.Width(200))); GUILayout.EndHorizontal();
+        GUILayout.BeginHorizontal(); GUILayout.Label($"Max output cap {profile.forceFeedbackMaxOutputPercent:0}%", labelStyle, GUILayout.Width(150)); profile.forceFeedbackMaxOutputPercent = Mathf.Round(GUILayout.HorizontalSlider(profile.forceFeedbackMaxOutputPercent, 0f, 100f, GUILayout.Width(200))); GUILayout.EndHorizontal();
         profile.forceFeedbackInvert = GUILayout.Toggle(profile.forceFeedbackInvert, " Invert direction");
-        GUILayout.BeginHorizontal(); GUILayout.Label("FFB device (name contains, empty = first):", st, GUILayout.Width(300)); profile.forceFeedbackDevice = GUILayout.TextField(profile.forceFeedbackDevice ?? "", GUILayout.Width(220)); GUILayout.EndHorizontal();
-        if (ffb != null) { foreach (var deviceName in ffb.devices) if (GUILayout.Button(deviceName, GUILayout.Width(260))) profile.forceFeedbackDevice = deviceName; GUILayout.Label(ffb.status, st); }
+        GUILayout.BeginHorizontal(); GUILayout.Label("FFB device (name contains, empty = first):", labelStyle, GUILayout.Width(300)); profile.forceFeedbackDevice = GUILayout.TextField(profile.forceFeedbackDevice ?? "", GUILayout.Width(220)); GUILayout.EndHorizontal();
+        if (ffb != null) { foreach (var deviceName in ffb.devices) if (GUILayout.Button(deviceName, GUILayout.Width(260))) profile.forceFeedbackDevice = deviceName; GUILayout.Label(ffb.status, labelStyle); }
     }
     // @description - Draws the VR and seat page: VR on/off, recentre, camera mode, seat position sliders (millimetre offsets within the car's seat travel), the VR debug HUD toggle and the flat-screen field of view.
     // @param {BindingProfile} profile - settings profile being edited
@@ -302,19 +302,19 @@ public class InputRouter : MonoBehaviour
     // @return {Void} - nothing
     void DrawVr(BindingProfile profile, CarParams carParams)
     {
-        GUILayout.Label(vr ? vr.status : "no VR manager", st);
-        bool vrOn = GUILayout.Toggle(profile.vrEnabled, " VR (OpenXR / SteamVR)"); if (vrOn != profile.vrEnabled) { profile.vrEnabled = vrOn; if (vr) vr.SetEnabled(vrOn); }
-        if (GUILayout.Button("Recenter view", GUILayout.Width(160)) && vr) vr.Recenter();
-        if (GUILayout.Button(vr && vr.mode == CamMode.Cockpit ? "Camera: cockpit (switch to chase)" : "Camera: chase (switch to cockpit)", GUILayout.Width(280)) && vr) vr.ToggleCamera();
-        Cockpit cockpit = vr ? vr.cockpit : null;
-        GUILayout.BeginHorizontal(); GUILayout.Label($"Seat fore/aft {profile.seatForwardOffset * 1000f:+0;-0;0} mm", st, GUILayout.Width(180)); float seatForward = GUILayout.HorizontalSlider(profile.seatForwardOffset, -carParams.seatTravelAft, carParams.seatTravelFore, GUILayout.Width(250)); GUILayout.EndHorizontal();
-        GUILayout.BeginHorizontal(); GUILayout.Label($"Seat up/down {profile.seatUpOffset * 1000f:+0;-0;0} mm", st, GUILayout.Width(180)); float seatUp = GUILayout.HorizontalSlider(profile.seatUpOffset, -carParams.seatTravelDown, carParams.seatTravelUp, GUILayout.Width(250)); GUILayout.EndHorizontal();
+        GUILayout.Label(vrManager ? vrManager.status : "no VR manager", labelStyle);
+        bool vrOn = GUILayout.Toggle(profile.vrEnabled, " VR (OpenXR / SteamVR)"); if (vrOn != profile.vrEnabled) { profile.vrEnabled = vrOn; if (vrManager) vrManager.SetEnabled(vrOn); }
+        if (GUILayout.Button("Recenter view", GUILayout.Width(160)) && vrManager) vrManager.Recenter();
+        if (GUILayout.Button(vrManager && vrManager.mode == CamMode.Cockpit ? "Camera: cockpit (switch to chase)" : "Camera: chase (switch to cockpit)", GUILayout.Width(280)) && vrManager) vrManager.ToggleCamera();
+        Cockpit cockpit = vrManager ? vrManager.cockpit : null;
+        GUILayout.BeginHorizontal(); GUILayout.Label($"Seat fore/aft {profile.seatForwardOffset * 1000f:+0;-0;0} mm", labelStyle, GUILayout.Width(180)); float seatForward = GUILayout.HorizontalSlider(profile.seatForwardOffset, -carParams.seatTravelAft, carParams.seatTravelFore, GUILayout.Width(250)); GUILayout.EndHorizontal();
+        GUILayout.BeginHorizontal(); GUILayout.Label($"Seat up/down {profile.seatUpOffset * 1000f:+0;-0;0} mm", labelStyle, GUILayout.Width(180)); float seatUp = GUILayout.HorizontalSlider(profile.seatUpOffset, -carParams.seatTravelDown, carParams.seatTravelUp, GUILayout.Width(250)); GUILayout.EndHorizontal();
         if (seatForward != profile.seatForwardOffset || seatUp != profile.seatUpOffset) { profile.seatForwardOffset = seatForward; profile.seatUpOffset = seatUp; if (cockpit) cockpit.ApplySeat(seatForward, seatUp); }
         if (panel) panel.showHud = GUILayout.Toggle(panel.showHud, " Debug HUD panel in VR");
-        { var activeCamera = vr && vr.cam ? vr.cam : Camera.main; float aspect = activeCamera ? activeCamera.aspect : 16f / 9f;
-          GUILayout.BeginHorizontal(); GUILayout.Label($"Flat-screen FOV {profile.flatFovDeg:0}° vertical = {VrManager.HorizontalFov(profile.flatFovDeg, aspect):0}° horizontal", st, GUILayout.Width(330));
+        { var activeCamera = vrManager && vrManager.cam ? vrManager.cam : Camera.main; float aspect = activeCamera ? activeCamera.aspect : 16f / 9f;
+          GUILayout.BeginHorizontal(); GUILayout.Label($"Flat-screen FOV {profile.flatFovDeg:0}° vertical = {VrManager.HorizontalFov(profile.flatFovDeg, aspect):0}° horizontal", labelStyle, GUILayout.Width(330));
           float newFov = Mathf.Round(GUILayout.HorizontalSlider(profile.flatFovDeg, BindingProfile.FovMin, BindingProfile.FovMax, GUILayout.Width(250))); GUILayout.EndHorizontal();
-          if (newFov != profile.flatFovDeg) { profile.flatFovDeg = newFov; if (vr) vr.ApplyFlatFov(); } }
+          if (newFov != profile.flatFovDeg) { profile.flatFovDeg = newFov; if (vrManager) vrManager.ApplyFlatFov(); } }
     }
     // ---------------- quick settings: navigable with Menu Up/Down/Left/Right/Select (keyboard arrows+Enter, gamepad d-pad+A, or bound wheel buttons) ----------------
     static readonly float[] TorquePresets = { 0f, 17f, 25f, 32f };   // Simucube 2 Sport / Pro / Ultimate peak torque (S, manufacturer); 0 = not set
@@ -323,11 +323,11 @@ public class InputRouter : MonoBehaviour
     // @return {string[]} - one display line per quick item
     public string[] QuickItems(BindingProfile profile)
     {
-        var carParams = car.carParams; Cockpit cockpit = vr ? vr.cockpit : null;
+        var carParams = car.carParams; Cockpit cockpit = vrManager ? vrManager.cockpit : null;
         return new[] {
-            $"VR: {(VrManager.Active ? "ON" : "off")}   [{(vr ? vr.status : "no VR manager")}]",
+            $"VR: {(VrManager.Active ? "ON" : "off")}   [{(vrManager ? vrManager.status : "no VR manager")}]",
             "Recenter VR view (also F12 / Home / right-stick click)",
-            $"Camera (flat screen): {(vr && vr.mode == CamMode.Cockpit ? "cockpit" : "chase")}",
+            $"Camera (flat screen): {(vrManager && vrManager.mode == CamMode.Cockpit ? "cockpit" : "chase")}",
             $"Seat fore/aft: {profile.seatForwardOffset * 1000f:+0;-0;0} mm  (range -{carParams.seatTravelAft * 1000f:0}..+{carParams.seatTravelFore * 1000f:0})",
             $"Seat up/down: {profile.seatUpOffset * 1000f:+0;-0;0} mm  (range -{carParams.seatTravelDown * 1000f:0}..+{carParams.seatTravelUp * 1000f:0})",
             $"Force feedback: {(profile.forceFeedbackEnabled ? "ON" : "off")}   [{(ffb ? ffb.status : "")}]",
@@ -373,12 +373,12 @@ public class InputRouter : MonoBehaviour
     // @return {Void} - nothing
     public void Adjust(BindingProfile profile, int item, int direction, bool isSelect)
     {
-        var carParams = car.carParams; Cockpit cockpit = vr ? vr.cockpit : null; const float seatStep = 0.01f, pctStep = 5f, rotStep = 10f;   // UI step sizes
+        var carParams = car.carParams; Cockpit cockpit = vrManager ? vrManager.cockpit : null; const float seatStep = 0.01f, pctStep = 5f, rotStep = 10f;   // UI step sizes
         switch (item)
         {
-            case 0: profile.vrEnabled = isSelect ? !profile.vrEnabled : direction > 0; if (vr) vr.SetEnabled(profile.vrEnabled); break;
-            case 1: if (vr) vr.Recenter(); break;
-            case 2: if (vr) vr.ToggleCamera(); break;
+            case 0: profile.vrEnabled = isSelect ? !profile.vrEnabled : direction > 0; if (vrManager) vrManager.SetEnabled(profile.vrEnabled); break;
+            case 1: if (vrManager) vrManager.Recenter(); break;
+            case 2: if (vrManager) vrManager.ToggleCamera(); break;
             case 3: profile.seatForwardOffset = Mathf.Clamp(profile.seatForwardOffset + direction * seatStep, -carParams.seatTravelAft, carParams.seatTravelFore); if (cockpit) cockpit.ApplySeat(profile.seatForwardOffset, profile.seatUpOffset); break;
             case 4: profile.seatUpOffset = Mathf.Clamp(profile.seatUpOffset + direction * seatStep, -carParams.seatTravelDown, carParams.seatTravelUp); if (cockpit) cockpit.ApplySeat(profile.seatForwardOffset, profile.seatUpOffset); break;
             case 5: profile.forceFeedbackEnabled = isSelect ? !profile.forceFeedbackEnabled : direction > 0; break;
@@ -397,7 +397,7 @@ public class InputRouter : MonoBehaviour
             case 18: profile.rearColdPressurePsi = isSelect ? 24.7f : Mathf.Clamp(profile.rearColdPressurePsi + direction * 0.5f, 15f, 45f); break;
             case 19: profile.tireCompound = isSelect ? 1 - profile.tireCompound : (direction > 0 ? 1 : 0); break;
             case 20: if (panel) panel.showHud = isSelect ? !panel.showHud : direction > 0; break;
-            case 21: profile.flatFovDeg = isSelect ? 60f : Mathf.Clamp(profile.flatFovDeg + direction * 5f, BindingProfile.FovMin, BindingProfile.FovMax); if (vr) vr.ApplyFlatFov(); break;
+            case 21: profile.flatFovDeg = isSelect ? 60f : Mathf.Clamp(profile.flatFovDeg + direction * 5f, BindingProfile.FovMin, BindingProfile.FovMax); if (vrManager) vrManager.ApplyFlatFov(); break;
             case 22: { var trackManager = TrackManager.Instance; if (trackManager) { int trackCount = TrackManager.Names.Length; trackManager.Select((trackManager.current + (isSelect ? 1 : direction) + trackCount) % trackCount); } break; }
             case 23: if (isSelect) { ResetToStart(); menuOpen = false; } break;
             case 24: if (isSelect) { menuOpen = false; InputMapper.Save(profile); status = "saved"; if (ffb) ffb.TryOpen(); } break;
@@ -408,32 +408,32 @@ public class InputRouter : MonoBehaviour
     // @return {Void} - nothing
     void DrawQuick(BindingProfile profile)
     {
-        var items = QuickItems(profile); var highlightStyle = new GUIStyle(st) { fontStyle = FontStyle.Bold }; highlightStyle.normal.textColor = new Color(1f, 0.85f, 0.3f);
-        GUILayout.Label("QUICK SETTINGS  (Up/Down select, Left/Right change, Enter/A/bound wheel button = select)", st);
+        var items = QuickItems(profile); var highlightStyle = new GUIStyle(labelStyle) { fontStyle = FontStyle.Bold }; highlightStyle.normal.textColor = new Color(1f, 0.85f, 0.3f);
+        GUILayout.Label("QUICK SETTINGS  (Up/Down select, Left/Right change, Enter/A/bound wheel button = select)", labelStyle);
         for (int i = 0; i < items.Length; i++)
         {
             GUILayout.BeginHorizontal();
             if (GUILayout.Button(i == navIndex ? ">" : " ", GUILayout.Width(24))) navIndex = i;
-            GUILayout.Label(items[i], i == navIndex ? highlightStyle : st);
+            GUILayout.Label(items[i], i == navIndex ? highlightStyle : labelStyle);
             GUILayout.EndHorizontal();
             if (i == navIndex && Event.current.type == EventType.Repaint) navRect = GUILayoutUtility.GetLastRect();
         }
         GUILayout.Space(6);
-        GUILayout.BeginHorizontal(); GUILayout.Label($"Master {profile.audioVolume * 100f:0}%", st, GUILayout.Width(110)); profile.audioVolume = GUILayout.HorizontalSlider(profile.audioVolume, 0f, 1f, GUILayout.Width(250)); profile.audioMute = GUILayout.Toggle(profile.audioMute, " mute", GUILayout.Width(80)); GUILayout.EndHorizontal();
-        GUILayout.BeginHorizontal(); GUILayout.Label($"Tires {profile.tireVolume * 100f:0}%", st, GUILayout.Width(110)); profile.tireVolume = GUILayout.HorizontalSlider(profile.tireVolume, 0f, 2f, GUILayout.Width(250)); GUILayout.Label("(tire scrub level relative to engine; 100% = default)", st); GUILayout.EndHorizontal();
-        GUILayout.BeginHorizontal(); GUILayout.Label($"Ambient brightness {profile.ambientBrightness * 100f:0}%", st, GUILayout.Width(170)); profile.ambientBrightness = GUILayout.HorizontalSlider(profile.ambientBrightness, 0.5f, 2f, GUILayout.Width(190)); GUILayout.Label("(sky/bounce ambient + fill light; visual only, default 130%)", st); GUILayout.EndHorizontal();
+        GUILayout.BeginHorizontal(); GUILayout.Label($"Master {profile.audioVolume * 100f:0}%", labelStyle, GUILayout.Width(110)); profile.audioVolume = GUILayout.HorizontalSlider(profile.audioVolume, 0f, 1f, GUILayout.Width(250)); profile.audioMute = GUILayout.Toggle(profile.audioMute, " mute", GUILayout.Width(80)); GUILayout.EndHorizontal();
+        GUILayout.BeginHorizontal(); GUILayout.Label($"Tires {profile.tireVolume * 100f:0}%", labelStyle, GUILayout.Width(110)); profile.tireVolume = GUILayout.HorizontalSlider(profile.tireVolume, 0f, 2f, GUILayout.Width(250)); GUILayout.Label("(tire scrub level relative to engine; 100% = default)", labelStyle); GUILayout.EndHorizontal();
+        GUILayout.BeginHorizontal(); GUILayout.Label($"Ambient brightness {profile.ambientBrightness * 100f:0}%", labelStyle, GUILayout.Width(170)); profile.ambientBrightness = GUILayout.HorizontalSlider(profile.ambientBrightness, 0.5f, 2f, GUILayout.Width(190)); GUILayout.Label("(sky/bounce ambient + fill light; visual only, default 130%)", labelStyle); GUILayout.EndHorizontal();
     }
     // ---------------- Gamepad steering preferences (input assist; never applies to a wheel bound as SteerSource.Wheel) ----------------
     public struct GpSlider { public string label, fmt, help; public float min, max, step; public System.Func<GamepadSteerSettings, float> get; public System.Action<GamepadSteerSettings, float> set; }
     public static readonly GpSlider[] GpSliders = {
-        new GpSlider { label = "Steering speed", fmt = "{0:0} deg/s road", help = "how fast the wheel turns towards the stick target (lower = calmer)", min = 5f, max = 120f, step = 5f, get = g => g.steerSpeed, set = (g, v) => g.steerSpeed = v },
-        new GpSlider { label = "Response curve (gamma)", fmt = "{0:0.0}", help = "1 = linear; higher = less sensitive near centre", min = 1f, max = 4f, step = 0.1f, get = g => g.gamma, set = (g, v) => g.gamma = v },
-        new GpSlider { label = "Deadzone", fmt = "{0:P0}", help = "stick travel ignored around centre (rest rescaled)", min = 0f, max = 0.3f, step = 0.01f, get = g => g.deadzone, set = (g, v) => g.deadzone = v },
-        new GpSlider { label = "Smoothing", fmt = "{0:0.00} s", help = "filter time constant on the stick (0 = off)", min = 0f, max = 0.3f, step = 0.01f, get = g => g.smoothing, set = (g, v) => g.smoothing = v },
-        new GpSlider { label = "Speed sensitivity", fmt = "{0:P0}", help = "0 = full lock at any speed; 100% = full stick limited to peak tire grip at speed", min = 0f, max = 1f, step = 0.05f, get = g => g.speedSensitivity, set = (g, v) => g.speedSensitivity = v },
-        new GpSlider { label = "Grip limit", fmt = "{0:P0} of peak slip", help = "full stick at speed puts the front tires at this fraction of their peak-grip slip angle", min = 0.5f, max = 2f, step = 0.05f, get = g => g.gripLimit, set = (g, v) => g.gripLimit = v },
-        new GpSlider { label = "Countersteer speed", fmt = "x{0:0.0}", help = "steering-speed factor when unwinding / catching a rear slide", min = 1f, max = 4f, step = 0.1f, get = g => g.countersteer, set = (g, v) => g.countersteer = v },
-        new GpSlider { label = "Self-centre (caster follow)", fmt = "{0:P0}", help = "released stick: wheels follow the front-axle travel direction (0 = straight ahead)", min = 0f, max = 1f, step = 0.05f, get = g => g.casterFollow, set = (g, v) => g.casterFollow = v },
+        new GpSlider { label = "Steering speed", fmt = "{0:0} deg/s road", help = "how fast the wheel turns towards the stick target (lower = calmer)", min = 5f, max = 120f, step = 5f, get = settings => settings.steerSpeed, set = (settings, value) => settings.steerSpeed = value },
+        new GpSlider { label = "Response curve (gamma)", fmt = "{0:0.0}", help = "1 = linear; higher = less sensitive near centre", min = 1f, max = 4f, step = 0.1f, get = settings => settings.gamma, set = (settings, value) => settings.gamma = value },
+        new GpSlider { label = "Deadzone", fmt = "{0:P0}", help = "stick travel ignored around centre (rest rescaled)", min = 0f, max = 0.3f, step = 0.01f, get = settings => settings.deadzone, set = (settings, value) => settings.deadzone = value },
+        new GpSlider { label = "Smoothing", fmt = "{0:0.00} s", help = "filter time constant on the stick (0 = off)", min = 0f, max = 0.3f, step = 0.01f, get = settings => settings.smoothing, set = (settings, value) => settings.smoothing = value },
+        new GpSlider { label = "Speed sensitivity", fmt = "{0:P0}", help = "0 = full lock at any speed; 100% = full stick limited to peak tire grip at speed", min = 0f, max = 1f, step = 0.05f, get = settings => settings.speedSensitivity, set = (settings, value) => settings.speedSensitivity = value },
+        new GpSlider { label = "Grip limit", fmt = "{0:P0} of peak slip", help = "full stick at speed puts the front tires at this fraction of their peak-grip slip angle", min = 0.5f, max = 2f, step = 0.05f, get = settings => settings.gripLimit, set = (settings, value) => settings.gripLimit = value },
+        new GpSlider { label = "Countersteer speed", fmt = "x{0:0.0}", help = "steering-speed factor when unwinding / catching a rear slide", min = 1f, max = 4f, step = 0.1f, get = settings => settings.countersteer, set = (settings, value) => settings.countersteer = value },
+        new GpSlider { label = "Self-centre (caster follow)", fmt = "{0:P0}", help = "released stick: wheels follow the front-axle travel direction (0 = straight ahead)", min = 0f, max = 1f, step = 0.05f, get = settings => settings.casterFollow, set = (settings, value) => settings.casterFollow = value },
     };
     public static int GpItemCount => GpSliders.Length + 2;   // [0] assist on/off, sliders, [last] reset all
     // @description - Applies a left, right or select action to a gamepad steering menu item: item 0 toggles the assist, the last item resets everything, the others step one slider (rounded to its step and clamped to its range, select resets it to the default).
@@ -468,9 +468,9 @@ public class InputRouter : MonoBehaviour
     // @return {Void} - nothing
     void DrawGamepad(BindingProfile profile)
     {
-        var settings = profile.gamepadSteer; var defaults = GamepadSteerSettings.Default; var highlightStyle = new GUIStyle(st) { fontStyle = FontStyle.Bold }; highlightStyle.normal.textColor = new Color(1f, 0.85f, 0.3f);
-        GUILayout.Label("GAMEPAD / KEYBOARD STEERING  (input preferences, not physics; a wheel bound as 'Wheel' is never affected)", st);
-        GUILayout.Label("Up/Down select, Left/Right change, Select/A = reset that item to default", st);
+        var settings = profile.gamepadSteer; var defaults = GamepadSteerSettings.Default; var highlightStyle = new GUIStyle(labelStyle) { fontStyle = FontStyle.Bold }; highlightStyle.normal.textColor = new Color(1f, 0.85f, 0.3f);
+        GUILayout.Label("GAMEPAD / KEYBOARD STEERING  (input preferences, not physics; a wheel bound as 'Wheel' is never affected)", labelStyle);
+        GUILayout.Label("Up/Down select, Left/Right change, Select/A = reset that item to default", labelStyle);
         void Row(int itemIndex, System.Action body)
         {
             if (navIndex >= GpItemCount && tab == 5) navIndex = 0;
@@ -479,22 +479,22 @@ public class InputRouter : MonoBehaviour
             body(); GUILayout.EndHorizontal();
             if (itemIndex == navIndex && Event.current.type == EventType.Repaint) navRect = GUILayoutUtility.GetLastRect();
         }
-        Row(0, () => { settings.enabled = GUILayout.Toggle(settings.enabled, settings.enabled ? " Steering assist ON (stick sets a target, wheel follows)" : " Steering assist OFF (direct: stick = lock fraction)", navIndex == 0 ? highlightStyle : st); });
+        Row(0, () => { settings.enabled = GUILayout.Toggle(settings.enabled, settings.enabled ? " Steering assist ON (stick sets a target, wheel follows)" : " Steering assist OFF (direct: stick = lock fraction)", navIndex == 0 ? highlightStyle : labelStyle); });
         for (int k = 0; k < GpSliders.Length; k++)
         {
             var slider = GpSliders[k]; int itemIndex = k + 1;
             Row(itemIndex, () =>
             {
-                GUILayout.Label(slider.label, itemIndex == navIndex ? highlightStyle : st, GUILayout.Width(200));
-                GUILayout.Label(string.Format(System.Globalization.CultureInfo.InvariantCulture, slider.fmt, slider.get(settings)), st, GUILayout.Width(130));
+                GUILayout.Label(slider.label, itemIndex == navIndex ? highlightStyle : labelStyle, GUILayout.Width(200));
+                GUILayout.Label(string.Format(System.Globalization.CultureInfo.InvariantCulture, slider.fmt, slider.get(settings)), labelStyle, GUILayout.Width(130));
                 float newValue = GUILayout.HorizontalSlider(slider.get(settings), slider.min, slider.max, GUILayout.Width(200)); if (newValue != slider.get(settings)) slider.set(settings, Mathf.Round(newValue / slider.step) * slider.step);
                 if (GUILayout.Button("Reset", GUILayout.Width(60))) slider.set(settings, slider.get(defaults));
-                GUILayout.Label($"(default {string.Format(System.Globalization.CultureInfo.InvariantCulture, slider.fmt, slider.get(defaults))}; {slider.help})", st);
+                GUILayout.Label($"(default {string.Format(System.Globalization.CultureInfo.InvariantCulture, slider.fmt, slider.get(defaults))}; {slider.help})", labelStyle);
             });
         }
         Row(GpItemCount - 1, () => { if (GUILayout.Button("Reset all gamepad steering settings to defaults", GUILayout.Width(360))) GpAdjust(settings, GpItemCount - 1, 0, true); GUILayout.Label(navIndex == GpItemCount - 1 ? "<- Select/A" : "", highlightStyle); });
         var assist = map.assist;
-        if (assist != null && map.assistCtx.HasValue) { var context = map.assistCtx.Value; GUILayout.Label($"live: target {assist.lastTarget:0.0} deg road, steering {assist.roadDeg:0.0} deg, front tire peak slip {context.peakSlipDeg:0.0} deg, front travel {context.frontTravelDeg:0.0} deg, rear travel {context.rearTravelDeg:0.0} deg{(assist.countersteering ? "  [countersteer rate]" : "")}", st); }
+        if (assist != null && map.assistCtx.HasValue) { var context = map.assistCtx.Value; GUILayout.Label($"live: target {assist.lastTarget:0.0} deg road, steering {assist.roadDeg:0.0} deg, front tire peak slip {context.peakSlipDeg:0.0} deg, front travel {context.frontTravelDeg:0.0} deg, rear travel {context.rearTravelDeg:0.0} deg{(assist.countersteering ? "  [countersteer rate]" : "")}", labelStyle); }
     }
     // @description - Lists the connected input devices (excluding mouse, pointer and sensors) with their category, for the Bindings tab header.
     // @return {IEnumerable<string>} - one text entry per device, "name [category]"
