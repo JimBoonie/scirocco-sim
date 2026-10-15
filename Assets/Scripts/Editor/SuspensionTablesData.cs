@@ -2,6 +2,9 @@
 // Source hardpoints: suspension_params.json (partly ESTIMATED; tie-rod points used as given, rod 0.379 m SD).
 public static class SuspensionTablesData
 {
+    // @description - copies the baked kinematic and compliance tables into a SuspensionTables asset
+    // @param {SuspensionTables} k - the asset to fill
+    // @return {Void} - nothing
     public static void Fill(SuspensionTables k)
     {
         k.travel = new float[]{-0.09f,-0.08f,-0.07f,-0.06f,-0.05f,-0.04f,-0.03f,-0.02f,-0.01f,-0f,0.01f,0.02f,0.03f,0.04f,0.05f,0.06f,0.07f,0.08f};

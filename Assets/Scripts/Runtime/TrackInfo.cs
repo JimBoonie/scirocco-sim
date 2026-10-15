@@ -11,6 +11,8 @@ public class TrackInfo : MonoBehaviour
     [System.NonSerialized] List<Vector3> pts; [System.NonSerialized] List<Vector2> halfW;
     public List<Vector3> Centreline { get { Parse(); return pts; } }
     public List<Vector2> HalfWidths { get { Parse(); return halfW; } }   // x = left, y = right (m)
+    // @description - Parse (see the body for details).
+    // @return {Void} - nothing
     void Parse()
     {
         if (pts != null) return; pts = new List<Vector3>(); halfW = new List<Vector2>(); if (!centrelineCsv) return;
@@ -22,8 +24,13 @@ public class TrackInfo : MonoBehaviour
             halfW.Add(new Vector2(float.Parse(f[3], inv), float.Parse(f[4], inv)));
         }
     }
+    // @description - Lap length.
+    // @return {float} - the lap length
     public float LapLength() { var c = Centreline; float s = 0f; for (int i = 0; i < c.Count; i++) { var a = c[i]; var b = c[(i + 1) % c.Count]; a.y = b.y = 0f; s += Vector3.Distance(a, b); } return s; }
-    /// nearest centreline index and signed lateral offset (+ = right of race direction) of a world position
+    // @description - nearest centreline index and signed lateral offset (+ = right of race direction) of a world position
+    // @param {Vector3} p - value of type Vector3
+    // @param {out float} lateral - lateral
+    // @return {int} - the nearest
     public int Nearest(Vector3 p, out float lateral)
     {
         var c = Centreline; int best = 0; float bd = float.MaxValue;

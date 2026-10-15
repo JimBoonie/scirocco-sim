@@ -2,15 +2,26 @@
 using UnityEditor; using UnityEditor.SceneManagement; using UnityEngine;
 public static class SciroccoSetup
 {
-    static WheelCorner Make(CarParams p, GameObject car, string n, float x, float z, bool f, bool l)
+    // @description - Make (see the body for details).
+    // @param {CarParams} carParams - car params
+    // @param {GameObject} car - car
+    // @param {string} objectName - object name
+    // @param {float} x - value of type float
+    // @param {float} z - value of type float
+    // @param {bool} f - value of type bool
+    // @param {bool} l - value of type bool
+    // @return {WheelCorner} - the make
+    static WheelCorner Make(CarParams carParams, GameObject car, string objectName, float x, float z, bool f, bool l)
         {
-            var g = new GameObject(n); g.transform.SetParent(car.transform, false); g.transform.localPosition = new Vector3(x, 0f, z); g.layer = 2;
-            var w = g.AddComponent<WheelCorner>(); w.carParams = p; w.front = f; w.left = l;
+            var g = new GameObject(objectName); g.transform.SetParent(car.transform, false); g.transform.localPosition = new Vector3(x, 0f, z); g.layer = 2;
+            var w = g.AddComponent<WheelCorner>(); w.carParams = carParams; w.front = f; w.left = l;
             var vis = GameObject.CreatePrimitive(PrimitiveType.Cylinder); Object.DestroyImmediate(vis.GetComponent<Collider>());
-            vis.transform.SetParent(car.transform, false); vis.transform.localScale = new Vector3(p.wheelRadius * 2, 0.0925f, p.wheelRadius * 2); vis.name = n + "_vis";
+            vis.transform.SetParent(car.transform, false); vis.transform.localScale = new Vector3(carParams.wheelRadius * 2, 0.0925f, carParams.wheelRadius * 2); vis.name = objectName + "_vis";
             w.visual = vis.transform; return w;
         }
     [MenuItem("Scirocco/Build Test Scene")]
+    // @description - Build (see the body for details).
+    // @return {Void} - nothing
     public static void Build()
     {
         Time.fixedDeltaTime = 0.002f; // 500 Hz
@@ -63,7 +74,8 @@ public static class SciroccoSetup
         Debug.Log("Scirocco test scene built. Press Play.");
     }
 
-    // Batch entry: Unity -batchmode -quit -projectPath . -executeMethod SciroccoSetup.BuildLinux
+    // @description - Batch entry: Unity -batchmode -quit -projectPath . -executeMethod SciroccoSetup.BuildLinux
+    // @return {Void} - nothing
     public static void BuildLinux()
     {
         PlayerSettings.productName = "SciroccoSimDemo"; PlayerSettings.fullScreenMode = FullScreenMode.Windowed;
@@ -79,7 +91,8 @@ public static class SciroccoSetup
         Debug.Log("BUILD RESULT: " + r.summary.result + " size=" + r.summary.totalSize + " errors=" + r.summary.totalErrors);
         if (r.summary.result != UnityEditor.Build.Reporting.BuildResult.Succeeded) EditorApplication.Exit(1);
     }
-    // Batch entry: -executeMethod SciroccoSetup.BuildWindows  (needs Windows Build Support (Mono) module). Release player, keyboard-playable.
+    // @description - Batch entry: -executeMethod SciroccoSetup.BuildWindows  (needs Windows Build Support (Mono) module). Release player, keyboard-playable.
+    // @return {Void} - nothing
     public static void BuildWindows()
     {
         PlayerSettings.productName = "SciroccoSimDemo"; PlayerSettings.fullScreenMode = FullScreenMode.Windowed;

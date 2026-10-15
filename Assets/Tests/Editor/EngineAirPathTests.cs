@@ -2,13 +2,20 @@
 using NUnit.Framework; using UnityEngine;
 public class EngineAirPathTests
 {
-    static Engine Make(out CarParams p) { p = ScriptableObject.CreateInstance<CarParams>(); return new Engine(p); }
+    // @description - Make (see the body for details).
+    // @param {out CarParams} carParams - car params
+    // @return {Engine} - the make
+    static Engine Make(out CarParams carParams) { carParams = ScriptableObject.CreateInstance<CarParams>(); return new Engine(carParams); }
+    // @description - Wot matches sourced curve.
+    // @return {Void} - nothing
     [Test] public void Wot_Matches_Sourced_Curve()
     {
         var e = Make(out var p);
         for (int i = 0; i < p.rpmPoints.Length - 1; i++) Assert.AreEqual(p.torquePoints[i], e.SteadyTorque(1f, p.rpmPoints[i]), 1f, $"WOT @ {p.rpmPoints[i]}");
         for (int i = 1; i < p.rpmPoints.Length - 1; i++) { float v = e.VolumetricEfficiency(p.rpmPoints[i]); Assert.Greater(v, 0.5f); Assert.Less(v, 1.05f, "derived VE physical"); }
     }
+    // @description - Idle is stable steady state.
+    // @return {Void} - nothing
     [Test] public void Idle_Is_Stable_Steady_State()
     {
         var e = Make(out var p);
@@ -17,6 +24,8 @@ public class EngineAirPathTests
         const float dt = 0.0005f; for (int i = 0; i < 4 / dt; i++) e.Step(0f, 0f, dt);
         Assert.AreEqual(p.idleRpm, e.rpm, 25f); Assert.IsTrue(e.combusting);
     }
+    // @description - Part throttle torque falls with rpm.
+    // @return {Void} - nothing
     [Test] public void PartThrottle_Torque_Falls_With_Rpm()
     {
         var e = Make(out var p);

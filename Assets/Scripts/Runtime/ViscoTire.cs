@@ -67,8 +67,8 @@ public static class ViscoTire
     public static double LogTimeTemperatureShift(double temperature) => -C1g * (temperature - Tg) / (C2g + temperature - Tg);
     static readonly double FillerReferenceAngularFrequency = 2 * System.Math.PI * FillerReferenceFrequency * System.Math.Pow(10, LogTimeTemperatureShift(FillerReferenceTemperature));
 
-    /// @description - complex Young's modulus E*(w) = Havriliak-Negami polymer relaxation + fractional filler network (softened by the Payne effect)
-    ///   E_HN = E_glass + (E_0 - E_glass) / (1 + (i w tau_g)^a)^b;  filler = ratio E_0 pay (i w / w_ref)^n;  pay = 1 / (1 + (strain / eps_c)^(2 m))  (Kraus)
+    // @description - complex Young's modulus E*(w) = Havriliak-Negami polymer relaxation + fractional filler network (softened by the Payne effect)
+    //   E_HN = E_glass + (E_0 - E_glass) / (1 + (i w tau_g)^a)^b;  filler = ratio E_0 pay (i w / w_ref)^n;  pay = 1 / (1 + (strain / eps_c)^(2 m))  (Kraus)
     // @param {double} reducedAngularFrequency - angular frequency in rad/s referenced to Tg
     // @param {double} strain - strain amplitude (dimensionless)
     // @param {bool} payneEffect - true = apply the Payne strain softening to the filler network
@@ -201,8 +201,8 @@ public static class ViscoTire
     // @return {double} - contact area ratio (0..1)
     public static double ContactAreaRatio(double x, bool payneEffect) { int payneIndex = payneEffect ? 1 : 0; EnsureBuilt(payneIndex); return InterpolateTable(contactAreaTable[payneIndex], x); }
 
-    /// @description - friction coefficient at sliding speed and rubber temperature, isothermal (no flashTemperature): hysteresis + adhesion
-    ///   adhesion = tau_f0 exp(-c log10^2(v/v0)) A/A0 / sigma
+    // @description - friction coefficient at sliding speed and rubber temperature, isothermal (no flashTemperature): hysteresis + adhesion
+    //   adhesion = tau_f0 exp(-c log10^2(v/v0)) A/A0 / sigma
     // @param {double} slidingSpeed - v in m/s
     // @param {double} temperature - rubber temperature in degC
     // @param {Flags} flags - enabled physics terms
@@ -216,8 +216,8 @@ public static class ViscoTire
         return friction;
     }
 
-    /// @description - flashTemperature temperature rise of the macro-asperity contacts (Tian & Kennedy 1994, circular source, all Peclet numbers):
-    ///   dT = 2 q a / (k sqrt(pi) sqrt(1.273 + Pe)), Pe = v a / (2 kappa); q = mu sigma v / contact ratio (all heat into the rubber, as TireThermal)
+    // @description - flashTemperature temperature rise of the macro-asperity contacts (Tian & Kennedy 1994, circular source, all Peclet numbers):
+    //   dT = 2 q a / (k sqrt(pi) sqrt(1.273 + Pe)), Pe = v a / (2 kappa); q = mu sigma v / contact ratio (all heat into the rubber, as TireThermal)
     // @param {double} slidingSpeed - v in m/s
     // @param {double} frictionCoefficient - mu
     // @param {double} contactPressure - sigma in Pa
@@ -229,7 +229,7 @@ public static class ViscoTire
     }
     public const int FlashIterations = 4;   // fixed-point iterations (converged to < 0.1 % in tests)
 
-    /// @description - effective friction with flashTemperature temperature (fixed-point iteration of mu(T + dT(mu))); T = macro rubber (grip) temperature
+    // @description - effective friction with flashTemperature temperature (fixed-point iteration of mu(T + dT(mu))); T = macro rubber (grip) temperature
     // @param {double} slidingSpeed - v in m/s
     // @param {double} temperature - macro rubber temperature in degC
     // @param {double} contactPressure - sigma in Pa
@@ -244,7 +244,7 @@ public static class ViscoTire
         return friction;
     }
 
-    /// @description - grip factor on the sourced peak coefficients: mu(vs, T) / mu(vs_ref, T); = 1 at the reference sliding speed for any temperature (D)
+    // @description - grip factor on the sourced peak coefficients: mu(vs, T) / mu(vs_ref, T); = 1 at the reference sliding speed for any temperature (D)
     // @param {double} slidingSpeed - current sliding speed in m/s
     // @param {double} temperature - macro rubber temperature in degC
     // @param {double} contactPressure - sigma in Pa
@@ -258,7 +258,7 @@ public static class ViscoTire
         return denominator > 0 ? numerator / denominator : 1.0;
     }
 
-    /// @description - reference sliding speed: lateral peak slip of the base Pacejka curve at Fz0 (golden-section search), times the reference speed (D)
+    // @description - reference sliding speed: lateral peak slip of the base Pacejka curve at Fz0 (golden-section search), times the reference speed (D)
     // @param {CarParams} carParams - Pacejka coefficients
     // @return {double} - reference sliding speed in m/s
     public static double VsRef(CarParams carParams)
@@ -268,9 +268,9 @@ public static class ViscoTire
         return ReferenceSpeed * System.Math.Tan(0.5 * (low + high));
     }
 
-    /// @description - tread stiffness factor at speed v (deformation frequency v / contact length), at the reference temperature: grip-temperature
-    ///   independence of slip stiffness is sourced (Alcazar Vargas 2022, TireThermal) and overrides the WLF estimate. Series springs:
-    ///   K = K_ref / ((1 - share) + share |E*(f_ref)| / |E*(f)|)
+    // @description - tread stiffness factor at speed v (deformation frequency v / contact length), at the reference temperature: grip-temperature
+    //   independence of slip stiffness is sourced (Alcazar Vargas 2022, TireThermal) and overrides the WLF estimate. Series springs:
+    //   K = K_ref / ((1 - share) + share |E*(f_ref)| / |E*(f)|)
     // @param {double} speed - vehicle speed in m/s
     // @param {double} contactLength - current contact patch length in m
     // @param {double} contactLengthReference - contact patch length at the reference condition in m
@@ -281,8 +281,8 @@ public static class ViscoTire
         return 1.0 / ((1 - TreadShare) + TreadShare * ModulusAbs(referenceFrequency, TireThermal.OptimalTemperature) / ModulusAbs(frequency, TireThermal.OptimalTemperature));
     }
 
-    /// @description - rolling-resistance factor: loss ~ tan d at the once-per-revolution deformation frequency (Schuring 1980 energy-controlled loss),
-    ///   referenced to the ISO 28580 condition (25 C, 80 km/h)
+    // @description - rolling-resistance factor: loss ~ tan d at the once-per-revolution deformation frequency (Schuring 1980 energy-controlled loss),
+    //   referenced to the ISO 28580 condition (25 C, 80 km/h)
     // @param {double} speed - vehicle speed in m/s
     // @param {double} radius - rolling radius in m
     // @param {double} temperature - tread/carcass temperature in degC

@@ -2,7 +2,12 @@
 using NUnit.Framework; using UnityEngine;
 public class TireThermalTests
 {
+    // @description - Log.
+    // @param {string} s - value of type string
+    // @return {Void} - nothing
     static void Log(string s) { Debug.Log("THERMAL " + s); TestContext.Out.WriteLine(s); }
+    // @description - Pressure follows ideal gas at constant volume.
+    // @return {Void} - nothing
     [Test] public void Pressure_Follows_Ideal_Gas_At_Constant_Volume()
     {
         var t = new TireThermal(170000);
@@ -12,6 +17,8 @@ public class TireThermalTests
         Assert.AreEqual(tr, ratio, 1e-12);
         Log($"ideal gas: +40 K gas -> {t.gaugePressure / TireThermal.PaPerPsi:0.00} psi gauge (cold 24.66), abs ratio {ratio:0.0000} = T ratio {tr:0.0000}");
     }
+    // @description - Energy balance closes.
+    // @return {Void} - nothing
     [Test] public void Energy_Balance_Closes()
     {
         var t = new TireThermal(170000); double dt = 0.001;
@@ -24,6 +31,8 @@ public class TireThermalTests
         Log($"energy: in {t.energyIn / 1e6:0.000} MJ out {t.energyOut / 1e6:0.000} MJ stored {(t.StoredEnergy() - t.initialStoredEnergy) / 1e6:0.000} MJ residual {t.Residual:0.00} J ({rel:E1})");
         Assert.Less(rel, 1e-9);
     }
+    // @description - Bench replica alcazar vargas2022.
+    // @return {Void} - nothing
     [Test] public void Bench_Replica_AlcazarVargas2022()
     {   // published: 4000 N, 60 km/h, 8 deg slip, ~3 min: mu 0.70 -> ~1.05, tread zones up to ~120 C
         var t = new TireThermal(230000); double dt = 0.001, V = 60 / 3.6, a = 8 * Mathf.Deg2Rad, muMax = 0;
@@ -36,6 +45,8 @@ public class TireThermalTests
         Assert.That(t.surfaceTemperatures[1], Is.InRange(90.0, 140.0), "surface in the measured 100-120 C band (+-20 K)");
         Assert.That(muMax, Is.InRange(0.95, 1.1), "peak mu reached ~1.05 measured");
     }
+    // @description - Highway pressure rise vs measured.
+    // @return {Void} - nothing
     [Test] public void Highway_Pressure_Rise_vs_Measured()
     {   // published: +3.6-5.6% after 10 min, +9.8-12.2% after 37 min of driving (gauge pressure)
         var t = new TireThermal(170000); double dt = 0.001, V = 100 / 3.6, r10 = 0;
@@ -48,6 +59,8 @@ public class TireThermalTests
         Log($"highway 100 km/h (62 mph): pressure +{r10 * 100:0.0}% at 10 min, +{r37 * 100:0.0}% at 37 min; gas {TireThermal.CelsiusToFahrenheit(t.gasTemperature):0} F, carcass {TireThermal.CelsiusToFahrenheit(t.carcassTemperature):0} F, tread surface {TireThermal.CelsiusToFahrenheit(t.surfaceTemperatures[1]):0} F");
         Assert.That(r37, Is.InRange(0.06, 0.18));
     }
+    // @description - Sliding heat up then straight cool down.
+    // @return {Void} - nothing
     [Test] public void Sliding_HeatUp_Then_Straight_CoolDown()
     {
         var t = new TireThermal(170000); double dt = 0.001;
@@ -56,6 +69,8 @@ public class TireThermalTests
         double cool = t.surfaceTemperatures[1]; Log($"slide 30 s @ 8 kW: surface {TireThermal.CelsiusToFahrenheit(hot):0} F; then 30 s straight 60 mph: {TireThermal.CelsiusToFahrenheit(cool):0} F (bulk {TireThermal.CelsiusToFahrenheit(t.bulkTemperature):0} F)");
         Assert.Greater(hot, 60.0); Assert.Less(cool, hot - 20.0); Assert.Greater(cool, TireThermal.TrackTemperature);
     }
+    // @description - Off scale is identity and optimum gives base.
+    // @return {Void} - nothing
     [Test] public void Off_Scale_Is_Identity_And_Optimum_Gives_Base()
     {
         var p = ScriptableObject.CreateInstance<CarParams>();
@@ -66,6 +81,8 @@ public class TireThermalTests
         Assert.AreEqual(0.7 / 1.1, TireThermal.BenchFriction(TireThermal.AmbientTemperature) / 1.1, 1e-3, "bench curve alone still holds the lowest measured mu");
         Assert.AreEqual(1.0, TireThermal.FrictionAtTemperature(TireThermal.TrackTemperature) / TireThermal.PeakFriction, 1e-12, "road data: full grip at 70 F (option b)");
     }
+    // @description - Grip follows tread mean.
+    // @return {Void} - nothing
     [Test] public void Grip_Follows_Tread_Mean()
     {   // grip temperature = heat-capacity-weighted tread mean (skin zones + bulk)
         var t = new TireThermal(TireThermal.NominalGaugePressure);
@@ -75,6 +92,8 @@ public class TireThermalTests
         double w = 3 * TireThermal.SkinHeatCapacity / (3 * TireThermal.SkinHeatCapacity + TireThermal.BulkHeatCapacity);
         Assert.AreEqual(w * 60 + (1 - w) * 40, t.GripTemp(), 1e-9);
     }
+    // @description - Cold side road data continuous into bench.
+    // @return {Void} - nothing
     [Test] public void ColdSide_Road_Data_Continuous_Into_Bench()
     {
         double tc = TireThermal.CrossoverTemperature;
@@ -86,6 +105,8 @@ public class TireThermalTests
         Assert.AreEqual(1.0 - TireThermal.RoadGripLossPerDegree * 10.0, TireThermal.FrictionAtTemperature(35.0) / TireThermal.PeakFriction, 1e-12, "95 F: road slope");
         Log($"crossover {tc:0.00} C = {TireThermal.CelsiusToFahrenheit(tc):0.0} F, mu ratio {TireThermal.FrictionAtTemperature(tc) / TireThermal.PeakFriction:0.0000}");
     }
+    // @description - Hot surface 270 f over cool bulk.
+    // @return {Void} - nothing
     [Test] public void Hot_Surface_270F_Over_Cool_Bulk()
     {   // Taylor's reading: fronts ~270 F on the I/M/O display but only ~70% grip (bulk-based grip, cold hold)
         var t = new TireThermal(TireThermal.NominalGaugePressure); double ts = (270.0 - 32.0) * 5.0 / 9.0;
@@ -94,6 +115,8 @@ public class TireThermalTests
         Log($"270 F surface / 77 F bulk: grip temp {TireThermal.CelsiusToFahrenheit(t.GripTemp()):0} F; grip before (bulk, cold hold) {before * 100:0}%, surface-only would be {surfOnly * 100:0}%, now {after * 100:0}%");
         Assert.AreEqual(TireThermal.FrictionAtTemperature(t.GripTemp()) / TireThermal.PeakFriction, after, 1e-6); Assert.Greater(after, 0.95, "no ice feel");
     }
+    // @description - Grip retained after bench heat and straight.
+    // @return {Void} - nothing
     [Test] public void Grip_Retained_After_Bench_Heat_And_Straight()
     {   // reported problem: the surface cools within ~15 s on a straight. Heat the tire as in the Alcazar Vargas bench run (3 min,
         // 4000 N, 37 mph, 8 deg), then 30 s straight at 60 mph: a surface-only grip temp would collapse, tread-mean grip must hold

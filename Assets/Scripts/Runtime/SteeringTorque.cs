@@ -48,8 +48,8 @@ public static class SteeringTorque
     static Vector3 RotateAboutAxis(Vector3 vector, Vector3 axis, float angle)
     { float cosine = Mathf.Cos(angle), sine = Mathf.Sin(angle); return vector * cosine + CrossProduct(axis, vector) * sine + axis * (Vector3.Dot(axis, vector) * (1f - cosine)); }
 
-    /// @description - moment about the kingpin axis (+ = counter-clockwise about +u, i.e. steers a LEFT-frame wheel to the left/outboard) from the tyre forces:
-    ///   M = r_cp x (Fx_patch + Fz) + (r_cp - x_w t_p) x Fy + r_wc x Fx_hub, all in the steered wheel frame; forces act in the ground plane
+    // @description - moment about the kingpin axis (+ = counter-clockwise about +u, i.e. steers a LEFT-frame wheel to the left/outboard) from the tyre forces:
+    //   M = r_cp x (Fx_patch + Fz) + (r_cp - x_w t_p) x Fy + r_wc x Fx_hub, all in the steered wheel frame; forces act in the ground plane
     // @param {Geo} geometry - kingpin geometry
     // @param {float} deltaDeg - wheel steer angle in this frame (+ = towards -y, i.e. right for the left wheel)
     // @param {float} patchLongitudinalForce - brake force at the contact patch in N
@@ -76,7 +76,7 @@ public static class SteeringTorque
     // @return {float} - pneumatic trail in m
     public static float PneumaticTrail(CarParams carParams, float slipAngleRad) => carParams.pneumaticTrailAtZeroSlip * Mathf.Max(0f, 1f - Mathf.Abs(slipAngleRad) / carParams.peakSlipTrail);
 
-    /// @description - road-wheel steer torque of one corner (about the kingpin; + = steers the wheel to the RIGHT, car convention). Brake force acts at the patch, drive force at the hub.
+    // @description - road-wheel steer torque of one corner (about the kingpin; + = steers the wheel to the RIGHT, car convention). Brake force acts at the patch, drive force at the hub.
     // @param {Geo} geometry - kingpin geometry
     // @param {bool} left - true = left corner
     // @param {float} steerDeg - road-wheel steer angle in deg (+ = right)
@@ -93,7 +93,7 @@ public static class SteeringTorque
         return KingpinMoment(geometry, -steerDeg, patchForce, hubForce, lateralForceRight, verticalForce, pneumaticTrail);                // mirrored frame: mirror flips rotation sense
     }
 
-    /// @description - d(road steer of a wheel)/d(column angle) from the linkage kinematics (SteeringLinkage.Lever, D)
+    // @description - d(road steer of a wheel)/d(column angle) from the linkage kinematics (SteeringLinkage.Lever, D)
     // @param {CarParams} carParams - car parameters
     // @param {bool} left - true = left wheel
     // @param {float} rack - rack travel in m

@@ -9,6 +9,8 @@ public class SmokeTest : MonoBehaviour
     // skidpad state
     const float R = 40f;
     float psR = 40f, psThr = -1f, psAy = 0.5f; int psGear = 0;   // powerstep: -radius, -thr (-1 = keep steady throttle, 0 = lift), -ay target (g), -gear (0 = auto during settle)
+    // @description - Awake.
+    // @return {Void} - nothing
     void Awake()
     {
         var a = System.Environment.GetCommandLineArgs();
@@ -19,8 +21,9 @@ public class SmokeTest : MonoBehaviour
         int o = System.Array.IndexOf(a, "-overrides"); if (o >= 0 && o + 1 < a.Length) ApplyOverrides(a[o + 1]);
         int j = System.Array.IndexOf(a, "-pedal"); if (j >= 0 && j + 1 < a.Length) pedal = float.Parse(a[j + 1], System.Globalization.CultureInfo.InvariantCulture);
     }
-    // -overrides <file>: lines "p.field=value" or "kin.field=v1;v2;..." (CarParams / SuspensionTables; float, float[], bool, enum).
-    // Used by the sensitivity study and fallback-mode runs; never changes the CarParams.cs defaults.
+    // @description - -overrides <file>: lines "p.field=value" or "kin.field=v1;v2;..." (CarParams / SuspensionTables; float, float[], bool, enum). Used by the sensitivity study and fallback-mode runs; never changes the CarParams.cs defaults.
+    // @param {string} path - path
+    // @return {Void} - nothing
     void ApplyOverrides(string path)
     {
         var inv = System.Globalization.CultureInfo.InvariantCulture;
@@ -39,6 +42,8 @@ public class SmokeTest : MonoBehaviour
             f.SetValue(target, v); Debug.Log("override " + lhs + " = " + val);
         }
     }
+    // @description - Auto gear.
+    // @return {Void} - nothing
     void AutoGear()
     {
         if (sc == "bumpstart") return;   // gears managed by the scenario
@@ -47,12 +52,18 @@ public class SmokeTest : MonoBehaviour
         if (car.engine.rpm > 6000f && car.drivetrain.gear < 5) { car.drivetrain.Shift(1); lastShift = t; }
         else if (car.engine.rpm < 2200f && car.drivetrain.gear > 1) { car.drivetrain.Shift(-1); lastShift = t; }
     }
+    // @description - Speed ctl.
+    // @param {float} vTarget - v target
+    // @param {float} v - value of type float
+    // @return {float} - the speed ctl
     float SpeedCtl(float vTarget, float v)   // PI throttle/brake controller, m/s
     {
         float e = vTarget - v; iErr = Mathf.Clamp(iErr + e * Time.fixedDeltaTime, -5f, 5f);
         float u = 0.4f * e + 0.15f * iErr; car.throttle = Mathf.Clamp01(u); car.brake = Mathf.Clamp01(-u * 0.5f); return u;
     }
-    // circle follower centred at (R,0) [right turn] using pure pursuit
+    // @description - circle follower centred at (R,0) [right turn] using pure pursuit
+    // @param {float} radius - radius
+    // @return {float} - the circle steer
     float CircleSteer(float radius)
     {
         Vector3 c = new Vector3(radius, 0f, 0f), p = rb.position; p.y = 0f;
@@ -63,6 +74,8 @@ public class SmokeTest : MonoBehaviour
         float alpha = Mathf.Atan2(loc.x, loc.z); float ld = loc.magnitude;
         return Mathf.Atan(2f * car.carParams.wheelbase * Mathf.Sin(alpha) / ld) * Mathf.Rad2Deg;
     }
+    // @description - Fixed update.
+    // @return {Void} - nothing
     void FixedUpdate()
     {
         if (!car || car.engine == null) return;
@@ -104,11 +117,15 @@ public class SmokeTest : MonoBehaviour
     }
     // -audiowav <path>: render the engine synth offline (same code as the live AudioSource filter) at WavRate, synchronous with physics
     const int WavRate = 48000; float[] wav; int wavN; EngineSynth synth; string wavPath;
+    // @description - Start (see the body for details).
+    // @return {Void} - nothing
     void Start()
     {
         var a = System.Environment.GetCommandLineArgs(); int w = System.Array.IndexOf(a, "-audiowav");
         if (w >= 0 && w + 1 < a.Length && car) { wavPath = a[w + 1]; wav = new float[WavRate * 20]; synth = new GameObject("OfflineSynth").AddComponent<EngineSynth>(); synth.enabled = false; synth.Init(car, WavRate); }
     }
+    // @description - Writes the wav.
+    // @return {Void} - nothing
     void WriteWav()
     {
         if (wav == null) return;
@@ -120,12 +137,21 @@ public class SmokeTest : MonoBehaviour
         }
         Debug.Log("WAV written " + wavPath + " samples " + wavN);
     }
+    // @description - Next.
+    // @param {int} p - value of type int
+    // @return {Void} - nothing
     void Next(int p) { phase = p; phaseT = 0f; }
     // ---- off-track launch diagnostics (lagunaoff): wheel ground-height jumps, chassis contacts, body vertical speed ----
     readonly float[] diagLastY = new float[4]; float diagNext;
     public class ContactDiag : MonoBehaviour { void OnCollisionEnter(Collision c) => Log("enter", c); void OnCollisionStay(Collision c) { if (c.impulse.magnitude > 200f) Log("stay", c); }
+        // @description - Log.
+        // @param {string} k - value of type string
+        // @param {Collision} c - value of type Collision
+        // @return {Void} - nothing
         void Log(string k, Collision c) { var rb = GetComponent<Rigidbody>(); var n = c.contactCount > 0 ? c.GetContact(0).normal : Vector3.zero; var pt = c.contactCount > 0 ? c.GetContact(0).point : Vector3.zero;
             Debug.Log($"DIAGC {k} {c.collider.name} t {Time.time:0.000} impulse {c.impulse.ToString("F0")} relVel {c.relativeVelocity.ToString("F1")} normal {n.ToString("F2")} pt {pt.ToString("F2")} contacts {c.contactCount} body v {rb.velocity.ToString("F2")} y {rb.position.y:0.00}"); } }
+    // @description - Launch diag.
+    // @return {Void} - nothing
     void LaunchDiag()
     {
         if (!car.GetComponent<ContactDiag>()) { car.gameObject.AddComponent<ContactDiag>(); Debug.Log($"DIAG maxDepenetration default {Physics.defaultMaxDepenetrationVelocity} rb {rb.maxDepenetrationVelocity} contactOffset {Physics.defaultContactOffset} cd {rb.collisionDetectionMode}"); }
@@ -136,6 +162,9 @@ public class SmokeTest : MonoBehaviour
     // ---- bump start: 2nd gear at 40 km/h, clutch engaged, brakes locked -> engine stalls; release brake, clutch stays engaged -> must re-fire.
     // -ignoff: ignition switched off at the stall -> must NOT re-fire. Clutch pedal/auto clutch never used.
     float bsStallV, bsMaxRpm; bool bsIgnOff;
+    // @description - Bump start.
+    // @param {float} v - value of type float
+    // @return {Void} - nothing
     void BumpStart(float v)
     {
         car.autoClutch = phase == 0; car.clutch = 0f;   // run-up: launch with the auto clutch; from the brake lock on the clutch stays engaged (no auto clutch)
@@ -166,16 +195,31 @@ public class SmokeTest : MonoBehaviour
     // ---- power-on / lift-off in a steady turn (diagnostic). Phase 0: hold a psR circle at psAy (closed-loop steer + speed) until steady.
     // Phase 1: steering FROZEN, throttle -> psThr (or kept at the steady value as a control run), gear held, 3 s. Per-wheel logging every 10 ms.
     float psSteer, psThrHold, psThrF; float[] psRef; readonly System.Collections.Generic.List<string> psOut = new System.Collections.Generic.List<string>(); float psNext;
+    // @description - Ps state.
+    // @param {float} v - value of type float
+    // @return {float[]} - the ps state
     float[] PsState(float v)
     {
         float yr = rb.angularVelocity.y * Mathf.Rad2Deg; var vel = rb.velocity; float vx = Vector3.Dot(vel, car.transform.forward), vy = Vector3.Dot(vel, car.transform.right);
         float beta = Mathf.Atan2(vy, Mathf.Max(0.1f, vx)) * Mathf.Rad2Deg; float aF = 0.5f * (car.frontLeftWheel.relaxedSlipAngle + car.frontRightWheel.relaxedSlipAngle) * Mathf.Rad2Deg, aR = 0.5f * (car.rearLeftWheel.relaxedSlipAngle + car.rearRightWheel.relaxedSlipAngle) * Mathf.Rad2Deg;
         return new[] { v * 3.6f, yr, yr * Mathf.Deg2Rad / Mathf.Max(0.1f, v), beta, ayF, axF, aF, aR, U(car.frontLeftWheel), U(car.frontRightWheel), U(car.rearLeftWheel), U(car.rearRightWheel), car.frontLeftWheel.verticalLoad + car.frontRightWheel.verticalLoad, car.rearLeftWheel.verticalLoad + car.rearRightWheel.verticalLoad };
     }
+    // @description - U.
+    // @param {WheelCorner} w - value of type WheelCorner
+    // @return {float} - the u
     float U(WheelCorner w) { var p = car.carParams; float dfz = (w.verticalLoad - p.nominalVerticalLoad) / p.nominalVerticalLoad; float D = Mathf.Max(1f, (p.lateralPeakFrictionCoefficient + p.lateralPeakFrictionLoadSlope * dfz) * w.verticalLoad); return w.force.magnitude / D; }   // friction usage ~ |F| / (mu_y(Fz) Fz)
+    // @description - Ps fmt.
+    // @param {string} tag - tag
+    // @param {float[]} s - value of type float[]
+    // @return {string} - the ps fmt
     string PsFmt(string tag, float[] s) => string.Format(System.Globalization.CultureInfo.InvariantCulture, "PSTEP {0}: v {1:0.0} km/h, yaw {2:0.00} deg/s, curvature {3:0.00000} 1/m (R {4:0.0} m), beta {5:+0.00;-0.00} deg, ay {6:0.000} g, ax {7:+0.000;-0.000} g, alphaF {8:0.00} alphaR {9:0.00} deg (aF-aR {10:+0.00;-0.00}), usage FL {11:0.00} FR {12:0.00} RL {13:0.00} RR {14:0.00}, FzF {15:0} FzR {16:0} N",
         tag, s[0], s[1], s[2], 1f / Mathf.Max(1e-5f, Mathf.Abs(s[2])), s[3], s[4], s[5], s[6], s[7], s[6] - s[7], s[8], s[9], s[10], s[11], s[12], s[13]);
+    // @description - Ps beta.
+    // @return {float} - the ps beta
     float PsBeta() { var vel = rb.velocity; return Mathf.Atan2(Vector3.Dot(vel, car.transform.right), Mathf.Max(0.1f, Vector3.Dot(vel, car.transform.forward))); }
+    // @description - Power step.
+    // @param {float} v - value of type float
+    // @return {Void} - nothing
     void PowerStep(float v)
     {
         psThrF += (1f - Mathf.Exp(-Time.fixedDeltaTime / 0.5f)) * (car.throttle - psThrF);
@@ -200,11 +244,17 @@ public class SmokeTest : MonoBehaviour
         }
     }
     float K1;
+    // @description - Circle steer r.
+    // @param {float} radius - radius
+    // @return {float} - the circle steer r
     float CircleSteerR(float radius) => CircleSteer(radius);
     // ---- track drive (-track laguna -scenario laguna): spawn on S/F, follow the centreline with pure pursuit at a curvature-limited speed,
     // and check the car stays on the surface (all wheels hit a collider, body above the surface, within the track edges + shoulder).
     float lagEnd = 63f; int lagIdx, lagUngrounded, lagSamples, lagMaxUngroundedRun, lagRun, lagLaps; float lagMaxOff = 0f, lagMinClear = 99f, lagDist, lagMaxV, lagWorstY = 99f; Vector3 lagPrev; bool lagFail; string lagWhy = "";
     float thNext = 4f; Vector3 thHead;
+    // @description - Therm log.
+    // @param {string} tag - tag
+    // @return {Void} - nothing
     void ThermLog(string tag)
     {   // user-facing units: mph, F, psi
         string o = $"THERM {sc} {tag} v {rb.velocity.magnitude * DebugHUD.MphPerMs:0} mph";
@@ -215,6 +265,9 @@ public class SmokeTest : MonoBehaviour
         }
         Debug.Log(o);
     }
+    // @description - Laguna drive.
+    // @param {float} v - value of type float
+    // @return {Void} - nothing
     void LagunaDrive(float v)
     {
         car.autoClutch = true; var ti = TrackManager.Instance.info; var c = ti.Centreline; int n = c.Count; Vector3 p = rb.position;
@@ -250,6 +303,8 @@ public class SmokeTest : MonoBehaviour
     // ---- kerb test: per-wheel surface under the contact (SurfaceTag of the collider hit) and its load / travel; kerb vs asphalt
     bool kerbMode; readonly float[] kN = new float[2], kFz = new float[2], kFz2 = new float[2], kTrMin = { 9f, 9f }, kTrMax = { -9f, -9f }, kdFz = new float[2]; readonly float[] lastFz = new float[4];
     int kerbHitObjects;
+    // @description - Kerb sample.
+    // @return {Void} - nothing
     void KerbSample()
     {
         if (t < 4f) return; var ws = new[] { car.frontLeftWheel, car.frontRightWheel, car.rearLeftWheel, car.rearRightWheel };
@@ -261,6 +316,8 @@ public class SmokeTest : MonoBehaviour
             kN[k]++; kFz[k] += w.verticalLoad; kFz2[k] += w.verticalLoad * w.verticalLoad; kTrMin[k] = Mathf.Min(kTrMin[k], w.travel); kTrMax[k] = Mathf.Max(kTrMax[k], w.travel); kdFz[k] += dFz;
         }
     }
+    // @description - Kerb report.
+    // @return {Void} - nothing
     void KerbReport()
     {
         string S(int k) { float n = Mathf.Max(1f, kN[k]), m = kFz[k] / n, sd = Mathf.Sqrt(Mathf.Max(0f, kFz2[k] / n - m * m)); return $"{kN[k]:0} wheel-samples, Fz mean {m:0} N sd {sd:0} N, mean |dFz/dt| {kdFz[k] / n / 1000f:0.0} kN/s, travel {kTrMin[k] * 1000f:0}..{kTrMax[k] * 1000f:0} mm"; }
@@ -273,6 +330,10 @@ public class SmokeTest : MonoBehaviour
     // ---- off-road rest test: teleport onto grass/runoff at several places (beside the track and far away), let the car settle 4 s on the brake,
     // check all wheels hit a surface, the car is at rest, and its height matches the DEM terrain under it (TerrainData height + ride height).
     int gIdx = -1; int gFails; float gT, gDiagNext; readonly System.Collections.Generic.List<string> gRows = new System.Collections.Generic.List<string>();
+    // @description - Grass point.
+    // @param {int} k - value of type int
+    // @param {out string} name - name
+    // @return {Vector3} - the grass point
     Vector3 GrassPoint(int k, out string name)
     {
         var ti = TrackManager.Instance.info; var c = ti.Centreline; int n = c.Count;
@@ -299,6 +360,9 @@ public class SmokeTest : MonoBehaviour
     // ---- park: S/F spawn, neutral, engine idling. 0-13 s brake pedal + handbrake, 13-23 s handbrake only (rear locked).
     // Measured 3-10 s after each change: displacement (creep), max speed and max |accel| (oscillation). Checks the low-speed stick tire model.
     Vector3 pkPos0; float pkMaxV, pkMaxA, pkSlope; bool pkHave; Vector3 pkVPrev; readonly string[] pkRow = new string[2]; int pkFail;
+    // @description - Park.
+    // @param {float} v - value of type float
+    // @return {Void} - nothing
     void Park(float v)
     {
         car.steer = 0f; car.throttle = 0f; if (car.drivetrain.gear != 0) car.drivetrain.SelectGear(0);
@@ -322,6 +386,9 @@ public class SmokeTest : MonoBehaviour
         if (t >= 23f) { Debug.Log($"PARK RESULT {(pkFail == 0 ? "PASS" : "FAIL")} {2 - pkFail}/2"); Next(99); }
     }
     Vector3 gPos2; bool gHave2;
+    // @description - Laguna grass.
+    // @param {float} v - value of type float
+    // @return {Void} - nothing
     void LagunaGrass(float v)
     {
         car.throttle = 0f; car.brake = 1f; car.steer = 0f; car.handbrake = true;
@@ -338,6 +405,9 @@ public class SmokeTest : MonoBehaviour
             if (Physics.Raycast(p + Vector3.up * 30f, Vector3.down, out var h0, 600f)) Debug.Log($"GRASSDBG place hit '{h0.collider.name}' layer {h0.collider.gameObject.layer} at {h0.point} rb {rb.position}");
         }
     }
+    // @description - Grass measure.
+    // @param {float} v - value of type float
+    // @return {Void} - nothing
     void GrassMeasure(float v)
     {
         GrassPoint(gIdx, out string name); var p = rb.position; var tc = Object.FindObjectOfType<TerrainCollider>();
@@ -352,7 +422,11 @@ public class SmokeTest : MonoBehaviour
         gRows.Add(string.Format(System.Globalization.CultureInfo.InvariantCulture, "GRASS {0} {1}: creep 2-4 s {13:0.0} mm, pos ({2:0.0},{3:0.00},{4:0.0}) DEM {5:0.00} car-ride-surface {11:+0.00;-0.00} m, car-ride-DEM {6:+0.00;-0.00} m{12}, wheels grounded {7}/4, speed {8:0.00} m/s, surface under car '{9}', slope {10:0}° (>20°: locked car may slide; must stay on the ground)",
             ok ? "PASS" : "FAIL", name, p.x, p.y, p.z, hTerr, dz, gr, v, under, slope, ds, dataWarn ? " (surface collider/visual mesh >0.5 m off the heightmap: data issue)" : "", gHave2 ? (p - gPos2).magnitude * 1000f : float.NaN));
     }
+    // @description - Tm fall resets.
+    // @return {int} - the tm fall resets
     int tm_FallResets() => TrackManager.Instance ? TrackManager.Instance.FallResets : 0;
+    // @description - Laguna grass report.
+    // @return {Void} - nothing
     void LagunaGrassReport() { foreach (var r in gRows) Debug.Log(r); Debug.Log($"LAGUNAGRASS RESULT {(gFails == 0 ? "PASS" : "FAIL")} {gRows.Count - gFails}/{gRows.Count} points, fall resets {tm_FallResets()}"); }
     // ---- off-track at speed: start on the road 150 m upstream at 132 km/h (wheel spin matched), coast in neutral, steer off the asphalt onto runoff/grass/terrain.
     // Checks every physics step: car never below the heightmap (fall-through), a collider always under the car, no fall-safety reset.
@@ -361,6 +435,9 @@ public class SmokeTest : MonoBehaviour
     static readonly (float s, float side, string name)[] OffSpots = {   // s of the run-off point, side +1 right / -1 left
         (2440f, -1f, "wide LEFT before the Corkscrew (T8 approach)"), (3330f, 1f, "outside RIGHT of T11 exit"), (260f, 1f, "outside RIGHT of T1"),
         (2600f, 1f, "Corkscrew exit RIGHT (T8A)"), (1990f, 1f, "outside RIGHT of T6"), (2440f, 1f, "RIGHT before the Corkscrew") };
+    // @description - Laguna off.
+    // @param {float} v - value of type float
+    // @return {Void} - nothing
     void LagunaOff(float v)
     {
         var tm = TrackManager.Instance; var ti = tm.info; var c = ti.Centreline; int n = c.Count;
@@ -386,6 +463,8 @@ public class SmokeTest : MonoBehaviour
         if (Physics.Raycast(p + Vector3.up * 2f, Vector3.down, out var h, 10f)) { var st = SurfaceTag.Of(h.collider).ToString(); oSurf[st] = oSurf.TryGetValue(st, out var q) ? q + 1 : 1; } else { oNoSurf++; if (oNoSurf == 1 || oNoSurf == 300) { var hs = Physics.RaycastAll(p + Vector3.up * 2f, Vector3.down, 100f); string hl = ""; foreach (var hh in hs) hl += $" {hh.collider.name}@{hh.point.y:0.00}"; Debug.Log($"OFFDIAG no collider: t {t:0.00} pos {p.ToString("F2")} vel {rb.velocity.ToString("F1")} terrain(finest) {TrackManager.TerrainHeightAt(p, out _):0.00} hits<=100m:{hl}"); } }
         if (Mathf.Abs(lat) - edgeHere > 2f) oMinV = Mathf.Min(oMinV, v);
     }
+    // @description - Off report1.
+    // @return {Void} - nothing
     void OffReport1()
     {
         var tm = TrackManager.Instance; int resets = tm.FallResets - oResets0; float ride = car.carParams.hubDropDesign + car.carParams.wheelRadius;
@@ -393,6 +472,8 @@ public class SmokeTest : MonoBehaviour
         if (!ok) oFails++;
         oRows.Add($"OFF {(ok ? "PASS" : "FAIL")} {oName}: entered at 132 km/h, max {oMaxOff:0.0} m beyond the asphalt edge, slowest off-track {oMinV * 3.6f:0} km/h, min (car origin - heightmap) {oMinAboveDem:0.00} m (ride height {ride:0.00}), steps with no collider under car {oNoSurf}/{oSteps}, fall resets {resets}, surfaces under car: {string.Join(", ", System.Linq.Enumerable.Select(oSurf, kv => $"{kv.Key} {100f * kv.Value / Mathf.Max(1, oSteps):0}%"))}");
     }
+    // @description - Laguna report.
+    // @return {Void} - nothing
     void LagunaReport()
     {
         Debug.Log(string.Format(System.Globalization.CultureInfo.InvariantCulture,
@@ -404,8 +485,17 @@ public class SmokeTest : MonoBehaviour
     // too far), plus seeded sample-and-hold noise (+-0.25 at 8 Hz). The same driver and seed for both modes.
     //   gplane: 80 km/h, 3.5 m lane change at phase t 1 s, back at 5 s.   gpoversteer: 90 km/h, gentle turn-in + handbrake pull (-gphb ms, default 300), then recover the original heading.
     GamepadSteering gpA; System.Random gpRng; float gpNoise, gpNoiseT, gpY0, gpH0, gpMaxBeta, gpMaxR, gpErr2, gpDs2, gpPrevSteer, gpRecT = -1f; int gpN, gpRev; float gpPrevD; bool gpSpin, gpDone;
-    static int GpArg(string n, int d) { var a = System.Environment.GetCommandLineArgs(); int i = System.Array.IndexOf(a, n); return i >= 0 && i + 1 < a.Length && int.TryParse(a[i + 1], out var x) ? x : d; }
+    // @description - Gp arg.
+    // @param {string} objectName - object name
+    // @param {int} d - value of type int
+    // @return {int} - the gp arg
+    static int GpArg(string objectName, int d) { var a = System.Environment.GetCommandLineArgs(); int i = System.Array.IndexOf(a, objectName); return i >= 0 && i + 1 < a.Length && int.TryParse(a[i + 1], out var x) ? x : d; }
+    // @description - Gp assist on.
+    // @return {bool} - the gp assist on
     bool GpAssistOn() { var a = System.Environment.GetCommandLineArgs(); int i = System.Array.IndexOf(a, "-gpassist"); return i < 0 || a[i + 1] != "0"; }
+    // @description - Gp run.
+    // @param {float} v - value of type float
+    // @return {Void} - nothing
     void GpRun(float v)
     {
         float dt = Time.fixedDeltaTime, kmh = v * 3.6f, vTgt = (sc == "gplane" ? 80f : 90f) / 3.6f;
@@ -443,6 +533,9 @@ public class SmokeTest : MonoBehaviour
             phase = 99;
         }
     }
+    // @description - Run (see the body for details).
+    // @param {float} v - value of type float
+    // @return {Void} - nothing
     void Run(float v)
     {
         float kmh = v * 3.6f;

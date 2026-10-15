@@ -9,6 +9,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [2026-10-14] (PT)
 
+### Changed (readability pass 6/6 part 3: audio, SmokeTest, track, editor scripts, tests, PT 22:30)
+
+- Every remaining method in `Assets/Scripts` and `Assets/Tests` now has an `// @description / @param / @return` header (audio: `CarAudio`, `TireScrub`; `SmokeTest`, `TrackManager`, `TrackInfo`, `SurfaceTag`, `AmbientLighting`, `CarParams`, editor scripts, all test files). `/// @description` headers from earlier passes were normalised to `//`. `SuspensionTablesData.cs` header is mirrored in `tools/kinematics/export_unity.py`. No behaviour change.
+
 ### Changed (readability pass 6/6 part 2: input, settings, UI/VR, PT 21:55)
 
 - **Old saved settings are broken on purpose:** `input_bindings.json` settings version is now 9 and files of any other version are discarded (defaults used, a warning is logged). JSON keys were renamed (see `docs/RENAMES.md`). The settings migration code and its 5 migration-only tests were removed and 1 test added (edit-mode tests: 113/113 pass; the 112 retained tests are unchanged).

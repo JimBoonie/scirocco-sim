@@ -36,6 +36,9 @@ def write_cs(t, c, cls, path):
 // Source hardpoints: suspension_params.json (partly ESTIMATED; tie-rod points used as given, rod 0.379 m SD).
 public static class {cls}
 {{
+    // @description - copies the baked kinematic and compliance tables into a SuspensionTables asset
+    // @param {SuspensionTables} k - the asset to fill
+    // @return {Void} - nothing
     public static void Fill(SuspensionTables k)
     {{
 {body}

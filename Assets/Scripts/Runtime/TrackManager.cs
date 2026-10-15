@@ -12,7 +12,11 @@ public class TrackManager : MonoBehaviour
     public string Credit => info ? info.credit : "";
     public static TrackManager Instance;
     Vector3 testSpawn; Quaternion testRot;
+    // @description - Awake.
+    // @return {Void} - nothing
     void Awake() { Instance = this; if (car) { testSpawn = car.transform.position; testRot = car.transform.rotation; } }
+    // @description - Start (see the body for details).
+    // @return {Void} - nothing
     void Start()
     {
         var a = System.Environment.GetCommandLineArgs(); int i = System.Array.IndexOf(a, "-track"); int want = -1;
@@ -20,13 +24,22 @@ public class TrackManager : MonoBehaviour
         else if (router && router.map != null) want = Find(router.map.profile.track);
         if (want > 0) Select(want);
     }
+    // @description - Find (see the body for details).
+    // @param {string} name - name
+    // @return {int} - the find
     public static int Find(string name)
     {
         if (string.IsNullOrEmpty(name)) return 0; name = name.Replace(" ", "").ToLowerInvariant();
         for (int k = 0; k < Names.Length; k++) if (Names[k].Replace(" ", "").ToLowerInvariant().StartsWith(name) || Scenes[k].ToLowerInvariant() == name) return k;
         return 0;
     }
+    // @description - Select (see the body for details).
+    // @param {int} idx - idx
+    // @return {Void} - nothing
     public void Select(int idx) { if (Loading || idx < 0 || idx >= Names.Length) return; StartCoroutine(Load(idx)); }
+    // @description - Load (see the body for details).
+    // @param {int} idx - idx
+    // @return {IEnumerator} - the load
     IEnumerator Load(int idx)
     {
         Loading = true; Ready = false;
@@ -46,7 +59,10 @@ public class TrackManager : MonoBehaviour
         Debug.Log($"[Track] loaded '{Names[idx]}'" + (info ? $" spawn {info.spawnPosition} yaw {info.spawnYawDeg}" : ""));
         Loading = false; Ready = true;
     }
-    /// put the car at rest on the surface below p (road collider or terrain), facing yawDeg
+    // @description - put the car at rest on the surface below p (road collider or terrain), facing yawDeg
+    // @param {Vector3} p - value of type Vector3
+    // @param {float} yawDeg - yaw deg
+    // @return {Void} - nothing
     public void Place(Vector3 p, float yawDeg)
     {
         float h = car.carParams.hubDropDesign + car.carParams.wheelRadius + 0.02f;
@@ -56,6 +72,10 @@ public class TrackManager : MonoBehaviour
         var rot = Quaternion.FromToRotation(Vector3.up, up) * Quaternion.Euler(0f, yawDeg, 0f);
         PlaceExact(p + up * h, rot);
     }
+    // @description - Place exact.
+    // @param {Vector3} pos - pos
+    // @param {Quaternion} rot - rot
+    // @return {Void} - nothing
     void PlaceExact(Vector3 pos, Quaternion rot)
     {
         var rb = car.GetComponent<Rigidbody>(); rb.velocity = Vector3.zero; rb.angularVelocity = Vector3.zero;
@@ -66,23 +86,34 @@ public class TrackManager : MonoBehaviour
     }
     // data credit: always on screen while a track that needs it is loaded (independent of the HUD toggle)
     GUIStyle cs;
+    // @description - Handles the gui.
+    // @return {Void} - nothing
     void OnGUI()
     {
         if (string.IsNullOrEmpty(Credit) || VrPanel.Active) return;
         if (cs == null) { cs = new GUIStyle(GUI.skin.label) { fontSize = 12, alignment = TextAnchor.LowerRight }; cs.normal.textColor = new Color(1f, 1f, 1f, 0.85f); }
         GUI.depth = -20; GUI.Label(new Rect(Screen.width - 610, Screen.height - 22, 600, 20), Credit, cs);
     }
-    // safety net: below the lowest terrain point = fell out of the world -> back to start/finish (logged)
+    // @description - safety net: below the lowest terrain point = fell out of the world -> back to start/finish (logged)
+    // @return {Void} - nothing
     void FixedUpdate()
     {
         if (!info || Loading || !car) return;
         if (BelowWorld(car.transform.position.y, info.minY)) { Debug.LogWarning($"[Track] car fell below terrain (y {car.transform.position.y:0.0} < {info.minY - 5f:0.0}) at {car.transform.position} -> reset to start/finish"); FallResets++; if (router && router.ffb) router.ffb.ResetRamp(); Respawn(); }
     }
     public int FallResets { get; private set; }
-    /// respawn on the current track's start/finish (or test area origin)
+    // @description - respawn on the current track's start/finish (or test area origin)
+    // @return {Void} - nothing
     public void Respawn() { if (info) Place(info.spawnPosition, info.spawnYawDeg); else PlaceExact(testSpawn, testRot); }
+    // @description - Below world.
+    // @param {float} carY - car y
+    // @param {float} terrainMinY - terrain min y
+    // @return {bool} - the below world
     public static bool BelowWorld(float carY, float terrainMinY) => carY < terrainMinY - 5f;   // fall safety threshold: 5 m under the lowest DEM sample
-    /// DEM height under p from the finest terrain tile containing it (v1.3 tiles: 2049-grid inner + 513 outer); NaN if none
+    // @description - DEM height under p from the finest terrain tile containing it (v1.3 tiles: 2049-grid inner + 513 outer); NaN if none
+    // @param {Vector3} p - value of type Vector3
+    // @param {out float} steep - steep
+    // @return {float} - the terrain height at
     public static float TerrainHeightAt(Vector3 p, out float steep)
     {
         steep = 0f; float best = float.MaxValue, y = float.NaN;

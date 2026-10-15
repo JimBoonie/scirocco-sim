@@ -7,6 +7,9 @@ public static class AmbientLighting
     static readonly Color Sky = new Color(0.50f, 0.58f, 0.72f), Equator = new Color(0.46f, 0.45f, 0.40f), Ground = new Color(0.33f, 0.30f, 0.23f);
     const float FillFraction = 0.12f;   // fill intensity = 12 % of the sun x brightness, no shadows
     static float applied = -1f; static Light fill;
+    // @description - Apply (see the body for details).
+    // @param {float} brightness - brightness
+    // @return {Void} - nothing
     public static void Apply(float brightness)
     {
         brightness = Mathf.Clamp(brightness, 0.5f, 2f);

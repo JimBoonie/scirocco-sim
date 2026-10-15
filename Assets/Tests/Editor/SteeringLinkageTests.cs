@@ -2,6 +2,8 @@
 using NUnit.Framework; using UnityEngine;
 public class SteeringLinkageTests
 {
+    // @description - P.
+    // @return {CarParams} - the p
     static CarParams P() { var p = ScriptableObject.CreateInstance<CarParams>(); p.suspensionTables = ScriptableObject.CreateInstance<SuspensionTables>(); SuspensionTablesData.Fill(p.suspensionTables); return p; }
     // Targets (degrees). Bentley 1985-93 US Scirocco/Cabriolet manual p.10-10 Table b [SD: unconfirmed for 1984]
     const float ToeOutInnerDeg = 20f;                          // reference inner-wheel angle of the toe-out-on-turns check
@@ -13,7 +15,12 @@ public class SteeringLinkageTests
     // lower-arm pivots (E; the +20 mm single-baseline estimate gave 40.50 / 32.90 and was dropped in the 2026-10-13 re-solve). Also checked against the sourced values within 0.25 deg.
     const float LockInnerDeg = 40.34f, LockOuterDeg = 32.91f, LockTolDeg = 0.1f;
     const float LockInnerSrcDeg = 40.367f, LockOuterSrcDeg = 32.917f, LockSrcTolDeg = 0.25f;
+    // @description - Log.
+    // @param {string} s - value of type string
+    // @return {Void} - nothing
     static void Log(string s) { Debug.Log("STEER " + s); TestContext.Out.WriteLine(s); }
+    // @description - Full lock matches sourced lock angles.
+    // @return {Void} - nothing
     [Test] public void Full_Lock_Matches_Sourced_Lock_Angles()
     {   // S [A1]: 40d22' inner / 32d55' outer; solver (0.379 m rod, original pivots) at +-68.6 mm: 40.34 / 32.91
         var p = P(); float rack = SteeringLinkage.Rack(p, p.handwheelLockDeg);
@@ -25,6 +32,8 @@ public class SteeringLinkageTests
         SteeringLinkage.WheelAngles(p.suspensionTables, -rack, 0f, 0f, out float l2, out float r2);
         Assert.AreEqual(-r, l2, 1e-4f, "left lock mirrors"); Assert.AreEqual(-l, r2, 1e-4f);
     }
+    // @description - Mid range angles.
+    // @return {Void} - nothing
     [Test] public void Mid_Range_Angles()
     {
         var p = P(); SteeringLinkage.WheelAngles(p.suspensionTables, SteeringLinkage.Rack(p, 100f), 0f, 0f, out float l, out float r);
@@ -35,6 +44,8 @@ public class SteeringLinkageTests
         foreach (float hw in new[] { -500f, -50f, 3f, 200f, 600f })
             Assert.AreEqual(hw, SteeringLinkage.HandwheelForMean(p, SteeringLinkage.MeanAngle(p, hw)), 0.05f, "inverse");
     }
+    // @description - Bump steer comes from the same grid.
+    // @return {Void} - nothing
     [Test] public void Bump_Steer_Comes_From_The_Same_Grid()
     {   // at centre the grid must reproduce the bump-steer curve of the solver; under steer it changes with travel
         var p = P(); var k = p.suspensionTables;
@@ -42,12 +53,18 @@ public class SteeringLinkageTests
         float lv = SteeringLinkage.Lever(p, true, 0f, 0f), rv = SteeringLinkage.Lever(p, false, 0f, 0f);
         Assert.AreEqual(lv, rv, 1e-5f, "symmetric lever on centre"); Assert.AreEqual(1f / SteeringLinkage.CentreRatio(p), lv, 2e-4f);
     }
+    // @description - Rack for right wheel.
+    // @param {SuspensionTables} k - value of type SuspensionTables
+    // @param {float} target - target
+    // @return {float} - the rack for right wheel
     static float RackForRightWheel(SuspensionTables k, float target)
     {   // bisection on rack (right turn: + rack, right wheel = inner) at design height
         float lo = 0f, hi = k.rackGrid[k.rackGrid.Length - 1];
         for (int i = 0; i < 60; i++) { float m = 0.5f * (lo + hi); SteeringLinkage.WheelAngles(k, m, 0f, 0f, out _, out float r); if (r < target) lo = m; else hi = m; }
         return 0.5f * (lo + hi);
     }
+    // @description - Toe out on turns matches manual.
+    // @return {Void} - nothing
     [Test] public void Toe_Out_On_Turns_Matches_Manual()
     {
         var k = P().suspensionTables; float rack = RackForRightWheel(k, ToeOutInnerDeg);
@@ -55,12 +72,16 @@ public class SteeringLinkageTests
         Log($"toe-out on turns: inner {inner:0.000} deg, outer {outer:0.000} deg (target {ToeOutOuterDeg} +-{ToeOutTolDeg})");
         Assert.AreEqual(ToeOutInnerDeg, inner, 1e-3f); Assert.AreEqual(ToeOutOuterDeg, outer, ToeOutTolDeg, "outer at inner 20 deg");
     }
+    // @description - Camber change across 20deg lock matches manual.
+    // @return {Void} - nothing
     [Test] public void Camber_Change_Across_20deg_Lock_Matches_Manual()
     {   // left wheel; steer + = right. Camber at 20d left lock minus at 20d right lock (caster check)
         var k = P().suspensionTables; float d = k.FrontCamber(0f, -LockCheckDeg) - k.FrontCamber(0f, LockCheckDeg);
         Log($"camber change 20L->20R: {d:0.000} deg (target {CamberChangeDeg} +-{CamberChangeTolDeg:0.000})");
         Assert.AreEqual(CamberChangeDeg, d, CamberChangeTolDeg);
     }
+    // @description - Side to side within manual limits.
+    // @return {Void} - nothing
     [Test] public void Side_To_Side_Within_Manual_Limits()
     {   // both sides are modelled mirrored (69.0/67.0 mm inner-joint offset NOT applied), so L/R must agree well inside the limits
         var p = P(); var k = p.suspensionTables;

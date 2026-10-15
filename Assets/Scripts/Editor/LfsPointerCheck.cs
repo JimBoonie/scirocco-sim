@@ -7,7 +7,11 @@ using System.Collections.Generic; using System.IO; using UnityEditor; using Unit
 public static class LfsPointerCheck
 {
     static readonly string[] Exts = { ".asset", ".fbx", ".png", ".raw", ".dll" };
+    // @description - Lfs pointer check.
+    // @return {Void} - nothing
     static LfsPointerCheck() { EditorApplication.delayCall += () => Check(false); }
+    // @description - Find (see the body for details).
+    // @return {List<string>} - the find
     static List<string> Find()
     {
         var hits = new List<string>(); if (!Directory.Exists("Assets/Tracks") && !Directory.Exists("Assets/Plugins")) return hits;
@@ -24,7 +28,12 @@ public static class LfsPointerCheck
         return hits;
     }
     [MenuItem("Scirocco/Check Git LFS files (reimport after git lfs pull)")]
+    // @description - Menu check.
+    // @return {Void} - nothing
     static void MenuCheck() => Check(true);
+    // @description - Check (see the body for details).
+    // @param {bool} reimport - reimport
+    // @return {Void} - nothing
     static void Check(bool reimport)
     {
         var hits = Find();

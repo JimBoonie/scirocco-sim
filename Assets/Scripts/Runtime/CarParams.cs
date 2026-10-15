@@ -11,8 +11,8 @@ public class CarParams : ScriptableObject
     public float trackFront = 1.404f, trackRear = 1.372f;  // (S)
     [Header("Suspension (suspension_params.json; S/SD/D/E tags)")]
     public SuspensionTables suspensionTables;
-    // Single handling baseline (2026-10-13). The former 'ProposedUndersteer' profile is now the only set of inputs; there is no profile
-    // switch. Its values are ESTIMATES (E) inside the estimated uncertainty, chosen by Taylor for the understeer balance; not sourced data.
+    // @description - Single handling baseline (2026-10-13). The former 'ProposedUndersteer' profile is now the only set of inputs; there is no profile switch. Its values are ESTIMATES (E) inside the estimated uncertainty, chosen by Taylor for the understeer balance; not sourced data.
+    // @return {CarParams} - the runtime copy
     public CarParams RuntimeCopy() => Instantiate(this).ApplyTirePreset();   // runtime copy (tire preset applied); asset untouched                            // baked kinematic tables (kinematics/solve_kinematics.py)
     public float hubDropDesign = 0.30f;                     // corner transform -> wheel centre at design ride height (layout only)
     public float frontWheelRate = 15500f, rearWheelRate = 11900f;   // N/m (D from SD/E spring rates x MR^2)
@@ -52,8 +52,8 @@ public class CarParams : ScriptableObject
     public bool viscoRateStiffnessEnabled = true, viscoLoadRelaxationEnabled = true, viscoRollingResistanceEnabled = true, viscoBulkHeatEnabled = true;
     public enum TirePreset { ModernSummer, PeriodMXV }
     public TirePreset tirePreset = TirePreset.ModernSummer;   // PeriodMXV: ESTIMATED Michelin MXV-era 185/60HR14 (see ApplyTirePreset); default stays modern
-    // Period tire (E): mu ~1.0 (lambda_mu ~0.91 of modern 1.10), ~20 % lower cornering/long. stiffness, slightly longer relaxation length.
-    // Not tire data; chosen to represent 1980s radial compounds, validated only against C/D 0.79 g skidpad / ~46 m braking.
+    // @description - Period tire (E): mu ~1.0 (lambda_mu ~0.91 of modern 1.10), ~20 % lower cornering/long. stiffness, slightly longer relaxation length. Not tire data; chosen to represent 1980s radial compounds, validated only against C/D 0.79 g skidpad / ~46 m braking.
+    // @return {CarParams} - the apply tire preset
     public CarParams ApplyTirePreset()
     {
         if (tirePreset == TirePreset.ModernSummer) return this;

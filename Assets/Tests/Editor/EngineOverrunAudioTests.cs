@@ -3,9 +3,23 @@ using NUnit.Framework; using UnityEngine;
 public class EngineOverrunAudioTests
 {
     const float fs = 48000f, dt = 0.0005f;
+    // @description - Render.
+    // @param {float} rpm - rpm
+    // @param {float} load - load
+    // @param {float} map - map
+    // @param {bool} comb - comb
+    // @param {int} n - value of type int
+    // @return {float[]} - the render
     static float[] Render(float rpm, float load, float map, bool comb, int n = 24000)
     { var g = new GameObject("e"); var s = g.AddComponent<EngineSynth>(); s.SetOfflineState(fs, rpm, load, load, comb, map); var b = new float[n]; s.Render(b, n); Object.DestroyImmediate(g); return b; }
+    // @description - Db.
+    // @param {float[]} b - value of type float[]
+    // @return {float} - the db
     static float Db(float[] b) { double a = 0; int i0 = b.Length / 4; for (int i = i0; i < b.Length; i++) a += b[i] * b[i]; return 10f * Mathf.Log10((float)(a / (b.Length - i0))); }
+    // @description - Pitch.
+    // @param {float[]} b - value of type float[]
+    // @param {float} fGuess - f guess
+    // @return {float} - the pitch
     static float Pitch(float[] b, float fGuess)   // autocorrelation peak within +-40% of the guess
     {
         int i0 = b.Length / 4, lo = (int)(fs / (fGuess * 1.4f)), hi = (int)(fs / (fGuess * 0.6f)), best = lo; double bv = double.MinValue;
@@ -19,6 +33,8 @@ public class EngineOverrunAudioTests
         typeof(Engine).GetField("angularVelocity", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).SetValue(e, 5000f * Mathf.PI / 30f); e.rpm = 5000f;
         for (int i = 1; i <= 9000; i++) { float target = 5000f - i * dt * 700f; e.Step(0f, -((target - e.rpm) * 2f + e.FrictionTorque(e.rpm)), dt); if (i % 1000 == 0) yield return (e, p); }
     }
+    // @description - Overrun audible 6 to 10 d b under wot with real engine.
+    // @return {Void} - nothing
     [Test] public void Overrun_Audible_6_To_10_dB_Under_Wot_With_Real_Engine()
     {
         foreach (var (e, p) in Coast())
@@ -30,6 +46,8 @@ public class EngineOverrunAudioTests
             Assert.That(d, Is.InRange(6f, 10f), $"overrun at {e.rpm:0} rpm");
         }
     }
+    // @description - Overrun pitch tracks rpm during coastdown.
+    // @return {Void} - nothing
     [Test] public void Overrun_Pitch_Tracks_Rpm_During_Coastdown()
     {
         float prev = float.MaxValue;
@@ -40,6 +58,8 @@ public class EngineOverrunAudioTests
             Assert.AreEqual(f0, f, f0 * 0.03f, "firing frequency = rpm/60 x 2"); Assert.Less(f, prev, "pitch falls with rpm"); prev = f;
         }
     }
+    // @description - Fuel cut motoring still audible.
+    // @return {Void} - nothing
     [Test] public void Fuel_Cut_Motoring_Still_Audible()
     {
         float on = Db(Render(6800f, 1f, 1f, true)), cut = Db(Render(6800f, 0f, 0.02f, false));

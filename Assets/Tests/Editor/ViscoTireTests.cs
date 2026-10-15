@@ -3,32 +3,44 @@ using UnityEngine;
 // Experimental (viscoelastic) compound: calibration, physical trends, settings migration. Default compound untouched (see also smoke diff).
 public class ViscoTireTests
 {
+    // @description - P.
+    // @return {CarParams} - the p
     static CarParams P() => ScriptableObject.CreateInstance<CarParams>();
     static ViscoTire.Flags All => new ViscoTire.Flags { hysteresis = true, adhesion = true, williamsLandelFerry = true, flashTemperature = true, payneEffect = true, rateDependentStiffness = true, loadRelaxation = true, rollingResistance = true, bulkHeating = true };
 
+    // @description - Default compound is default.
+    // @return {Void} - nothing
     [Test] public void DefaultCompoundIsDefault()
     {
         var p = P(); Assert.AreEqual(CarParams.TireCompound.Default, p.tireCompound);
         Assert.AreEqual(0, new BindingProfile().tireCompound);
     }
+    // @description - Thermal bulk share zero is neutral.
+    // @return {Void} - nothing
     [Test] public void ThermalBulkShareZeroIsNeutral()
     {   // pFricBulk = 0 (Default compound) -> same node temperatures as an identical run (energy closes)
         var a = new TireThermal(TireThermal.NominalGaugePressure); var b = new TireThermal(TireThermal.NominalGaugePressure); b.bulkFrictionPower = 0;
         for (int i = 0; i < 5000; i++) { a.Step(1e-3, 3000, 200, 20, 3000, 0, 180000, true); b.Step(1e-3, 3000, 200, 20, 3000, 0, 180000, true); }
         Assert.AreEqual(a.bulkTemperature, b.bulkTemperature); Assert.AreEqual(a.surfaceTemperatures[1], b.surfaceTemperatures[1]); Assert.Less(System.Math.Abs(a.Residual), 1e-3 * a.energyIn);
     }
+    // @description - Bulk share moves heat not energy.
+    // @return {Void} - nothing
     [Test] public void BulkShareMovesHeatNotEnergy()
     {
         var a = new TireThermal(TireThermal.NominalGaugePressure); var b = new TireThermal(TireThermal.NominalGaugePressure); b.bulkFrictionPower = 500;
         for (int i = 0; i < 5000; i++) { a.Step(1e-3, 3000, 200, 20, 3000, 0, 180000, true); b.Step(1e-3, 3000, 200, 20, 3000, 0, 180000, true); }
         Assert.Greater(b.bulkTemperature, a.bulkTemperature); Assert.Less(b.surfaceTemperatures[1], a.surfaceTemperatures[1]); Assert.AreEqual(a.energyIn, b.energyIn, 1e-6 * a.energyIn); Assert.Less(System.Math.Abs(b.Residual), 1e-3 * b.energyIn);
     }
+    // @description - Grip factor is one at reference.
+    // @return {Void} - nothing
     [Test] public void GripFactorIsOneAtReference()
     {
         var p = P(); double vr = ViscoTire.VsRef(p); var f = All;
         foreach (double T in new[] { 10.0, 25.0, 60.0, 88.0, 120.0 })
             Assert.AreEqual(1.0, ViscoTire.GripFactor(vr, T, ViscoTire.ReferenceContactPressure, vr, f, out _), 1e-12, "T " + T);
     }
+    // @description - Experimental peak matches sourced peak.
+    // @return {Void} - nothing
     [Test] public void ExperimentalPeakMatchesSourcedPeak()
     {   // lateral peak at V_ref, Fz0, optimum temperature: the viscoelastic slip-speed factor may not add grip
         var p = P(); double vr = ViscoTire.VsRef(p); var f = All; float pk0 = 0, pk1 = 0;
@@ -41,11 +53,15 @@ public class ViscoTireTests
         Debug.Log($"peak Fy default {pk0:0} N, experimental {pk1:0} N ({(pk1 / pk0 - 1) * 100:+0.00;-0.00} %)");
         Assert.AreEqual(pk0, pk1, 0.03f * pk0);
     }
+    // @description - Slip stiffness unchanged by grip factor.
+    // @return {Void} - nothing
     [Test] public void SlipStiffnessUnchangedByGripFactor()
     {   // B = K/(C D): scaling D leaves dFy/dalpha at 0 unchanged
         var p = P(); var s = TireScale.One; s.lateralFriction = 0.7f; const float da = 1e-4f;
         Assert.AreEqual(PacejkaTire.PureLat(p, da, p.nominalVerticalLoad, 0f) / da, PacejkaTire.PureLat(p, da, p.nominalVerticalLoad, 0f, s) / da, 0.01f * PacejkaTire.PureLat(p, da, p.nominalVerticalLoad, 0f) / da);
     }
+    // @description - Friction rises then falls with slip speed.
+    // @return {Void} - nothing
     [Test] public void FrictionRisesThenFallsWithSlipSpeed()
     {   // with flashTemperature heating the master curve has an interior maximum (Grosch 1963 / Persson 2006 shape)
         var f = All; double best = 0, vBest = 0, lo = ViscoTire.MuEff(1e-3, 88, ViscoTire.ReferenceContactPressure, f, out _), hi = ViscoTire.MuEff(100, 88, ViscoTire.ReferenceContactPressure, f, out _);
@@ -53,6 +69,8 @@ public class ViscoTireTests
         Debug.Log($"mu(88 C): 1 mm/s {lo:0.000}, max {best:0.000} at {vBest:0.000} m/s, 100 m/s {hi:0.000}");
         Assert.Greater(best, lo * 1.05); Assert.Greater(best, hi * 1.05); Assert.Greater(vBest, 1e-3); Assert.Less(vBest, 100);
     }
+    // @description - Wlf shifts peak to higher speed when hot.
+    // @return {Void} - nothing
     [Test] public void WlfShiftsPeakToHigherSpeedWhenHot()
     {
         var f = All; f.flashTemperature = false;
@@ -60,6 +78,8 @@ public class ViscoTireTests
         Assert.Less(ViscoTire.LogTimeTemperatureShift(60), ViscoTire.LogTimeTemperatureShift(20));
         Assert.Greater(Peak(80), Peak(20)); Assert.Greater(Peak(20), Peak(-10));
     }
+    // @description - Flash temperature physical.
+    // @return {Void} - nothing
     [Test] public void FlashTemperaturePhysical()
     {
         Assert.AreEqual(0, ViscoTire.Flash(0, 1, ViscoTire.ReferenceContactPressure), 1e-9);
@@ -67,6 +87,8 @@ public class ViscoTireTests
         Debug.Log($"flash rise mu=1: 1 m/s {d1:0.0} K, 3 m/s {d3:0.0} K");
         Assert.Greater(d3, d1); Assert.Greater(d1, 1); Assert.Less(d3, 300);
     }
+    // @description - Modulus fit reproduces sourced dma.
+    // @return {Void} - nothing
     [Test] public void ModulusFitReproducesSourcedDma()
     {
         Assert.AreEqual(0.206, ViscoTire.TanDelta(10, 0), 0.02);
@@ -74,6 +96,8 @@ public class ViscoTireTests
         Assert.Greater(ViscoTire.ModulusAbs(10, -60), 1e8);   // glassy below Tg
         Assert.Greater(ViscoTire.ModulusAbs(1000, 60), ViscoTire.ModulusAbs(10, 60));   // stiffer at higher rate
     }
+    // @description - Rolling resistance factor.
+    // @return {Void} - nothing
     [Test] public void RollingResistanceFactor()
     {
         double r = 0.289; Assert.AreEqual(1.0, ViscoTire.RollingFactor(ViscoTire.RollingResistanceReferenceSpeed, r, ViscoTire.RollingResistanceReferenceTemperature), 1e-12);
@@ -82,11 +106,15 @@ public class ViscoTireTests
         Debug.Log($"RR temperature slope {kt * 100:0.00} %/C (ISO 28580 Kt 0.80 %/C)");
         Assert.Greater(kt, 0.002); Assert.Less(kt, 0.02);
     }
+    // @description - Stiffness rises with speed.
+    // @return {Void} - nothing
     [Test] public void StiffnessRisesWithSpeed()
     {
         double L = 0.1; Assert.AreEqual(1.0, ViscoTire.StiffnessFactor(ViscoTire.ReferenceSpeed, L, L), 1e-12);
         Assert.Greater(ViscoTire.StiffnessFactor(40, L, L), 1.0); Assert.Less(ViscoTire.StiffnessFactor(5, L, L), 1.0);
     }
+    // @description - Real time cost.
+    // @return {Void} - nothing
     [Test] public void RealTimeCost()
     {
         var f = All; double vr = 0.5; ViscoTire.MuHys(0, true); ViscoTire.MuHys(0, false);
@@ -95,6 +123,8 @@ public class ViscoTireTests
         sw.Stop(); Debug.Log($"1 s of 4 wheels at 2 kHz: {sw.Elapsed.TotalMilliseconds:0.0} ms ({acc:0})");
         Assert.Less(sw.Elapsed.TotalMilliseconds, 200);
     }
+    // @description - Dump curves.
+    // @return {Void} - nothing
     [Test] public void DumpCurves()
     {   // CSVs for tools/visco_plots.py when VISCO_DUMP is set
         var dir = System.Environment.GetEnvironmentVariable("VISCO_DUMP"); if (string.IsNullOrEmpty(dir)) { Assert.Pass("VISCO_DUMP not set"); return; }
@@ -121,5 +151,8 @@ public class ViscoTireTests
         foreach (double T in new[] { -60.0, -40.0, -20.0, 0.0, 20.0, 40.0, 60.0, 80.0, 100.0 }) for (double lf = -1; lf <= 6.001; lf += 0.1) { double fr = System.Math.Pow(10, lf); md.AppendLine(FormattableString(T, fr, ViscoTire.TanDelta(fr, T), ViscoTire.ModulusAbs(fr, T))); }
         System.IO.File.WriteAllText(System.IO.Path.Combine(dir, "modulus.csv"), md.ToString());
     }
+    // @description - Formattable string.
+    // @param {double[]} x - value of type double[]
+    // @return {string} - the formattable string
     static string FormattableString(params double[] x) => string.Join(",", System.Array.ConvertAll(x, v => v.ToString("R", System.Globalization.CultureInfo.InvariantCulture)));
 }

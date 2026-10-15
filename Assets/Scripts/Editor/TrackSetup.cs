@@ -7,6 +7,10 @@ public static class TrackSetup
 {
     const string Dir = "Assets/Tracks/LagunaSeca", Vis = Dir + "/LagunaSeca_Visual.fbx", Col = Dir + "/LagunaSeca_Colliders.fbx", ScenePath = Dir + "/LagunaSeca.unity";
     public const float SpawnYaw = 215.6f;
+    // @description - Model.
+    // @param {string} path - path
+    // @param {bool} readable - readable
+    // @return {Void} - nothing
     static void Model(string path, bool readable)
     {
         var mi = (ModelImporter)AssetImporter.GetAtPath(path); if (mi == null) { Debug.LogError("TRACKCHECK missing " + path); return; }
@@ -20,6 +24,9 @@ public static class TrackSetup
         mi.materialName = ModelImporterMaterialName.BasedOnMaterialName; mi.materialSearch = ModelImporterMaterialSearch.Local;
         mi.SaveAndReimport();
     }
+    // @description - Tex.
+    // @param {string} path - path
+    // @return {Void} - nothing
     static void Tex(string path)
     {
         var ti = (TextureImporter)AssetImporter.GetAtPath(path); if (ti == null) return;
@@ -29,6 +36,8 @@ public static class TrackSetup
         if (path.Contains("T_Building") || path.Contains("T_Wall_Concrete")) ti.maxTextureSize = 512;   // v1.3.1: 135k-tri closed barrier boxes pushed the .7z past 25 MB; 0.8 m walls / distant buildings
         ti.anisoLevel = aerial ? 4 : 8; ti.SaveAndReimport();
     }
+    // @description - Build (see the body for details).
+    // @return {Void} - nothing
     public static void Build()
     {
         AssetDatabase.Refresh();
@@ -85,22 +94,33 @@ public static class TrackSetup
     [System.Serializable] class HMeta { public float[] extent_m; public float height_range_m; public float[] unity_terrain_position; }
     // inner window on the 2049 grid (node indices; multiples of 4 so the borders sit on 513 nodes): covers the track bbox +40 m
     public const int C0 = 560, R0 = 332;
+    // @description - Raw.
+    // @param {string} f - value of type string
+    // @param {int} n - value of type int
+    // @return {ushort[]} - the raw
     static ushort[] Raw(string f, int n) { var b = System.IO.File.ReadAllBytes(Dir + "/" + f); if (b.Length != n * n * 2) throw new System.Exception("TRACKCHECK heightmap size " + f); var h = new ushort[n * n]; for (int i = 0; i < h.Length; i++) h[i] = (ushort)(b[2 * i] | b[2 * i + 1] << 8); return h; }
     // Explicit terrain material asset: with materialTemplate = null the Terrain falls back to the built-in default terrain material, whose
     // shader (Nature/Terrain/Standard) is not pulled into player builds -> the Terrain components draw nothing (only the road/kerb meshes show).
     public const string TerrainMatPath = Dir + "/Materials/M_Terrain_DEM.mat";
+    // @description - Terrain material.
+    // @return {Material} - the terrain material
     public static Material TerrainMaterial()
     {
         var m = AssetDatabase.LoadAssetAtPath<Material>(TerrainMatPath); if (m) return m;
         m = new Material(Shader.Find("Nature/Terrain/Standard")) { name = "M_Terrain_DEM" }; AssetDatabase.CreateAsset(m, TerrainMatPath); return m;
     }
     [MenuItem("Scirocco/Assign Laguna Seca terrain material")]
+    // @description - Assign terrain material.
+    // @return {Void} - nothing
     public static void AssignTerrainMaterial()
     {
         var sc = UnityEditor.SceneManagement.EditorSceneManager.OpenScene(ScenePath, UnityEditor.SceneManagement.OpenSceneMode.Single); var m = TerrainMaterial(); int n = 0;
         foreach (var t in Object.FindObjectsOfType<Terrain>(true)) { t.materialTemplate = m; EditorUtility.SetDirty(t); n++; }
         UnityEditor.SceneManagement.EditorSceneManager.SaveScene(sc); AssetDatabase.SaveAssets(); Debug.Log($"TRACKCHECK terrain material {m.shader.name} assigned to {n} terrains");
     }
+    // @description - Makes the terrain collider.
+    // @param {Transform} parent - parent
+    // @return {int} - the make terrain collider
     static int MakeTerrainCollider(Transform parent)
     {
         var meta = JsonUtility.FromJson<HMeta>(System.IO.File.ReadAllText(Dir + "/LagunaSeca_Heightmap_meta.json"));
@@ -142,7 +162,17 @@ public static class TrackSetup
         minYFromMeta = pos.y; return made;
     }
     static float minYFromMeta = -92.13f; static string spawnCheck = "";
+    // @description - Road at.
+    // @param {Vector3} p - value of type Vector3
+    // @return {bool} - the road at
     static bool RoadAt(Vector3 p) => Physics.Raycast(p + Vector3.up * 5f, Vector3.down, out var h, 20f) && h.collider.name.StartsWith("COL_Road");
+    // @description - Verify.
+    // @param {GameObject} vis - vis
+    // @param {GameObject} col - col
+    // @param {TrackInfo} info - info
+    // @param {int} nRoad - n road
+    // @param {int} nTerr - n terr
+    // @return {Void} - nothing
     static void Verify(GameObject vis, GameObject col, TrackInfo info, int nRoad, int nTerr)
     {
         var inv = CultureInfo.InvariantCulture; var log = new List<string>(); void L(string s) { log.Add(s); }

@@ -158,8 +158,8 @@ public class TireThermal
         if (sum > 0) for (int i = 0; i < 3; i++) zoneLoadShare[i] /= sum; else for (int i = 0; i < 3; i++) zoneLoadShare[i] = 0;
     }
 
-    /// @description - advances all thermal nodes by one time step (explicit Euler): surface zones (friction in, convection, road conduction, to bulk, lateral),
-    ///   bulk, carcass, gas, rim; then updates the pressure and the energy bookkeeping.
+    // @description - advances all thermal nodes by one time step (explicit Euler): surface zones (friction in, convection, road conduction, to bulk, lateral),
+    //   bulk, carcass, gas, rim; then updates the pressure and the energy bookkeeping.
     // @param {double} dt - time step in s
     // @param {double} frictionPower - total friction power -F.Vs at the patch in W (>= 0)
     // @param {double} rollingPower - rolling-resistance power in W
@@ -248,8 +248,8 @@ public class TireThermal
         return 0.5 * (low + high);
     }
 
-    /// @description - Pacejka multipliers: temperature acts on peak mu only (stiffness ~independent of T, S Vargas); MF6.1 pressure terms act on stiffness + mu.
-    ///   Pressure change dpi = (p - p_nom) / p_nom; e.g. longitudinalStiffness = 1 + PPX1 dpi + PPX2 dpi^2.
+    // @description - Pacejka multipliers: temperature acts on peak mu only (stiffness ~independent of T, S Vargas); MF6.1 pressure terms act on stiffness + mu.
+    //   Pressure change dpi = (p - p_nom) / p_nom; e.g. longitudinalStiffness = 1 + PPX1 dpi + PPX2 dpi^2.
     // @return {TireScale} - multipliers for the longitudinal/lateral stiffness, peak friction and rolling resistance
     public TireScale Scale()
     {

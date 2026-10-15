@@ -5,8 +5,12 @@ using UnityEngine.XR.OpenXR; using UnityEngine.XR.OpenXR.Features.Interactions;
 public static class XrSetup
 {
     [MenuItem("Scirocco/Configure XR (OpenXR)")]
+    // @description - Configure.
+    // @return {Void} - nothing
     public static void Configure() => Configure(true);
-    // Standalone XR settings are shared by Windows and Linux; OpenXR only supports Windows x64 standalone, so Linux builds unassign the loader.
+    // @description - Standalone XR settings are shared by Windows and Linux; OpenXR only supports Windows x64 standalone, so Linux builds unassign the loader.
+    // @param {bool} openxr - openxr
+    // @return {Void} - nothing
     public static void Configure(bool openxr)
     {
         const string dir = "Assets/XR";

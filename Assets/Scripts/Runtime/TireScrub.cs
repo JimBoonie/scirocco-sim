@@ -39,22 +39,70 @@ public static class TireSoundTuning
     public const float CeilingAttack = 0.010f, CeilingRelease = 0.150f;
     public const float ParamTau = 0.03f;
     public static readonly float[] Pan = { -0.45f, 0.45f, -0.7f, 0.7f };   // FL FR RL RR
-    // --- control laws (pure functions; unit tested) ---
+    // @description - --- control laws (pure functions; unit tested) ---
+    // @param {float} e0 - value of type float
+    // @param {float} e1 - value of type float
+    // @param {float} x - value of type float
+    // @return {float} - the smooth
     public static float Smooth(float e0, float e1, float x) { float t = Clamp01((x - e0) / (e1 - e0)); return t * t * (3f - 2f * t); }
+    // @description - Clamp01.
+    // @param {float} x - value of type float
+    // @return {float} - the clamp01
     public static float Clamp01(float x) => x < 0f ? 0f : x > 1f ? 1f : x;
+    // @description - Lerp.
+    // @param {float} a - value of type float
+    // @param {float} b - value of type float
+    // @param {float} t - value of type float
+    // @return {float} - the lerp
     public static float Lerp(float a, float b, float t) => a + (b - a) * t;
+    // @description - Build (see the body for details).
+    // @param {float} r - value of type float
+    // @return {float} - the build
     public static float Build(float r) => Clamp01((r - Onset) / (BuildEnd - Onset));     // 0 at onset .. 1 at peak (linear)
+    // @description - Over.
+    // @param {float} r - value of type float
+    // @return {float} - the over
     public static float Over(float r) => Smooth(BuildEnd, OverFull, r);
-    /// fade-in from silence right at the onset (0..1 over the first 0.1 of ratio)
+    // @description - fade-in from silence right at the onset (0..1 over the first 0.1 of ratio)
+    // @param {float} r - value of type float
+    // @return {float} - the onset fade
     public static float OnsetFade(float r) => Smooth(Onset, Onset + 0.1f, r);
+    // @description - Level db.
+    // @param {float} r - value of type float
+    // @return {float} - the level db
     public static float LevelDb(float r) => r <= BuildEnd ? Lerp(LevelOnsetDb, LevelPeakDb, (float)System.Math.Sqrt(Build(r))) : Lerp(LevelPeakDb, LevelOverDb, Over(r));
+    // @description - Gain.
+    // @param {float} r - value of type float
+    // @return {float} - the gain
     public static float Gain(float r) => Db(LevelDb(r)) * OnsetFade(r);
+    // @description - Semis.
+    // @param {float} r - value of type float
+    // @return {float} - the semis
     public static float Semis(float r) => r <= BuildEnd ? SemisAtPeak * Build(r) : Lerp(SemisAtPeak, SemisMax, Over(r));
+    // @description - Tone hz.
+    // @param {float} r - value of type float
+    // @return {float} - the tone hz
     public static float ToneHz(float r) => BaseHz * (float)System.Math.Pow(2.0, Semis(r) / 12.0);
+    // @description - Tone q.
+    // @param {float} r - value of type float
+    // @return {float} - the tone q
     public static float ToneQ(float r) => Lerp(ToneQLo, ToneQHi, 0.5f * Build(r) + 0.5f * Over(r));
+    // @description - Speed gate.
+    // @param {float} v - value of type float
+    // @return {float} - the speed gate
     public static float SpeedGate(float v) => (float)System.Math.Sqrt(Clamp01((v - 0.5f) / (SpeedFullMs - 0.5f)));
+    // @description - Loads the gate.
+    // @param {float} fz - value of type float
+    // @return {float} - the load gate
     public static float LoadGate(float fz) { float x = fz / LoadRefN; return x <= 0f ? 0f : System.Math.Min(1.4f, (float)System.Math.Sqrt(x)); }
+    // @description - Db.
+    // @param {float} db - value of type float
+    // @return {float} - the db
     public static float Db(float db) => (float)System.Math.Pow(10.0, db / 20.0);
+    // @description - Ceiling gain.
+    // @param {float} tireRms - tire rms
+    // @param {float} engineRms - engine rms
+    // @return {float} - the ceiling gain
     public static float CeilingGain(float tireRms, float engineRms) { float lim = engineRms * Db(CeilingDb); return tireRms <= lim || tireRms <= 1e-9f ? 1f : lim / tireRms; }
 }
 public class TireSoundDsp
@@ -68,18 +116,49 @@ public class TireSoundDsp
     public static volatile float EngineRms;
     public float ceilGain = 1f, lastTireRms, lastPreCeilRms;
     public bool ceilingOn = true;
+    // @description - Tire sound dsp.
+    // @param {float} sampleRate - sample rate
+    // @param {int} seed - seed
+    // @return {Void} - nothing
     public TireSoundDsp(float sampleRate, int seed = 1984) { fs = sampleRate; rng = new System.Random(seed); for (int i = 0; i < 4; i++) { per[i] = 1f; ph[i] = rng.NextDouble(); } }
+    // @description - Sets the targets.
+    // @param {float[]} ratio - ratio
+    // @param {float} speed - speed
+    // @param {float[]} fz - value of type float[]
+    // @return {Void} - nothing
     public void SetTargets(float[] ratio, float speed, float[] fz) { lock (gate) { for (int i = 0; i < 4; i++) { tR[i] = ratio[i]; tV[i] = speed; tFz[i] = fz[i]; } } }
+    // @description - Noise.
+    // @return {float} - the noise
     float Noise() => (float)rng.NextDouble() * 2f - 1f;
+    // @description - K.
+    // @param {float} fs - value of type float
+    // @param {float} tau - tau
+    // @return {float} - the k
     static float K(float fs, float tau) => 1f - (float)System.Math.Exp(-1.0 / (fs * tau));
-    // RBJ constant-0dB-peak bandpass, one sample (direct form I); state in (xa,xb,ya,yb)
+    // @description - RBJ constant-0dB-peak bandpass, one sample (direct form I); state in (xa,xb,ya,yb)
+    // @param {float} x - value of type float
+    // @param {float} f - value of type float
+    // @param {float} q - value of type float
+    // @param {float} fs - value of type float
+    // @param {ref float} xa - value of type float
+    // @param {ref float} xb - value of type float
+    // @param {ref float} ya - value of type float
+    // @param {ref float} yb - value of type float
+    // @return {float} - the bp
     static float Bp(float x, float f, float q, float fs, ref float xa, ref float xb, ref float ya, ref float yb)
     {
         double w = 2.0 * System.Math.PI * f / fs, al = System.Math.Sin(w) / (2.0 * q), a0 = 1.0 + al;
         float y = (float)((al * x - al * xb + 2.0 * System.Math.Cos(w) * ya - (1.0 - al) * yb) / a0);
         xb = xa; xa = x; yb = ya; ya = y; return y;
     }
-    public void Render(float[] data, int n, int ch, float slider, float engineRms = -1f)
+    // @description - Render.
+    // @param {float[]} data - data
+    // @param {int} n - value of type int
+    // @param {int} channelCount - channel count
+    // @param {float} slider - slider
+    // @param {float} engineRms - engine rms
+    // @return {Void} - nothing
+    public void Render(float[] data, int n, int channelCount, float slider, float engineRms = -1f)
     {
         lock (gate) { System.Array.Copy(tR, cR, 4); System.Array.Copy(tV, cV, 4); System.Array.Copy(tFz, cFz, 4); }
         float eRms = engineRms >= 0f ? engineRms : EngineRms;
@@ -107,7 +186,7 @@ public class TireSoundDsp
             }
             l *= slider; r *= slider; float mono = 0.5f * (l + r);
             acc += mono * mono;
-            if (ch == 1) data[s] = mono; else { data[s * ch] = l; data[s * ch + 1] = r; for (int c = 2; c < ch; c++) data[s * ch + c] = 0f; }
+            if (channelCount == 1) data[s] = mono; else { data[s * channelCount] = l; data[s * channelCount + 1] = r; for (int c = 2; c < channelCount; c++) data[s * channelCount + c] = 0f; }
         }
         float rms = (float)System.Math.Sqrt(acc / System.Math.Max(1, n)); lastPreCeilRms = rms;
         float target = ceilingOn ? TireSoundTuning.CeilingGain(rms, eRms) : 1f;
@@ -117,8 +196,8 @@ public class TireSoundDsp
         for (int s = 0; s < n; s++)
         {
             float g = target < g0 ? g1 : g0 + (g1 - g0) * (s + 1) / n;
-            if (ch == 1) { data[s] *= g; acc2 += data[s] * data[s]; }
-            else { for (int c = 0; c < ch; c++) data[s * ch + c] *= g; float mm = 0.5f * (data[s * ch] + data[s * ch + 1]); acc2 += mm * mm; }
+            if (channelCount == 1) { data[s] *= g; acc2 += data[s] * data[s]; }
+            else { for (int c = 0; c < channelCount; c++) data[s * channelCount + c] *= g; float mm = 0.5f * (data[s * channelCount] + data[s * channelCount + 1]); acc2 += mm * mm; }
         }
         ceilGain = g1; lastTireRms = (float)System.Math.Sqrt(acc2 / System.Math.Max(1, n));
     }
@@ -128,10 +207,27 @@ public class TireSoundDsp
 /// scrubRatio and Pacejka peak finding (kept from v1; these are physics, not audio constants)
 public static class TireScrubLaw
 {
-    /// alpha in rad, kappa slip ratio, ap/kp = peak slip angle (rad) / peak slip ratio of OUR Pacejka at the wheel's current load
+    // @description - alpha in rad, kappa slip ratio, ap/kp = peak slip angle (rad) / peak slip ratio of OUR Pacejka at the wheel's current load
+    // @param {float} alphaRad - alpha rad
+    // @param {float} kappa - kappa
+    // @param {float} apRad - ap rad
+    // @param {float} kp - value of type float
+    // @return {float} - the scrub ratio
     public static float ScrubRatio(float alphaRad, float kappa, float apRad, float kp) { float ap = UnityEngine.Mathf.Max(0.05f, apRad), k = UnityEngine.Mathf.Max(0.04f, kp); float a = UnityEngine.Mathf.Abs(alphaRad) / ap, b = UnityEngine.Mathf.Abs(kappa) / k; return UnityEngine.Mathf.Sqrt(a * a + b * b); }
-    public static float PeakAlpha(CarParams p, float fz) => Peak(x => UnityEngine.Mathf.Abs(PacejkaTire.PureLat(p, x, UnityEngine.Mathf.Max(fz, 1f), 0f)), 0.002f, 0.6f);
-    public static float PeakKappa(CarParams p, float fz) => Peak(x => UnityEngine.Mathf.Abs(PacejkaTire.PureLong(p, x, UnityEngine.Mathf.Max(fz, 1f))), 0.002f, 1.0f);
+    // @description - Peak alpha.
+    // @param {CarParams} carParams - car params
+    // @param {float} fz - value of type float
+    // @return {float} - the peak alpha
+    public static float PeakAlpha(CarParams carParams, float fz) => Peak(x => UnityEngine.Mathf.Abs(PacejkaTire.PureLat(carParams, x, UnityEngine.Mathf.Max(fz, 1f), 0f)), 0.002f, 0.6f);
+    // @description - Peak kappa.
+    // @param {CarParams} carParams - car params
+    // @param {float} fz - value of type float
+    // @return {float} - the peak kappa
+    public static float PeakKappa(CarParams carParams, float fz) => Peak(x => UnityEngine.Mathf.Abs(PacejkaTire.PureLong(carParams, x, UnityEngine.Mathf.Max(fz, 1f))), 0.002f, 1.0f);
+    // @description - Peak.
+    // @param {float} lo - value of type float
+    // @param {float} hi - value of type float
+    // @return {float} - the peak
     static float Peak(System.Func<float, float> f, float lo, float hi)
     {
         int n = 60; float best = lo, bv = -1f; for (int i = 0; i <= n; i++) { float x = lo + (hi - lo) * i / n, v = f(x); if (v > bv) { bv = v; best = x; } }

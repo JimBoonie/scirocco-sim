@@ -148,8 +148,8 @@ public class Engine
     public float VolumetricEfficiency(float engineRpm) => InterpolateLinear(carParams.rpmPoints, volumetricEfficiency, engineRpm);
 
     // ---- throttle body
-    /// @description - open flow area of one butterfly at angle plateAngle (from bore-normal), closed angle closedPlateAngle: Heywood (1988) butterfly-area
-    ///   formula including the shaft of diameter d (A = pi D^2/4 (1 - cos/cos0 + 2/pi (a/cos sqrt(cos^2 - a^2 cos0^2) - cos/cos0 asin(a cos0/cos) + tail)), a = d/D)
+    // @description - open flow area of one butterfly at angle plateAngle (from bore-normal), closed angle closedPlateAngle: Heywood (1988) butterfly-area
+    //   formula including the shaft of diameter d (A = pi D^2/4 (1 - cos/cos0 + 2/pi (a/cos sqrt(cos^2 - a^2 cos0^2) - cos/cos0 asin(a cos0/cos) + tail)), a = d/D)
     // @param {float} plateAngle - plate angle from bore-normal in rad
     // @param {float} boreDiameter - throttle bore diameter in m
     // @return {float} - open flow area in m^2 (0 at or below the closed angle)
@@ -179,7 +179,7 @@ public class Engine
     // @return {float} - total open flow area in m^2
     public float TotalFlowArea(float pedal) { PlateAngles(pedal, out float primaryAngle, out float secondaryAngle); return PlateArea(primaryAngle, carParams.primaryBore) + PlateArea(secondaryAngle, carParams.secondaryBore) + idleBypassAreaValue + closedPlateLeakAreaValue; }
 
-    /// @description - isentropic orifice flow function Psi(pr) = sqrt(2g/(g-1) (pr^(2/g) - pr^((g+1)/g))), held at its choked value below the critical ratio
+    // @description - isentropic orifice flow function Psi(pr) = sqrt(2g/(g-1) (pr^(2/g) - pr^((g+1)/g))), held at its choked value below the critical ratio
     // @param {float} pressureRatio - downstream / upstream absolute pressure
     // @return {float} - dimensionless flow function Psi
     public float OrificeFlowFunction(float pressureRatio)
@@ -194,10 +194,10 @@ public class Engine
     // @return {float} - air mass flow into the manifold in kg/s
     float ThrottleMassFlow(float area, float manifoldPressureNow) => carParams.throttleDischargeCoeff * area * carParams.ambientPressure / Mathf.Sqrt(carParams.airGasConstant * carParams.ambientTemperature) * OrificeFlowFunction(manifoldPressureNow / carParams.ambientPressure);
 
-    /// @description - fresh-charge fraction (see header): ideal-cycle residual expansion (r_c - (p_e/p_i)^(1/n)) / (r_c - 1) minus the volume
-    ///   of exhaust gas blown back through the valve-overlap curtain, both at manifold pressure. The backflow term is isentropic orifice flow through
-    ///   the triangular-lift mean curtain area pi d lift / 2 over the overlap duration. (Kept as ONE expression on purpose: Unity's Mono evaluates
-    ///   float expressions in double precision, so splitting it into separate float-returning functions would change the last bits.)
+    // @description - fresh-charge fraction (see header): ideal-cycle residual expansion (r_c - (p_e/p_i)^(1/n)) / (r_c - 1) minus the volume
+    //   of exhaust gas blown back through the valve-overlap curtain, both at manifold pressure. The backflow term is isentropic orifice flow through
+    //   the triangular-lift mean curtain area pi d lift / 2 over the overlap duration. (Kept as ONE expression on purpose: Unity's Mono evaluates
+    //   float expressions in double precision, so splitting it into separate float-returning functions would change the last bits.)
     // @param {float} engineRpm - engine speed in rpm
     // @param {float} manifoldPressureNow - manifold absolute pressure in Pa
     // @return {float} - fraction of the swept volume filled with fresh charge (never below 0)
@@ -257,7 +257,7 @@ public class Engine
         friction = FrictionMeanEffectivePressure(engineRpm, manifoldPressureNow) * torquePerPressure; pumping = (InterpolateLinear(carParams.rpmPoints, wideOpenManifoldPressure, engineRpm) - manifoldPressureNow) * torquePerPressure;
     }
 
-    /// @description - friction + pumping drag at the current manifold pressure (no combustion: VE = 0)
+    // @description - friction + pumping drag at the current manifold pressure (no combustion: VE = 0)
     // @param {float} engineRpm - engine speed in rpm
     // @return {float} - drag torque in N m (positive number)
     public float FrictionTorque(float engineRpm) { ComputeTorqueParts(engineRpm, manifoldPressure, 0f, out _, out float friction, out float pumping); return friction + pumping; }

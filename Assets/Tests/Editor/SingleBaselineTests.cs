@@ -3,6 +3,8 @@
 using NUnit.Framework; using UnityEngine;
 public class SingleBaselineTests
 {
+    // @description - Defaults are the former proposed inputs.
+    // @return {Void} - nothing
     [Test] public void Defaults_Are_The_Former_Proposed_Inputs()
     {
         var p = ScriptableObject.CreateInstance<CarParams>();
@@ -14,6 +16,8 @@ public class SingleBaselineTests
         Assert.IsNull(typeof(CarController).GetMethod("ToggleProfile"), "no profile switch");
         var r = p.RuntimeCopy(); Assert.AreNotSame(p, r); Assert.AreEqual(p.frontAntiRollBarRate, r.frontAntiRollBarRate);
     }
+    // @description - Tables are resolved with the single baseline hardpoints.
+    // @return {Void} - nothing
     [Test] public void Tables_Are_Resolved_With_The_Single_Baseline_Hardpoints()
     {
         var k = ScriptableObject.CreateInstance<SuspensionTables>(); SuspensionTablesData.Fill(k);
