@@ -81,7 +81,7 @@ Checks (tests): peak pressure 49.7 bar at 15.5 deg ATDC at 150 N m indicated (th
 | Engine block roll inertia | 4.2 kg m^2 | E | 3-6 |
 | Roll natural frequency | 11.6 Hz | E | 7-20 Hz (Gaudin ISMA 2018: https://past.isma-isaac.be/downloads/isma2018/proceedings/Contribution_151_proceeding_3.pdf ) |
 | Roll damping ratio | 0.15 | E | 0.05-0.30 |
-| Mesh efficiency | 0.90 | E (existing `drivetrainEfficiency`) | applied in the power-flow direction: driving needs more input torque, coasting returns less; the default path applies it differently and is untouched |
+| Mesh efficiency | 0.90 | E (existing `drivetrainEfficiency`) | applied in the power-flow direction exactly like `Drivetrain.TorqueScaleFromCrankSide` (eta on power, 1/eta on overrun); a test checks the transmitted torque against `WheelTorqueEach` both ways. The default path is untouched |
 | Tire longitudinal relaxation | `relaxationLength` 0.45 m | E (existing) | first-order slip-ratio relaxation, same form as the existing slip-angle relaxation, only while the toggle is on |
 | Micro-step | fastest mode advances at most 0.1 rad per micro-step | D | step-size convergence test (0.1 vs 0.05 rad: identical to 4 digits); about 40 micro-steps per 0.5 ms outer step |
 

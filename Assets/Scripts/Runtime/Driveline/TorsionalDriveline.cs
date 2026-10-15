@@ -26,6 +26,7 @@ public class TorsionalDriveline : ITorsionalDriveline
     public double ShaftDeflectionRadians => shaftDeflection;
     public double EngineBlockAngleRadians => blockAngle;
     public bool ClutchIsStuck => clutchStuck;
+    public double ShaftTorque { get; private set; }   // N m carried by the combined halfshafts in the last micro-step
     public double ClutchTemperatureKelvin => clutchFriction.TemperatureKelvin;
 
     // @description - builds the chain from the parameter asset and the car parameters
@@ -181,6 +182,7 @@ public class TorsionalDriveline : ITorsionalDriveline
         }
         double shaftRate = carrierSpeed - 0.5 * (leftSpeed + rightSpeed);
         shaftTorque = LashTorque(shaftDeflection, shaftRate, shaftHalfLash, shaftStiffness, shaftDamping);
+        ShaftTorque = shaftTorque;
         clutchTorque = ResolveClutchTorque(engineTorque, damperTorque, auxiliaryInertia, input.clutchClampFraction, step);
         double crankTotalInertia = crankInertia + auxiliaryInertia;
         crankSpeed += (engineTorque - clutchTorque) / crankTotalInertia * step;

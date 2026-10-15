@@ -212,6 +212,22 @@ public class DrivelineShuffleTests
         return new[] { (float)(torqueSum / torqueCount), high - low };
     }
 
+    // @description - efficiency consistency with the standard path (Drivetrain.WheelTorqueEach after the overrun fix): with a very large wheel inertia (wheels fixed) and a crank-speed governor the clutch torque equals the commanded crank torque, so the time-averaged
+    //   torque through the halfshafts must equal 2 x WheelTorqueEach(crank torque) for a power torque (eta) and for an overrun torque (1 / eta), within 1 percent
+    // @return {Void}
+    [Test] public void EfficiencyMatchesTheStandardPathOnPowerAndOverrun()
+    {
+        foreach (double crankTorque in new[] { 80.0, -40.0 })
+        {
+            var carParams = ScriptableObject.CreateInstance<CarParams>(); carParams.wheelInertia = 1e7f; var parameters = ShuffleDrivelineParameters.CreateDefault(); parameters.engineRollEnabled = false;
+            var drivetrain = new Drivetrain(carParams); drivetrain.SelectGear(3); drivetrain.Tick(1f); double sum = 0.0; int count = 0;
+            RunChainOnly(carParams, parameters, 3, 150.0, crankTorque, 1.0, 5.0, true, (time, chain) => { if (time > 3.0) { sum += chain.ShaftTorque; count++; } }, 0.0, 50.0);
+            double expected = 2.0 * drivetrain.WheelTorqueEach((float)crankTorque), measured = sum / count;
+            report.AppendLine($"efficiency consistency: crank torque {crankTorque:0} N m -> shaft torque {measured:0.0} N m, standard path {expected:0.0} N m");
+            Assert.AreEqual(expected, measured, System.Math.Abs(expected) * 0.01, "experimental efficiency must match Drivetrain.WheelTorqueEach");
+        }
+    }
+
     // @description - the Wiebe burn must put 50 percent burned at the configured angle and the peak pressure must sit after TDC in the expected range
     // @return {Void}
     [Test] public void WiebeBurnPhasingAndPeakPressure()
@@ -315,10 +331,10 @@ public class DrivelineShuffleTests
     // Test double of the engine side: a constant crank torque, no auxiliary inertia (proves the interface is all the driveline needs)
     class ConstantTorqueSource : ICrankshaftTorqueSource
     {
-        public double torque; double crankSpeedAtEnd;
+        public double torque, holdSpeed, holdGain; double crankSpeedAtEnd;   // holdGain > 0: torque = torque + holdGain (holdSpeed - crank speed), a speed governor for steady transmitted-torque tests
         public double AuxiliaryInertiaKilogramMetersSquared => 0.0;
         public void BeginInterval(double throttleFraction, double intervalSeconds) { }
-        public double TorqueAt(double crankAngleRadians, double crankAngularVelocity) => torque;
+        public double TorqueAt(double crankAngleRadians, double crankAngularVelocity) => torque + holdGain * (holdSpeed - crankAngularVelocity);
         public void EndInterval(double crankAngularVelocity) { crankSpeedAtEnd = crankAngularVelocity; }
     }
 
@@ -332,15 +348,16 @@ public class DrivelineShuffleTests
     // @param {double} seconds - run time in s
     // @param {bool} patchDamping - include the speed-dependent patch relaxation damping (false = pure patch spring, for the eigenfrequency check)
     // @param {System.Action<double, TorsionalDriveline>} sample - called every outer step with time and chain
+    // @param {double} holdGain - speed governor gain in N m s/rad (0 = constant torque)
     // @param {double} initialSlipSpeed - initial crank speed minus wheel speed times ratio in rad/s (0 = locked start)
     // @return {Void}
-    static void RunChainOnly(CarParams carParams, ShuffleDrivelineParameters parameters, int gear, double initialCrankSpeed, double torque, double clampFraction, double seconds, bool patchDamping, System.Action<double, TorsionalDriveline> sample, double initialSlipSpeed = 0.0)
+    static void RunChainOnly(CarParams carParams, ShuffleDrivelineParameters parameters, int gear, double initialCrankSpeed, double torque, double clampFraction, double seconds, bool patchDamping, System.Action<double, TorsionalDriveline> sample, double initialSlipSpeed = 0.0, double holdGain = 0.0)
     {
         var drivetrain = new Drivetrain(carParams); drivetrain.SelectGear(gear); drivetrain.Tick(1f); double ratio = drivetrain.TotalRatio;
         var chain = new TorsionalDriveline(parameters, carParams); double wheelSpeed = (initialCrankSpeed - initialSlipSpeed) / ratio; chain.Initialize(initialCrankSpeed, wheelSpeed);
         double vehicleSpeed = wheelSpeed * carParams.wheelRadius, leftDeflection = 0.0, rightDeflection = 0.0, wheelLeft = wheelSpeed, wheelRight = wheelSpeed;
         double patchStiffness = carParams.longitudinalStiffnessCoefficient * carParams.mass * 9.81 * rigFrontWeightFraction * 0.5 / carParams.relaxationLength;
-        var source = new ConstantTorqueSource { torque = torque }; int steps = (int)(seconds / substep);
+        var source = new ConstantTorqueSource { torque = torque, holdSpeed = initialCrankSpeed, holdGain = holdGain }; int steps = (int)(seconds / substep);
         for (int step = 0; step < steps; step++)
         {
             double relaxationRate = patchDamping ? (System.Math.Abs(vehicleSpeed) + rigMinimumSpeedForRelaxation) / carParams.relaxationLength : 0.0;

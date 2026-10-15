@@ -7,6 +7,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added (experimental driveline efficiency consistency, PT 2026-10-15 08:00)
+- Checked the experimental driveline against the new overrun efficiency convention (`Drivetrain.TorqueScaleFromCrankSide`): its gear mesh already applies eta on power and 1/eta on overrun, so no model change was needed. New test `EfficiencyMatchesTheStandardPathOnPowerAndOverrun` compares the transmitted torque with `Drivetrain.WheelTorqueEach` in both directions (within 1 %). Added a read-only `TorsionalDriveline.ShaftTorque` for it. Default path untouched.
+
 ### Fixed (drivetrain efficiency on overrun / engine braking, PT 2026-10-15 01:06)
 
 - **Bug:** `Drivetrain.Clutch` computed the wheel torque as clutch torque x ratio x 0.90 / 2 for both torque signs. On power that is right (the gear loss lowers the wheel torque). On overrun (wheels driving the engine) the wheels must supply MORE than the engine absorbs: P_engine_absorbed = P_wheels x efficiency, so wheel braking torque = engine torque x ratio / efficiency. The old code gave the wheels only 0.90 of the torque the engine absorbed, so the engine took 1 / 0.90 = 1.111 times the power the wheels gave up: 11.1 % of the power the wheels gave (10.0 % of the power the engine absorbed) was created from nothing on every overrun.
