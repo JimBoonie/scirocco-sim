@@ -9,6 +9,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [2026-10-14] (PT)
 
+### Added (Experimental settings tab, PT 2026-10-14 23:50)
+
+- New **Experimental** tab (last tab) in the in-game settings menu (`ExperimentalSettingsTab.cs`, drawn with IMGUI so the VR cursor menu works with clicks and slider drags). It opens with a note that experimental options may change handling, and each option has a short plain-language description under it.
+- Moved here from the **Quick** tab, each now in exactly one place: the tire temperature (thermal) model toggle, the front and rear cold tire pressure settings (sliders, 15..45 psi, 0.5 psi steps, "VW 24.7" reset), and the tire compound selector (Default / Experimental viscoelastic). Defaults, step sizes and behavior are unchanged. The Quick list is four lines shorter (the later Quick items renumbered 16..20; no external code used those numbers).
+- New placeholder: a disabled toggle "Driveline shuffle model (coming soon)" wired to `BindingProfile.experimentalDrivelineEnabled` and `CarParams.experimentalDrivelineEnabled` (default false; nothing reads it yet).
+- Settings file: storage of the existing fields is unchanged and the new field defaults to false when absent, so the settings version stays at 10 and bindings are not reset.
+- Tests: `ExperimentalSettingsTabTests` (defaults reproduce previous behavior, adjust/navigation, JSON round trip incl. a pre-tab file, VR cursor click and slider drag).
+
 ### Changed (second pass part 5: tools, scripts and data-file keys, PT 2026-10-14 22:45)
 
 - `tools/kinematics/solve_kinematics.py`, `export_unity.py` and the new `params_io.py` (its helper) are now byte-identical to the dev-box copies. They have the `#!/usr/bin/python3` shebang, a `# @description` / `@param` / `@return` header on every function, full-word names, and physics comments with units and S/SD/D/E tags. `export_unity.py` writes the renamed `SuspensionTables` field names (output byte-identical to `Assets/Scripts/Editor/SuspensionTablesData.cs`). `solve_kinematics.py` can now be imported without running the sweep.

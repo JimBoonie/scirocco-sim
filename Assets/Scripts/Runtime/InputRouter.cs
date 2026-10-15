@@ -50,7 +50,7 @@ public class InputRouter : MonoBehaviour
         var carParams = car.carParams;
         car.throttle = map.Axis(InAction.Throttle); car.brake = map.Axis(InAction.Brake); car.clutch = map.Axis(InAction.Clutch);
         car.handbrakeInput = map.Axis(InAction.Handbrake);
-        car.autoClutch = map.profile.autoClutch; carParams.tireThermal = map.profile.tireThermal; carParams.tireCompound = map.profile.tireCompound == 1 ? CarParams.TireCompound.ExperimentalViscoelastic : CarParams.TireCompound.Default; carParams.frontColdPressure = map.profile.frontColdPressurePsi * (float)TireThermal.PaPerPsi; carParams.rearColdPressure = map.profile.rearColdPressurePsi * (float)TireThermal.PaPerPsi; CarAudio.Volume = map.profile.audioVolume; CarAudio.TireVolume = map.profile.tireVolume; CarAudio.Mute = map.profile.audioMute; AmbientLighting.Apply(map.profile.ambientBrightness);
+        car.autoClutch = map.profile.autoClutch; carParams.tireThermal = map.profile.tireThermal; carParams.experimentalDrivelineEnabled = map.profile.experimentalDrivelineEnabled; carParams.tireCompound = map.profile.tireCompound == 1 ? CarParams.TireCompound.ExperimentalViscoelastic : CarParams.TireCompound.Default; carParams.frontColdPressure = map.profile.frontColdPressurePsi * (float)TireThermal.PaPerPsi; carParams.rearColdPressure = map.profile.rearColdPressurePsi * (float)TireThermal.PaPerPsi; CarAudio.Volume = map.profile.audioVolume; CarAudio.TireVolume = map.profile.tireVolume; CarAudio.Mute = map.profile.audioMute; AmbientLighting.Apply(map.profile.ambientBrightness);
         if (map.Pressed(InAction.Ignition)) car.engine.ignition = !car.engine.ignition;
         bool interlockOk = !map.profile.starterInterlock || car.drivetrain.gear == 0 || car.ClutchFullyIn;
         car.engine.starter = map.Held(InAction.Starter) && interlockOk;
@@ -136,7 +136,8 @@ public class InputRouter : MonoBehaviour
     // @description - Draws the settings menu with the IMGUI system, unless the VR panel is showing it instead.
     // @return {Void} - nothing
     void OnGUI() { if (VrPanel.Active) return; UiSurface.Begin(out var surfaceState); DrawMenu(); UiSurface.End(surfaceState); }
-    public int tab; static readonly string[] Tabs = { "Quick", "Bindings", "Calibration", "FFB / Steering", "VR / Seat", "Gamepad Steering" };
+    readonly ExperimentalSettingsTab experimentalTab = new ExperimentalSettingsTab();   // state and drawing of the Experimental tab
+    public int tab; static readonly string[] Tabs = { "Quick", "Bindings", "Calibration", "FFB / Steering", "VR / Seat", "Gamepad Steering", "Experimental" };
     // @description - Draws the settings window: title, tab bar, status line, the selected tab page in a scroll view, and the Save, Reload, Reset defaults and Close buttons.
     // @return {Void} - nothing
     public void DrawMenu()
@@ -161,6 +162,7 @@ public class InputRouter : MonoBehaviour
             case 3: DrawFfb(profile, carParams); break;
             case 4: DrawVr(profile, carParams); break;
             case 5: DrawGamepad(profile); break;
+            case ExperimentalSettingsTab.TabIndex: experimentalTab.Draw(profile, labelStyle); navRect = experimentalTab.selectedRowRect; break;
         }
         GUILayout.EndScrollView();
         GUILayout.BeginHorizontal();
@@ -318,7 +320,7 @@ public class InputRouter : MonoBehaviour
     }
     // ---------------- quick settings: navigable with Menu Up/Down/Left/Right/Select (keyboard arrows+Enter, gamepad d-pad+A, or bound wheel buttons) ----------------
     static readonly float[] TorquePresets = { 0f, 17f, 25f, 32f };   // Simucube 2 Sport / Pro / Ultimate peak torque (S, manufacturer); 0 = not set
-    // @description - Builds the text of every Quick settings line (VR, camera, seat, force feedback, audio, tire options, FOV, track, reset, close) with current values. The order must match the case numbers in Adjust.
+    // @description - Builds the text of every Quick settings line (VR, camera, seat, force feedback, audio, FOV, track, reset, close; the experimental tire options live on the Experimental tab) with current values. The order must match the case numbers in Adjust.
     // @param {BindingProfile} profile - settings profile to describe
     // @return {string[]} - one display line per quick item
     public string[] QuickItems(BindingProfile profile)
@@ -341,10 +343,6 @@ public class InputRouter : MonoBehaviour
             $"Auto clutch (keyboard / no clutch pedal): {(profile.autoClutch ? "on" : "off")}",
             $"Start with engine off: {(profile.startEngineOff ? "yes" : "no")}",
             $"Starter interlock (clutch in or neutral): {(profile.starterInterlock ? "on" : "off (period-correct)")}",
-            $"Tire thermal model (temperature + pressure): {(profile.tireThermal ? "ON" : "off")}",
-            $"Cold tire pressure front: {profile.frontColdPressurePsi:0.0} psi  (VW 25 psi)",
-            $"Cold tire pressure rear: {profile.rearColdPressurePsi:0.0} psi  (VW 25 psi)",
-            $"Tyre compound: {(profile.tireCompound == 1 ? "Experimental (viscoelastic)" : "Default")}  (Left/Right/Select)",
             $"VR debug HUD panel: {(panel && panel.showHud ? "shown" : "hidden")}  (H)",
             $"Flat-screen FOV: {profile.flatFovDeg:0}° vertical ({VrManager.HorizontalFov(profile.flatFovDeg, Camera.main ? Camera.main.aspect : 16f / 9f):0}° horizontal)",
             $"Track: {(TrackManager.Instance ? TrackManager.Names[TrackManager.Instance.current] + (TrackManager.Instance.Loading ? " (loading...)" : "") : "-")}   (Left/Right/Select = change, loads now)",
@@ -358,6 +356,7 @@ public class InputRouter : MonoBehaviour
         if (map.Pressed(InAction.MenuTabNext)) { tab = (tab + 1) % Tabs.Length; scroll = Vector2.zero; }
         if (map.Pressed(InAction.MenuTabPrev)) { tab = (tab + Tabs.Length - 1) % Tabs.Length; scroll = Vector2.zero; }
         if (tab == 5) { NavigateGamepad(map.profile); return; }
+        if (tab == ExperimentalSettingsTab.TabIndex) { int experimentalDirection = (map.Pressed(InAction.MenuRight) ? 1 : 0) - (map.Pressed(InAction.MenuLeft) ? 1 : 0); if (experimentalTab.Navigate(map.profile, map.Pressed(InAction.MenuUp), map.Pressed(InAction.MenuDown), experimentalDirection, map.Pressed(InAction.MenuSelect))) scrollToNav = true; return; }
         if (tab != 0) return;
         var profile = map.profile; int itemCount = QuickItems(profile).Length;
         if (map.Pressed(InAction.MenuUp)) { navIndex = (navIndex + itemCount - 1) % itemCount; scrollToNav = true; }
@@ -392,15 +391,11 @@ public class InputRouter : MonoBehaviour
             case 13: profile.autoClutch = isSelect ? !profile.autoClutch : direction > 0; break;
             case 14: profile.startEngineOff = isSelect ? !profile.startEngineOff : direction > 0; break;
             case 15: profile.starterInterlock = isSelect ? !profile.starterInterlock : direction > 0; break;
-            case 16: profile.tireThermal = isSelect ? !profile.tireThermal : direction > 0; break;
-            case 17: profile.frontColdPressurePsi = isSelect ? 24.7f : Mathf.Clamp(profile.frontColdPressurePsi + direction * 0.5f, 15f, 45f); break;   // 0.5 psi steps (gauge resolution); Select = VW 1.7 bar
-            case 18: profile.rearColdPressurePsi = isSelect ? 24.7f : Mathf.Clamp(profile.rearColdPressurePsi + direction * 0.5f, 15f, 45f); break;
-            case 19: profile.tireCompound = isSelect ? 1 - profile.tireCompound : (direction > 0 ? 1 : 0); break;
-            case 20: if (panel) panel.showHud = isSelect ? !panel.showHud : direction > 0; break;
-            case 21: profile.flatFovDeg = isSelect ? 60f : Mathf.Clamp(profile.flatFovDeg + direction * 5f, BindingProfile.FovMin, BindingProfile.FovMax); if (vrManager) vrManager.ApplyFlatFov(); break;
-            case 22: { var trackManager = TrackManager.Instance; if (trackManager) { int trackCount = TrackManager.Names.Length; trackManager.Select((trackManager.current + (isSelect ? 1 : direction) + trackCount) % trackCount); } break; }
-            case 23: if (isSelect) { ResetToStart(); menuOpen = false; } break;
-            case 24: if (isSelect) { menuOpen = false; InputMapper.Save(profile); status = "saved"; if (ffb) ffb.TryOpen(); } break;
+            case 16: if (panel) panel.showHud = isSelect ? !panel.showHud : direction > 0; break;
+            case 17: profile.flatFovDeg = isSelect ? 60f : Mathf.Clamp(profile.flatFovDeg + direction * 5f, BindingProfile.FovMin, BindingProfile.FovMax); if (vrManager) vrManager.ApplyFlatFov(); break;
+            case 18: { var trackManager = TrackManager.Instance; if (trackManager) { int trackCount = TrackManager.Names.Length; trackManager.Select((trackManager.current + (isSelect ? 1 : direction) + trackCount) % trackCount); } break; }
+            case 19: if (isSelect) { ResetToStart(); menuOpen = false; } break;
+            case 20: if (isSelect) { menuOpen = false; InputMapper.Save(profile); status = "saved"; if (ffb) ffb.TryOpen(); } break;
         }
     }
     // @description - Draws the Quick settings page: the highlighted item list plus the master volume, tire volume and ambient brightness sliders.
