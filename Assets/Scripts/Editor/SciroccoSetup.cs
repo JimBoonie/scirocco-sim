@@ -5,7 +5,7 @@ public static class SciroccoSetup
     static WheelCorner Make(CarParams p, GameObject car, string n, float x, float z, bool f, bool l)
         {
             var g = new GameObject(n); g.transform.SetParent(car.transform, false); g.transform.localPosition = new Vector3(x, 0f, z); g.layer = 2;
-            var w = g.AddComponent<WheelCorner>(); w.p = p; w.front = f; w.left = l;
+            var w = g.AddComponent<WheelCorner>(); w.carParams = p; w.front = f; w.left = l;
             var vis = GameObject.CreatePrimitive(PrimitiveType.Cylinder); Object.DestroyImmediate(vis.GetComponent<Collider>());
             vis.transform.SetParent(car.transform, false); vis.transform.localScale = new Vector3(p.wheelRadius * 2, 0.0925f, p.wheelRadius * 2); vis.name = n + "_vis";
             w.visual = vis.transform; return w;
@@ -44,10 +44,10 @@ public static class SciroccoSetup
             var hi = new GameObject("ChassisCabin"); hi.layer = 2; hi.transform.SetParent(car.transform, false); var bc = hi.AddComponent<BoxCollider>(); bc.center = new Vector3(0f, g0 + 0.5f * (belt + roof), -0.15f); bc.size = new Vector3(1.36f, roof - belt, 2.2f);   // greenhouse width/length (E)
         }
         body.layer = 2; // IgnoreRaycast so suspension rays skip own body
-        var ctl = car.AddComponent<CarController>(); ctl.p = p;
+        var ctl = car.AddComponent<CarController>(); ctl.carParams = p;
         float zf = p.wheelbase / 2, zr = -p.wheelbase / 2;
-        ctl.FL = Make(p, car, "FL", -p.trackFront / 2, zf, true, true); ctl.FR = Make(p, car, "FR", p.trackFront / 2, zf, true, false);
-        ctl.RL = Make(p, car, "RL", -p.trackRear / 2, zr, false, true); ctl.RR = Make(p, car, "RR", p.trackRear / 2, zr, false, false);
+        ctl.frontLeftWheel = Make(p, car, "FL", -p.trackFront / 2, zf, true, true); ctl.frontRightWheel = Make(p, car, "FR", p.trackFront / 2, zf, true, false);
+        ctl.rearLeftWheel = Make(p, car, "RL", -p.trackRear / 2, zr, false, true); ctl.rearRightWheel = Make(p, car, "RR", p.trackRear / 2, zr, false, false);
         var cam = Camera.main.gameObject; cam.AddComponent<FollowCam>().target = car.transform;
         cam.AddComponent<DebugHUD>().car = ctl;
         var router = car.AddComponent<InputRouter>(); router.car = ctl; router.cam = cam.GetComponent<FollowCam>(); ctl.router = router;

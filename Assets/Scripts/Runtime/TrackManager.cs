@@ -49,7 +49,7 @@ public class TrackManager : MonoBehaviour
     /// put the car at rest on the surface below p (road collider or terrain), facing yawDeg
     public void Place(Vector3 p, float yawDeg)
     {
-        float h = car.p.hubDropDesign + car.p.wheelRadius + 0.02f;
+        float h = car.carParams.hubDropDesign + car.carParams.wheelRadius + 0.02f;
         var up = Vector3.up;
         if (Physics.Raycast(p + Vector3.up * 30f, Vector3.down, out var hit, 600f)) { p.y = hit.point.y; up = hit.normal; } else Debug.LogWarning("[Track] no surface under spawn");
         // spawn aligned to the ground (pitch/roll = surface slope, heading = yawDeg): a level car dropped on a slope starts with its body inside the hill
@@ -60,8 +60,8 @@ public class TrackManager : MonoBehaviour
     {
         var rb = car.GetComponent<Rigidbody>(); rb.velocity = Vector3.zero; rb.angularVelocity = Vector3.zero;
         rb.position = pos; rb.rotation = rot; car.transform.SetPositionAndRotation(pos, rot); Physics.SyncTransforms();
-        foreach (var w in new[] { car.FL, car.FR, car.RL, car.RR }) if (w) w.ResetState();   // no stored wheel spin / slip after a teleport
-        if (car.dt != null) car.dt.SelectGear(0);
+        foreach (var w in new[] { car.frontLeftWheel, car.frontRightWheel, car.rearLeftWheel, car.rearRightWheel }) if (w) w.ResetState();   // no stored wheel spin / slip after a teleport
+        if (car.drivetrain != null) car.drivetrain.SelectGear(0);
         CarController.RaiseTeleported(car);
     }
     // data credit: always on screen while a track that needs it is loaded (independent of the HUD toggle)

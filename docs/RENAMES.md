@@ -79,6 +79,11 @@ Methods: `Stored` -> `StoredEnergy`, `HOut/HRoad` -> `OuterConvectionCoefficient
 - `SteeringTorque`: `Geo.u/rcp/rwc` -> `Geo.kingpinAxis/contactPatchOffset/wheelCentreOffset`; `V` -> `ToVector3`, `Cross` -> `CrossProduct`, `Rot` -> `RotateAboutAxis`; `KingpinMoment`/`RoadTorque` parameters spelled out (`fxPatch`->`patchLongitudinalForce`, `fy`->`lateralForce`, `tp`->`pneumaticTrail`, ...).
 - `SuspensionTables`: `S1` -> `Interpolate1D`, `Idx` -> `GridIndex`, locals spelled out. **Fields are NOT renamed** (`rb*`, `fc*`, `kp*`, `rackGrid`, ... are written by `kinematics/export_unity.py` into the serialized asset); a legend comment was added instead.
 
+## WheelCorner / CarController (batch 4, 2026-10-14)
+- WheelCorner members: `p`->`carParams`, `Fz`->`verticalLoad`, `Fspring/Fdamper/Fbump/Farb/Fjack/Fanti`->`springForce/damperForce/bumpStopTotalForce/antiRollBarForce/jackingForce/antiPitchForce`, `rcHeight`->`rollCentreHeight`, `omega`->`angularVelocity`, `alphaRelaxed`->`relaxedSlipAngle`, `Ftire/Fsusp`->`tireForce/suspensionForce`, `ts`->`thermalScale`, `stickDx/stickDy/stickWeight`->`patchDeflectionX/patchDeflectionY/stickModelWeight`, `ve*` diagnostics->`visco*`, `MR/RC/Forces/Damper/Bump/Rebound`->`MotionRatio/RollCentreHeightAt/ComputeSuspensionForces/DamperForceAt/BumpTravel/ReboundTravel`, private `yw/vw/rb/th*`->full names, all locals spelled out.
+- CarController members: `p`->`carParams`, `FL/FR/RL/RR`->`frontLeftWheel/frontRightWheel/rearLeftWheel/rearRightWheel`, `dt`->`drivetrain`, `rb`->`body`, `source`->`sourceParams`, `steerCompl/roadTorqueL/roadTorqueR`->`steeringCompliance/leftRoadTorque/rightRoadTorque`; locals in FixedUpdate/ApplyParams/Update spelled out.
+- Scene-serialized fields keep their values through `FormerlySerializedAs` (verified: serialized dump of TestTrack and LagunaSeca identical after mapping names).
+
 ## Verification notes
 **Float rule discovered during this pass:** Unity's Mono computes float expressions in double precision and rounds only when a float is stored. Introducing new float locals/functions inside one expression changes results in the last bits. Splits are therefore limited to places where the original already stored a float or the math is `double`/`bool`/`int`.
 

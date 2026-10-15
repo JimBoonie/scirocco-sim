@@ -39,31 +39,31 @@ public class InputRouter : MonoBehaviour
             if (!wasCapturing && capturing == null && calibrating == null) Navigate();   // the frame that finishes a capture navigates nothing
             return;
         }
-        var p = car.p;
+        var p = car.carParams;
         car.throttle = map.Axis(InAction.Throttle); car.brake = map.Axis(InAction.Brake); car.clutch = map.Axis(InAction.Clutch);
         car.handbrakeInput = map.Axis(InAction.Handbrake);
         car.autoClutch = map.profile.autoClutch; p.tireThermal = map.profile.tireThermal; p.tireCompound = map.profile.tireCompound == 1 ? CarParams.TireCompound.ExperimentalViscoelastic : CarParams.TireCompound.Default; p.coldPressureFront = map.profile.coldPsiFront * (float)TireThermal.PaPerPsi; p.coldPressureRear = map.profile.coldPsiRear * (float)TireThermal.PaPerPsi; CarAudio.Volume = map.profile.audioVolume; CarAudio.TireVolume = map.profile.tireVolume; CarAudio.Mute = map.profile.audioMute; AmbientLighting.Apply(map.profile.ambientBrightness);
         if (map.Pressed(InAction.Ignition)) car.engine.ignition = !car.engine.ignition;
-        bool interlockOk = !map.profile.starterInterlock || car.dt.gear == 0 || car.ClutchFullyIn;
+        bool interlockOk = !map.profile.starterInterlock || car.drivetrain.gear == 0 || car.ClutchFullyIn;
         car.engine.starter = map.Held(InAction.Starter) && interlockOk;
-        hintNeutral = car.dt.gear == 0 && car.throttle > 0.05f;
-        if (map.assist == null) { map.assist = new GamepadSteering(map.profile.gamepadSteer); map.meanToHandwheel = m => SteeringLinkage.HandwheelForMean(car.p, m); }
+        hintNeutral = car.drivetrain.gear == 0 && car.throttle > 0.05f;
+        if (map.assist == null) { map.assist = new GamepadSteering(map.profile.gamepadSteer); map.meanToHandwheel = m => SteeringLinkage.HandwheelForMean(car.carParams, m); }
         map.assistCtx = GamepadSteering.Context(car);
         car.handwheelDeg = map.StepSteer(Time.deltaTime, p.handwheelLockDeg, p.steerRate, SteeringLinkage.CentreRatio(p));
         car.handwheelInput = true;                                            // column -> pinion -> rack -> per-wheel kinematics (CarController)
-        if (map.Pressed(InAction.ShiftUp)) car.dt.Shift(1);
-        if (map.Pressed(InAction.ShiftDown)) car.dt.Shift(-1);
+        if (map.Pressed(InAction.ShiftUp)) car.drivetrain.Shift(1);
+        if (map.Pressed(InAction.ShiftDown)) car.drivetrain.Shift(-1);
         // H-pattern: a held gear button selects that gear; a gear button on a shifter device (non-keyboard) returning to centre = neutral
         InAction[] gears = { InAction.GearR, InAction.Gear1, InAction.Gear2, InAction.Gear3, InAction.Gear4, InAction.Gear5 };
         bool anyShifterHeld = false, haveShifter = false;
         for (int i = 0; i < gears.Length; i++)
         {
-            int g = i == 0 ? -1 : i; if (map.Pressed(gears[i])) car.dt.SelectGear(g);
+            int g = i == 0 ? -1 : i; if (map.Pressed(gears[i])) car.drivetrain.SelectGear(g);
             if (map.HasNonKeyboard(gears[i])) { haveShifter = true; if (map.HeldFromNonKeyboard(gears[i])) anyShifterHeld = true; }
         }
-        if (haveShifter && !anyShifterHeld && shifterWasHeld) car.dt.SelectGear(0);
+        if (haveShifter && !anyShifterHeld && shifterWasHeld) car.drivetrain.SelectGear(0);
         shifterWasHeld = anyShifterHeld;
-        if (map.Pressed(InAction.Reset)) { car.ResetCar(); car.dt.SelectGear(0); car.engine.SetRunning(!map.profile.startEngineOff);   // reset = respawn: neutral, engine as at spawn
+        if (map.Pressed(InAction.Reset)) { car.ResetCar(); car.drivetrain.SelectGear(0); car.engine.SetRunning(!map.profile.startEngineOff);   // reset = respawn: neutral, engine as at spawn
  if (ffb) ffb.ResetRamp(); }
         if (map.Pressed(InAction.ResetToStart)) ResetToStart();
         if (map.Pressed(InAction.Recenter) && vr) vr.Recenter();
@@ -82,7 +82,7 @@ public class InputRouter : MonoBehaviour
     {
         if (ffb) ffb.ResetRamp();
         if (TrackManager.Instance) TrackManager.Instance.Respawn(); else car.ResetCar();
-        car.dt.SelectGear(0); car.engine.SetRunning(!map.profile.startEngineOff); status = "reset to start";
+        car.drivetrain.SelectGear(0); car.engine.SetRunning(!map.profile.startEngineOff); status = "reset to start";
     }
     public enum EscResult { None, CancelCapture, CancelCalibration, CloseMenu, OpenMenu }
     /// Esc priority: cancel capture > cancel calibration > close menu > open menu. Independent of the binding profile.
@@ -122,7 +122,7 @@ public class InputRouter : MonoBehaviour
         if (st == null) { st = new GUIStyle(GUI.skin.label) { fontSize = 13 }; st.normal.textColor = Color.white; }
         var r = new Rect(20, 16, UiSurface.Width - 40, UiSurface.Height - 32); GUI.color = new Color(0.18f, 0.2f, 0.24f, 1f); GUI.DrawTexture(r, Texture2D.whiteTexture); GUI.color = Color.white; GUI.Box(r, GUIContent.none);
         GUILayout.BeginArea(new Rect(r.x + 10, r.y + 8, r.width - 20, r.height - 16));
-        var pr = map.profile; var p = car.p;
+        var pr = map.profile; var p = car.carParams;
         GUILayout.Label("SETTINGS  (F1/Esc/Start closes and saves; PgDn/Tab / PgUp or MenuTabNext/Prev = next/previous tab; gameplay buttons never switch tabs)   " + InputMapper.DefaultPath, st);
         int nt = GUILayout.Toolbar(tab, Tabs, GUILayout.Height(28)); if (nt != tab) { tab = nt; scroll = Vector2.zero; }
         GUILayout.Label(status, st);
@@ -277,7 +277,7 @@ public class InputRouter : MonoBehaviour
     static readonly float[] TorquePresets = { 0f, 17f, 25f, 32f };   // Simucube 2 Sport / Pro / Ultimate peak torque (S, manufacturer); 0 = not set
     public string[] QuickItems(BindingProfile pr)
     {
-        var p = car.p; Cockpit ck = vr ? vr.cockpit : null;
+        var p = car.carParams; Cockpit ck = vr ? vr.cockpit : null;
         return new[] {
             $"VR: {(VrManager.Active ? "ON" : "off")}   [{(vr ? vr.status : "no VR manager")}]",
             "Recenter VR view (also F12 / Home / right-stick click)",
@@ -319,7 +319,7 @@ public class InputRouter : MonoBehaviour
     }
     public void Adjust(BindingProfile pr, int item, int dir, bool sel)
     {
-        var p = car.p; Cockpit ck = vr ? vr.cockpit : null; const float seatStep = 0.01f, pctStep = 5f, rotStep = 10f;   // UI step sizes
+        var p = car.carParams; Cockpit ck = vr ? vr.cockpit : null; const float seatStep = 0.01f, pctStep = 5f, rotStep = 10f;   // UI step sizes
         switch (item)
         {
             case 0: pr.vrEnabled = sel ? !pr.vrEnabled : dir > 0; if (vr) vr.SetEnabled(pr.vrEnabled); break;

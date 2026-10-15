@@ -9,7 +9,7 @@ public class CarAudio : MonoBehaviour
     void Start()
     {
         if (System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-smoketest") >= 0 || !car) { enabled = false; return; }
-        var p = car.p;
+        var p = car.carParams;
         Make<EngineSynth>("EngineAudio", new Vector3(0f, 0.1f, p.wheelbase * 0.5f + 0.15f)).Init(car);   // transverse engine over the front axle
         Make<TireSynth>("TireAudio", new Vector3(0f, -0.4f, 0f)).Init(car);
     }
@@ -59,7 +59,7 @@ public class EngineSynth : SynthBase
     void Update() { Sample(Time.deltaTime); }
     public void Sample(float dt)   // copy engine state for the audio thread
     {
-        var e = car.engine; var p = car.p; if (e == null) return;
+        var e = car.engine; var p = car.carParams; if (e == null) return;
         rpm = e.rpm; thrArea = e.throttleArea; combusting = e.combusting; starter = e.starter; limiter = e.limiter; ignition = e.ignition;
         load = Mathf.Clamp01((e.manifoldPressureRatio - p.mapZeroTorque) / (1f - p.mapZeroTorque)); mapBar = e.manifoldPressureRatio;
         starterRps = e.starter ? e.rpm / 60f * e.StarterRatio : 0f;                       // armature rev/s (pinion turns ratio x crank speed)
@@ -157,12 +157,12 @@ public class TireSynth : SynthBase
         if (dsp == null) return;
         var rb = car.GetComponent<Rigidbody>(); float speed = rb ? rb.velocity.magnitude : 0f;
         bool running = Time.timeScale > 0f && !(car.router && car.router.menuOpen) && car.engine != null;   // silent in menu / paused
-        var ws = new[] { car.FL, car.FR, car.RL, car.RR };
+        var ws = new[] { car.frontLeftWheel, car.frontRightWheel, car.rearLeftWheel, car.rearRightWheel };
         for (int i = 0; i < 4; i++)
         {
-            var w = ws[i]; float fz = Mathf.Max(w.Fz, 1f);
-            float ratio = TireScrubLaw.ScrubRatio(w.alphaRelaxed, w.slipRatio, TireScrubLaw.PeakAlpha(car.p, fz), TireScrubLaw.PeakKappa(car.p, fz)); lastRatio[i] = ratio;
-            rat[i] = ratio; fzs[i] = running && w.Fz > 1f ? w.Fz : 0f;
+            var w = ws[i]; float fz = Mathf.Max(w.verticalLoad, 1f);
+            float ratio = TireScrubLaw.ScrubRatio(w.relaxedSlipAngle, w.slipRatio, TireScrubLaw.PeakAlpha(car.carParams, fz), TireScrubLaw.PeakKappa(car.carParams, fz)); lastRatio[i] = ratio;
+            rat[i] = ratio; fzs[i] = running && w.verticalLoad > 1f ? w.verticalLoad : 0f;
         }
         dsp.SetTargets(rat, running ? speed : 0f, fzs);
     }
@@ -185,7 +185,7 @@ public class AudioCoastProbe : MonoBehaviour
             eng = new GameObject("probeEng").AddComponent<EngineSynth>(); eng.Init(car, Fs); tire = new GameObject("probeTire").AddComponent<TireSynth>(); tire.Init(car, Fs); }
         t += Time.fixedDeltaTime; if (t < 3.5f) return;
         int gear = stage < 2 ? 3 : 4; var e = car.engine;
-        if (stage == 0 || stage == 2) { car.throttle = 1f; if (car.dt.gear == gear && e.rpm >= 5000f) { stage++; Debug.Log($"COAST start gear {gear}"); } }
+        if (stage == 0 || stage == 2) { car.throttle = 1f; if (car.drivetrain.gear == gear && e.rpm >= 5000f) { stage++; Debug.Log($"COAST start gear {gear}"); } }
         else { car.throttle = 0f; car.brake = 0f; if (e.rpm < 2300f) { stage++; Debug.Log($"COAST end gear {gear}"); if (stage >= 4) { Debug.Log("COAST done"); Application.Quit(0); } } }
         if (t < next) return; next = t + 0.1f;
         eng.Sample(0.1f); eng.Render(eb, eb.Length); double a = 0; for (int i = 2400; i < eb.Length; i++) a += eb[i] * eb[i]; float eRms = Mathf.Sqrt((float)(a / 2400));
@@ -193,6 +193,6 @@ public class AudioCoastProbe : MonoBehaviour
         float eDb = 20f * Mathf.Log10(eRms + 1e-9f), tDb = 20f * Mathf.Log10(tRms + 1e-9f); if (car.throttle > 0.99f && e.rpm > 4500f) wotDb = eDb;
         var rb = car.GetComponent<Rigidbody>();
         Debug.Log(string.Format(System.Globalization.CultureInfo.InvariantCulture, "COAST,{0:0.0},{1},{2},{3:0},{4:0.0},{5:0.000},{6:0.00},{7},{8},{9:0.0},{10:0.0},{11:0.0},{12:0.0}",
-            t, stage, car.dt.gear, e.rpm, rb ? rb.velocity.magnitude * 3.6f : 0f, e.manifoldPressureRatio, Mathf.Clamp01((e.manifoldPressureRatio - car.p.mapZeroTorque) / (1f - car.p.mapZeroTorque)), e.combusting, e.limiter, eDb, tDb, wotDb - eDb, car.throttle));
+            t, stage, car.drivetrain.gear, e.rpm, rb ? rb.velocity.magnitude * 3.6f : 0f, e.manifoldPressureRatio, Mathf.Clamp01((e.manifoldPressureRatio - car.carParams.mapZeroTorque) / (1f - car.carParams.mapZeroTorque)), e.combusting, e.limiter, eDb, tDb, wotDb - eDb, car.throttle));
     }
 }

@@ -63,8 +63,8 @@ public class FfbController : MonoBehaviour
 
     void FixedUpdate()
     {
-        if (!car || car.p == null) return;
-        var p = car.p; var pr = router != null ? router.map?.profile : null;
+        if (!car || car.carParams == null) return;
+        var p = car.carParams; var pr = router != null ? router.map?.profile : null;
         float dt = Time.fixedDeltaTime;
         // column angle & rate from the physical wheel (unclamped beyond the car's rack stop)
         float wheelDeg = router != null && router.map != null ? router.map.wheelDegUnclamped : car.handwheelDeg;

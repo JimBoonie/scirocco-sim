@@ -19,7 +19,7 @@ public class Cockpit : MonoBehaviour
     public static Vector3 WheelCentre(CarParams p) => HPoint(p) + new Vector3(0f, p.wheelCentreAboveH, p.wheelCentreAheadOfH);
     public void ApplySeat(float fwd, float up)
     {
-        var p = car.p; seatFwd = Mathf.Clamp(fwd, -p.seatTravelAft, p.seatTravelFore); seatUp = Mathf.Clamp(up, -p.seatTravelDown, p.seatTravelUp);
+        var p = car.carParams; seatFwd = Mathf.Clamp(fwd, -p.seatTravelAft, p.seatTravelFore); seatUp = Mathf.Clamp(up, -p.seatTravelDown, p.seatTravelUp);
         if (eyeAnchor) eyeAnchor.localPosition = eyeDefault + new Vector3(0f, seatUp, seatFwd);
     }
     public void Recenter(Transform head)   // head = tracked camera under 'recenter'; puts the current head pose on the eye point, facing forward
@@ -51,7 +51,7 @@ public class Cockpit : MonoBehaviour
     }
     public void Build()
     {
-        if (root) return; var p = car.p;
+        if (root) return; var p = car.carParams;
         eyeDefault = EyePoint(p); hPoint = HPoint(p); wheelCentre = WheelCentre(p);
         root = new GameObject("Cockpit").transform; root.SetParent(car.transform, false);
         float gy = GroundY(p), roofY = gy + 1.28f - 0.07f;   // overall height 1.28 m (S) minus roof skin + headliner (E)
@@ -109,6 +109,6 @@ public class Cockpit : MonoBehaviour
         speedNeedle.localRotation = Quaternion.Euler(0f, 0f, 120f - Mathf.Clamp(v, 0f, 150f) * 240f / 150f);
         rpmNeedle.localRotation = Quaternion.Euler(0f, 0f, 120f - Mathf.Clamp(rpm, 0f, 8000f) * 240f / 8000f);
         speedText.text = v.ToString("0"); rpmText.text = rpm.ToString("0");
-        gearText.text = car.dt.gear == 0 ? "N" : car.dt.gear < 0 ? "R" : car.dt.gear.ToString();
+        gearText.text = car.drivetrain.gear == 0 ? "N" : car.drivetrain.gear < 0 ? "R" : car.drivetrain.gear.ToString();
     }
 }

@@ -68,13 +68,13 @@ public class GamepadSteering
     /// vehicle state for the assist, read from the simulated tires (travel angle = wheel steer angle + its slip angle, see WheelCorner)
     public static GamepadSteerContext Context(CarController car)
     {
-        var p = car.p; var rb = car.GetComponent<Rigidbody>();
+        var p = car.carParams; var rb = car.GetComponent<Rigidbody>();
         float Tr(WheelCorner w) => w.steerDeg + w.slipAngle * Mathf.Rad2Deg;
         return new GamepadSteerContext
         {
             speed = rb ? Vector3.Dot(rb.velocity, car.transform.forward) : 0f, lockRoadDeg = p.MeanLockDeg,
-            frontTravelDeg = 0.5f * (Tr(car.FL) + Tr(car.FR)), rearTravelDeg = 0.5f * (Tr(car.RL) + Tr(car.RR)),
-            peakSlipDeg = PeakSlipDeg(p, 0.5f * (car.FL.Fz + car.FR.Fz)),
+            frontTravelDeg = 0.5f * (Tr(car.frontLeftWheel) + Tr(car.frontRightWheel)), rearTravelDeg = 0.5f * (Tr(car.rearLeftWheel) + Tr(car.rearRightWheel)),
+            peakSlipDeg = PeakSlipDeg(p, 0.5f * (car.frontLeftWheel.verticalLoad + car.frontRightWheel.verticalLoad)),
         };
     }
     /// peak lateral-force slip angle (deg) of the tire model at load Fz (scan 0..20 deg at 0.1 deg)

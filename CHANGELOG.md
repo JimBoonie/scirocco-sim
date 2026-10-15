@@ -9,6 +9,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [2026-10-14] (PT)
 
+### Changed (readability pass 5/6: WheelCorner, CarController, PT 20:30)
+
+- `WheelCorner.cs`, `CarController.cs`: full-word members and locals, `@description/@param/@return` headers, `FormerlySerializedAs` on scene-serialized fields. Call sites in HUD/audio/input/SmokeTest/editor updated. No behaviour change: 117/117 tests, 15 scenarios bit-identical to baseline, serialized scene values identical.
+
 ### Changed (readability pass 4/6: tools scripts, PT 20:35)
 
 - All `tools/**/*.py` and `*.sh`: correct shebang (`#!/usr/bin/env python3`, `#!/bin/bash`, `#!/usr/bin/env bash`), executable bit on shell scripts, and a `# @description / # @param / # @return` header comment. Comment-only change; no code lines touched.
