@@ -7,6 +7,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed (engine would not start with the Experimental driveline ON, PT 2026-10-15 11:00)
+
+- **Root cause:** the experimental firing-pulse model adds a zero-mean gas ripple on top of the mean engine torque. For a motored (not firing) 1.8 L four-cylinder at 1 bar the compression hump is about +-100 N m, larger than the starter stall torque (about 105 N m, falling linearly with speed). When the crank rests in front of a hump (about 60 % of rest angles: 80 to 160 deg of the 180 deg period, which includes every crank that stalled) the starter cannot climb it and the engine never cranks (measured 0 rpm; the stallrestart scenario with the toggle ON stayed at 0 rpm after the restart). The default path has no ripple, so it always started. Starting worked only at lucky rest angles such as the spawn angle 0.
+- **Fix (experimental path only):** while the engine is not combusting, the gas ripple is scaled by w / (w + w_half) (`EngineCrankTorqueSource.GasRippleFraction`; new parameter `crankingLeakageHalfSpeedRpm` = 150 rpm, tuned). Physically, ring blow-by and heat loss bleed the compression pressure of a slowly turning or stopped engine, so the hump vanishes at rest and returns as the crank speeds up. A firing engine keeps the full ripple (fraction 1), so running behavior, the idle and the existing driveline tests are unchanged. `FiringPulseModel.RippleTorque` gained an optional `gasRippleFraction` argument (default 1). The default (toggle off) path is untouched: 15 scenarios row-identical, skidpad 1.834 deg/g, peak 0.785 g.
+- **Tests:** new `ExperimentalDrivelineStartTests`: starts from every crank rest angle (0 to 170 deg, step 10), in neutral and in gears 1 and 2 with the clutch in, restarts after a stall in gear (as the stallrestart scenario), the ripple fraction law, and that a firing engine keeps the full ripple.
+
 ### Fixed (camera toggle stuck in the chase view, PT 2026-10-15 10:30)
 
 - **Root cause:** the readability pass renamed `InputRouter.vr` to `vrManager` (`1a418be`) but `TestTrack.unity` still stored the reference under `vr`, so Unity dropped it and `InputRouter.vrManager` was null in the main scene. Every camera action is guarded by `&& vrManager`, so the bound camera button was detected (the Bindings tab showed it) but did nothing; the same null also disabled Recenter, flat-screen look-around and the VR menu entries. Keyboard, gamepad and wheel buttons were all affected.

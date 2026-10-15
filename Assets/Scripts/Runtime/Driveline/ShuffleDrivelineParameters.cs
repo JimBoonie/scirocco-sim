@@ -8,6 +8,7 @@ public class ShuffleDrivelineParameters : ScriptableObject
 {
     [Header("Engine geometry and firing pulses (minimal Wiebe burn, no ignition system / knock / mixture model)")]
     public bool firingPulsesEnabled = true;                    // include gas and reciprocating-inertia torque pulsation
+    public float crankingLeakageHalfSpeedRpm = 150f;           // rpm (D: tuned) at which half of the motored (not firing) compression ripple survives; piston-ring blow-by and heat loss bleed the compression pressure at low crank speed (see EngineCrankTorqueSource.GasRippleFraction)
     public float boreMeters = 0.081f;                          // m (S: VW EA827 1.8 8V 81.0 mm, motor-car.net / rwcmotorsport.com)
     public float strokeMeters = 0.0864f;                       // m (S: same sources, 86.4 mm)
     public float connectingRodLengthMeters = 0.144f;           // m (SD: 144 mm, piston-vendor listing for 1.8 8V, Wiseco)

@@ -196,15 +196,16 @@ public class FiringPulseModel
     // @return {double} - N m
     double WaveformMean() => intakePressure * compressionExpansionMean + heatPerCycle * heatReleaseMean + exhaustPressure * exhaustMean - ambientPressure * ambientMean;
 
-    // @description - torque ripple about the mean: gas torque of all cylinders minus its cycle mean, plus reciprocating inertia torque
+    // @description - torque ripple about the mean: gas torque of all cylinders minus its cycle mean (scaled by gasRippleFraction), plus reciprocating inertia torque
     // @param {double} crankAngleRadians - crank angle in rad
     // @param {double} crankAngularVelocity - crank speed in rad/s
+    // @param {double} gasRippleFraction - 0..1 share of the gas ripple that survives (1 = full ripple, the default; < 1 models compression leakage while cranking)
     // @return {double} - N m, zero mean over a cycle
-    public double RippleTorque(double crankAngleRadians, double crankAngularVelocity)
+    public double RippleTorque(double crankAngleRadians, double crankAngularVelocity, double gasRippleFraction = 1.0)
     {
         double gas = intakePressure * Lookup(compressionExpansionTable, crankAngleRadians) + heatPerCycle * Lookup(heatReleaseTable, crankAngleRadians)
                    + exhaustPressure * Lookup(exhaustTable, crankAngleRadians) - ambientPressure * Lookup(ambientTable, crankAngleRadians);
-        return gas - meanWaveformTorque + crankAngularVelocity * crankAngularVelocity * Lookup(inertiaTable, crankAngleRadians);
+        return gasRippleFraction * (gas - meanWaveformTorque) + crankAngularVelocity * crankAngularVelocity * Lookup(inertiaTable, crankAngleRadians);
     }
 
     // @description - in-cylinder pressure of one cylinder during compression and expansion, for validation

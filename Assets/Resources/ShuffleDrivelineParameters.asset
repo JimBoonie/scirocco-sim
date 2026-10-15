@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: ShuffleDrivelineParameters
   m_EditorClassIdentifier: 
   firingPulsesEnabled: 1
+  crankingLeakageHalfSpeedRpm: 150
   boreMeters: 0.081
   strokeMeters: 0.0864
   connectingRodLengthMeters: 0.144
