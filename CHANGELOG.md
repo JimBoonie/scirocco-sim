@@ -9,9 +9,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [2026-10-14] (PT)
 
-### Fixed (readability pass 1/6 follow-up: bit-exactness, PT 21:35)
+### Changed (readability pass 2/6: tires, PT 21:00)
 
-- `Engine.FreshFraction` was split into two functions in the first readability commit; Unity's Mono evaluates float expressions in double precision and rounds only on store, so the split changed results in the last bits (vehicle runs diverged by 1 N / up to 2 % on some rows after several seconds). Re-inlined as one expression with an explanatory comment. Verified against the pre-readability baseline: 117/117 tests, all 15 diagnostic scenarios **bit-identical row for row** (accel, brake, skidpad, step/ramp steer, lane change, lift-off, top speed, rev sweep, stall restart, power step, gamepad x2), all battery metrics identical (skidpad 0.785 g, understeer 1.834 deg/g).
+- `PacejkaTire.cs`, `ViscoTire.cs`, `TireThermal.cs`: full-word identifiers (constants, state, methods), `@description/@param/@return` headers, equation/unit comments (S/SD/D/E tags kept), `ViscoTire.Build` and `TireThermal.Step` split into small functions with identical arithmetic. Call sites (WheelCorner, DebugHUD, SmokeTest, tests) updated. No behaviour change (tests + diagnostics compared with the pre-change baseline). Names in `docs/RENAMES.md`.
 
 ### Changed (readability pass 1/6: engine / drivetrain, 19:30 PT)
 

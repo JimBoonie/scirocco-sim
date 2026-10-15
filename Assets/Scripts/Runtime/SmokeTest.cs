@@ -211,7 +211,7 @@ public class SmokeTest : MonoBehaviour
         foreach (var w in new[] { car.FL, car.FR, car.RL, car.RR })
         {
             var th = w.thermal; if (th == null) continue;
-            o += $" | {w.name} {TireThermal.CToF(th.Ts[0]):0}/{TireThermal.CToF(th.Ts[1]):0}/{TireThermal.CToF(th.Ts[2]):0}F bulk {TireThermal.CToF(th.Tb):0} carc {TireThermal.CToF(th.Tc):0} gas {TireThermal.CToF(th.Tg):0} {th.pGauge / TireThermal.PaPerPsi:0.0}psi grip {w.ts.muy * 100f:0}% res {th.Residual / System.Math.Max(th.EIn, 1):E1}";
+            o += $" | {w.name} {TireThermal.CelsiusToFahrenheit(th.surfaceTemperatures[0]):0}/{TireThermal.CelsiusToFahrenheit(th.surfaceTemperatures[1]):0}/{TireThermal.CelsiusToFahrenheit(th.surfaceTemperatures[2]):0}F bulk {TireThermal.CelsiusToFahrenheit(th.bulkTemperature):0} carc {TireThermal.CelsiusToFahrenheit(th.carcassTemperature):0} gas {TireThermal.CelsiusToFahrenheit(th.gasTemperature):0} {th.gaugePressure / TireThermal.PaPerPsi:0.0}psi grip {w.ts.muy * 100f:0}% res {th.Residual / System.Math.Max(th.energyIn, 1):E1}";
         }
         Debug.Log(o);
     }

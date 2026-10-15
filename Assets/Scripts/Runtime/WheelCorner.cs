@@ -122,7 +122,7 @@ public class WheelCorner : MonoBehaviour
         if (thermal == null) { thermal = new TireThermal(coldGauge, warm, warmCarcass); thFric = thRR = thT = 0; }
         thermal.SetColdPressure(coldGauge);
         double T = thT > 0 ? thT : Time.fixedDeltaTime;
-        thermal.pFricBulk = thBulk / T;
+        thermal.bulkFrictionPower = thBulk / T;
         thermal.Step(T, thFric / T, thRR / T, Vector3.Dot(rb.GetPointVelocity(transform.position), transform.forward), Fz, camberDeg * Mathf.Deg2Rad, p.tireRate, grounded);
         thFric = thRR = thT = thBulk = 0; ts = thermal.Scale();
     }
@@ -132,15 +132,15 @@ public class WheelCorner : MonoBehaviour
     void ViscoUpdate(float vx, float vy, ref float sigma, ref TireScale t, ref float rrScale)
     {
         veFlags = ViscoTire.FromParams(p); if (veVsRef < 0) veVsRef = ViscoTire.VsRef(p);
-        double T = thermal != null ? thermal.GripTemp() : TireThermal.TOpt;              // base coefficients = tyre at its optimum (D, as TireThermal)
-        double sigP = thermal != null ? System.Math.Max(thermal.pGauge, 20000.0) : TireThermal.PNom;   // nominal contact pressure ~ inflation
+        double T = thermal != null ? thermal.GripTemp() : TireThermal.OptimalTemperature;              // base coefficients = tyre at its optimum (D, as TireThermal)
+        double sigP = thermal != null ? System.Math.Max(thermal.gaugePressure, 20000.0) : TireThermal.NominalGaugePressure;   // nominal contact pressure ~ inflation
         double vsx = vx - omega * p.wheelRadius, vs = System.Math.Sqrt(vsx * vsx + vy * vy);
         double g = ViscoTire.GripFactor(vs, T, sigP, veVsRef, veFlags, out double dT);
         t.mux *= (float)g; t.muy *= (float)g; veGrip = (float)g; veFlashK = (float)dT;
         float FzE = Mathf.Max(Fz, 1f); double k = 1.0;
         if (veFlags.rateStiffness)
         {
-            double L = FzE / (sigP * TireThermal.TreadW), Lr = p.Fz0 / (TireThermal.PNom * TireThermal.TreadW);   // contact length (D, membrane approx.)
+            double L = FzE / (sigP * TireThermal.TreadWidth), Lr = p.Fz0 / (TireThermal.NominalGaugePressure * TireThermal.TreadWidth);   // contact length (D, membrane approx.)
             k = ViscoTire.StiffnessFactor(vx, L, Lr); t.kx *= (float)k; t.ky *= (float)k;
         }
         veKScale = (float)k;
@@ -152,7 +152,7 @@ public class WheelCorner : MonoBehaviour
         veSigScale = sigma / p.relaxLength;
         if (veFlags.rollingRes)
         {
-            double Trr = thermal != null ? TireThermal.RrToTread * thermal.Tb + (1 - TireThermal.RrToTread) * thermal.Tc : ViscoTire.TRrRef;
+            double Trr = thermal != null ? TireThermal.RollingLossTreadShare * thermal.bulkTemperature + (1 - TireThermal.RollingLossTreadShare) * thermal.carcassTemperature : ViscoTire.RollingResistanceReferenceTemperature;
             rrScale = (float)ViscoTire.RollingFactor(vx, p.wheelRadius, Trr);
         }
         veRrScale = rrScale;
@@ -165,8 +165,8 @@ public class WheelCorner : MonoBehaviour
         if (thermal == null) return 0f;
         float FzE = Mathf.Max(Fz, 1f);
         double cx = p.pKx1 * t.kx * FzE, cy = p.pKy1 * t.ky * p.Fz0 * Mathf.Sin(2f * Mathf.Atan(FzE / (p.pKy2 * t.kyLoad * p.Fz0)));
-        double L = FzE / (System.Math.Max(thermal.pGauge, 20000.0) * TireThermal.TreadW), v = System.Math.Abs(vx);
-        double td = ViscoTire.TanDelta(System.Math.Max(v, 0.5) / L, thermal.Tb);
+        double L = FzE / (System.Math.Max(thermal.gaugePressure, 20000.0) * TireThermal.TreadWidth), v = System.Math.Abs(vx);
+        double td = ViscoTire.TanDelta(System.Math.Max(v, 0.5) / L, thermal.bulkTemperature);
         return (float)(System.Math.PI * td * v * ViscoTire.TreadShare * (fx * fx / (4 * cx) + fy * fy / (4 * cy)));
     }
     public void ThermalOff() { thermal = null; ts = TireScale.One; }

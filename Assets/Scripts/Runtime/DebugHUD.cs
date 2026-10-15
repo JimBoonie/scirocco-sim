@@ -20,7 +20,7 @@ public class DebugHUD : MonoBehaviour
             foreach (var w in new[] { car.FL, car.FR, car.RL, car.RR })
             {
                 var th = w.thermal; if (th == null) continue;
-                s += $"{w.name}: {F(th.Ts[0]),4:0}/{F(th.Ts[1]),4:0}/{F(th.Ts[2]),4:0}  {F(th.Tb),4:0} {F(th.Tg),4:0}  {th.pGauge / TireThermal.PaPerPsi,4:0.0}  {w.ts.muy * 100f,3:0}%\n";
+                s += $"{w.name}: {F(th.surfaceTemperatures[0]),4:0}/{F(th.surfaceTemperatures[1]),4:0}/{F(th.surfaceTemperatures[2]),4:0}  {F(th.bulkTemperature),4:0} {F(th.gasTemperature),4:0}  {th.gaugePressure / TireThermal.PaPerPsi,4:0.0}  {w.ts.muy * 100f,3:0}%\n";
             }
         }
 
@@ -53,7 +53,7 @@ public class DebugHUD : MonoBehaviour
         if (info) { Box(8f, UiSurface.Height - 230f, JointText(car).TrimEnd('\n')); GUI.Label(new Rect(8, UiSurface.Height - 56f, 1200, 16), "W/S throttle/brake | A/D steer | E/Q shift | LShift clutch | Space handbrake | I ign | hold T starter | R reset | Backspace reset to start | C cam | H hide info | F1/Esc settings", mono); }
     }
     public const float MphPerMs = 2.236936f;   // display only: 1 m/s = 2.236936 mph (exact by definition of the mile); physics stays SI
-    static double F(double c) => TireThermal.CToF(c);
+    static double F(double c) => TireThermal.CelsiusToFahrenheit(c);
     void Box(float x, float y, string t) { var sz = mono.CalcSize(new GUIContent(t)); GUI.Box(new Rect(x, y, sz.x + 10f, sz.y + 6f), GUIContent.none); GUI.Label(new Rect(x + 5f, y + 3f, sz.x + 2f, sz.y), t, mono); }
     static bool HudVisible(CarController c) => !(c.router && c.router.map != null && c.router.map.profile != null) || c.router.map.profile.hudVisible;
 
