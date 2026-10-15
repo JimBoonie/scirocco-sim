@@ -2,12 +2,12 @@
 using UnityEditor; using UnityEditor.SceneManagement; using UnityEngine;
 public static class SciroccoSetup
 {
-    // @description - Creates one wheel corner object under the car at the given position (layer IgnoreRaycast so suspension rays skip it), connects the parameters and adds a cylinder as visual wheel sized from the wheel radius and a 0.0925 m tyre width.
+    // @description - Creates one wheel corner object under the car at the given position (layer IgnoreRaycast so suspension rays skip it), connects the parameters and adds a cylinder as visual wheel sized from the wheel radius and a 0.0925 m tire width.
     // @param {CarParams} carParams - car parameter set shared by all corners
     // @param {GameObject} car - car root game object the wheel is attached to
     // @param {string} objectName - name of the wheel object ("FL", "FR", "RL" or "RR")
-    // @param {float} lateralPosition - lateral position in car-local metres (negative = left)
-    // @param {float} longitudinalPosition - longitudinal position in car-local metres (positive = forward)
+    // @param {float} lateralPosition - lateral position in car-local meters (negative = left)
+    // @param {float} longitudinalPosition - longitudinal position in car-local meters (positive = forward)
     // @param {bool} isFront - true for a front wheel
     // @param {bool} isLeft - true for a left wheel
     // @return {WheelCorner} - the new wheel corner component

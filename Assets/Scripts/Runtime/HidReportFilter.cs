@@ -32,7 +32,7 @@ public static class HidReportFilter
     // @description - Reads a HID report descriptor (JSON from the Input System) and decides which input report to keep. Devices with several input report IDs (for example force-feedback wheels that also send PID state reports) must only keep the report that carries the joystick X axis.
     // @param {string} capabilitiesJson - HID descriptor as JSON (InputDeviceDescription.capabilities); may be null or empty
     // @return {Info} - filter information: expected report ID (-1 = do not filter), all input report IDs and a human-readable note
-    public static Info Analyse(string capabilitiesJson)
+    public static Info Analyze(string capabilitiesJson)
     {
         var info = new Info();
         if (string.IsNullOrEmpty(capabilitiesJson)) { info.note = "no HID descriptor"; return info; }
@@ -50,13 +50,13 @@ public static class HidReportFilter
         else info.note = "single input report";
         return info;
     }
-    // @description - Returns the cached filter information for a device, analysing its HID descriptor on first use. Only generic HID layouts are analysed; devices with a specific layout are never filtered.
+    // @description - Returns the cached filter information for a device, analyzing its HID descriptor on first use. Only generic HID layouts are analyzed; devices with a specific layout are never filtered.
     // @param {InputDevice} device - the input device
     // @return {Info} - filter information for the device
     public static Info Get(InputDevice device)
     {
         if (infos.TryGetValue(device.deviceId, out var info)) return info;
-        info = device.description.interfaceName == "HID" && !IsSpecificLayout(device) ? Analyse(device.description.capabilities) : new Info { note = device.description.interfaceName == "HID" ? "device-specific layout (not filtered)" : "not HID" };
+        info = device.description.interfaceName == "HID" && !IsSpecificLayout(device) ? Analyze(device.description.capabilities) : new Info { note = device.description.interfaceName == "HID" ? "device-specific layout (not filtered)" : "not HID" };
         infos[device.deviceId] = info; return info;
     }
     // @description - Tells whether a device uses a layout written for that specific device (DualShock, Xbox HID, ...). Those layouts handle report IDs themselves; only auto-generated HID layouts need the filter.

@@ -120,13 +120,13 @@ public class ExperimentalSettingsTabTests
         // @return {Void} - nothing
         void Draw() { style = style ?? new GUIStyle(GUI.skin.label); GUILayout.BeginArea(new Rect(0, 0, 900, 700)); tab.Draw(profile, style); GUILayout.EndArea(); }
         Frame(queue, Vector2.zero, Draw);
-        for (float y = 4f; y < 400f; y += 4f) { Click(queue, new Vector2(60f, y), Draw); if (profile.tireThermal) break; }
+        for (float cursorY = 4f; cursorY < 400f; cursorY += 4f) { Click(queue, new Vector2(60f, cursorY), Draw); if (profile.tireThermal) break; }
         Assert.IsTrue(profile.tireThermal, "a VR click on the thermal toggle must switch it on");
-        for (float y = 4f; y < 600f && profile.tireCompound == 0; y += 4f) Click(queue, new Vector2(480f, y), Draw);
+        for (float cursorY = 4f; cursorY < 600f && profile.tireCompound == 0; cursorY += 4f) Click(queue, new Vector2(480f, cursorY), Draw);
         Assert.AreEqual(1, profile.tireCompound, "a VR click on the compound selector must choose Experimental");
-        for (float y = 4f; y < 600f && profile.frontColdPressurePsi == 24.7f && profile.rearColdPressurePsi == 24.7f; y += 4f)
+        for (float cursorY = 4f; cursorY < 600f && profile.frontColdPressurePsi == 24.7f && profile.rearColdPressurePsi == 24.7f; cursorY += 4f)
         {
-            var dragStart = new Vector2(330f, y); var dragEnd = new Vector2(530f, y);
+            var dragStart = new Vector2(330f, cursorY); var dragEnd = new Vector2(530f, cursorY);
             queue.Sample(true, dragStart, 0f); Frame(queue, dragStart, Draw); queue.Sample(true, dragEnd, 0f); Frame(queue, dragEnd, Draw); queue.Sample(false, dragEnd, 0f); Frame(queue, dragEnd, Draw);
         }
         Assert.IsTrue(profile.frontColdPressurePsi != 24.7f || profile.rearColdPressurePsi != 24.7f, "a VR drag on a pressure slider must change it");

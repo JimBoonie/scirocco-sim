@@ -26,7 +26,7 @@
  ],
  "row0": "south (first row = minimum North)",
  "byte_order": "little-endian (Windows)",
- "source": "each RAW is built on its own grid from the USGS 3DEP 1 m lidar DEM (smoothed sigma 1 m), not upsampled; Terrain_* mesh = the 1025 grid exactly; carved 0.25 m under road/kerb footprint; >=0.22 m under road/kerbs/pit (worst triangulation); shoulder band 5 cm under the shoulder surfaces",
+ "source": "each RAW is built on its own grid from the USGS 3DEP 1 m lidar DEM (smoothed sigma 1 m), not upsampled; Terrain_* mesh = the 1025 grid exactly; carved 0.25 m under road/curb footprint; >=0.22 m under road/curbs/pit (worst triangulation); shoulder band 5 cm under the shoulder surfaces",
  "terrain_mesh_grid": 1025,
  "origin_utm10n_nad83": [
   611234.53659129,

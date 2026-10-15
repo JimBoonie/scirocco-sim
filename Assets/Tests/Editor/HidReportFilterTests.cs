@@ -33,7 +33,7 @@ public class HidReportFilterTests : InputTestFixture
     // @param {InputDevice} device - device whose controls are searched
     // @return {ButtonControl} - the first button, or null if none
     static ButtonControl FirstPaddleButton(InputDevice device) { foreach (var control in device.allControls) if (control is ButtonControl button && !(control.parent is StickControl) && !control.synthetic && !(control.parent is DpadControl)) return button; return null; }
-    // @description - Queues one state event, either the joystick report (full right, centred Y, button pressed) or the PID report (all zero), and processes it.
+    // @description - Queues one state event, either the joystick report (full right, centered Y, button pressed) or the PID report (all zero), and processes it.
     // @param {InputDevice} device - device that receives the report
     // @param {bool} pid - true to send the PID state report (id 2), false to send the joystick report (id 1)
     // @return {Void} - nothing
@@ -41,10 +41,10 @@ public class HidReportFilterTests : InputTestFixture
 
     // @description - Verifies that HID descriptor analysis picks report id 1 as the joystick report when the device has two input reports (ids 1 and 2), and leaves single-report devices alone (expected id -1).
     // @return {Void} - nothing
-    [Test] public void Analyse_Finds_Joystick_Report_When_Multiple_Input_Reports()
+    [Test] public void Analyze_Finds_Joystick_Report_When_Multiple_Input_Reports()
     {
-        var analysis = HidReportFilter.Analyse(BuildDescriptorJson(true)); Assert.AreEqual(1, analysis.expectedId); CollectionAssert.AreEqual(new[] { 1, 2 }, analysis.inputIds);
-        Assert.AreEqual(-1, HidReportFilter.Analyse(BuildDescriptorJson(false)).expectedId, "single-report devices are left alone");
+        var analysis = HidReportFilter.Analyze(BuildDescriptorJson(true)); Assert.AreEqual(1, analysis.expectedId); CollectionAssert.AreEqual(new[] { 1, 2 }, analysis.inputIds);
+        Assert.AreEqual(-1, HidReportFilter.Analyze(BuildDescriptorJson(false)).expectedId, "single-report devices are left alone");
     }
     // @description - Reproduces the twitch bug without the filter: after a joystick report (steering above 0.9, paddle pressed) a PID report lands on the same state, driving steering below 0 and releasing the paddle.
     // @return {Void} - nothing

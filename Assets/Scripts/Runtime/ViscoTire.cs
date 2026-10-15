@@ -1,4 +1,4 @@
-// Experimental (viscoelastic) tread compound. Selectable in the Quick menu ("Tyre compound"); the Default compound never calls this file.
+// Experimental (viscoelastic) tread compound. Selectable in the Quick menu ("Tire compound"); the Default compound never calls this file.
 // Physics (sources and tags in tools/viscoelastic_tyre_research.md):
 //  - complex modulus E*(w) of a carbon-black-filled E-SBR summer tread: Havriliak-Negami polymer relaxation + fractional filler network,
 //    fitted (tools/visco_fit.py, D) to sourced DMA indicators; time-temperature superposition by WLF (universal constants about Tg, S).
@@ -48,7 +48,7 @@ public static class ViscoTire
     public const double ReferenceSpeed = 80.0 / 3.6;           // m/s (E: handling-test speed, step-steer / ramp-steer 80 km/h)
     public const double ReferenceContactPressure = TireThermal.NominalGaugePressure;   // Pa nominal contact pressure ~ inflation pressure (D: membrane approx., as TireThermal)
     public const double RollingResistanceReferenceTemperature = 25.0, RollingResistanceReferenceSpeed = 80.0 / 3.6;   // ISO 28580 rolling-resistance reference: 25 C, 80 km/h (S)
-    public const double TreadShare = 0.5;           // tread (brush) share of the tyre's tangential compliance (E)
+    public const double TreadShare = 0.5;           // tread (brush) share of the tire's tangential compliance (E)
     // ---- flashTemperature temperature ----
     public static readonly double AsperityRadius = RollOffWavelength / 4;   // m macro-asperity contact radius (E: quarter roll-off wavelength)
     static readonly double ThermalDiffusivity = TireThermal.RubberConductivity / (TireThermal.RubberDensity * TireThermal.RubberSpecificHeat);   // kappa in m^2/s (D, S data)
@@ -114,13 +114,13 @@ public static class ViscoTire
         double[] wavenumbers = new double[WavenumberSamples], cosines = new double[AngleSamples], angleWeights = new double[AngleSamples];
         for (int i = 0; i < WavenumberSamples; i++) wavenumbers[i] = RollOffWavenumber * System.Math.Pow(CutoffWavenumber / RollOffWavenumber, i / (double)(WavenumberSamples - 1));   // wavenumbers spaced logarithmically from the roll-off wavenumber to the cutoff (1/m)
         for (int j = 0; j < AngleSamples; j++) { double angle = (j + 0.5) * 0.5 * System.Math.PI / AngleSamples; cosines[j] = System.Math.Cos(angle); angleWeights[j] = 0.5 * System.Math.PI / AngleSamples; }   // midpoint rule on [0, pi/2]
-        double normalisingStress = (1 - PoissonRatio * PoissonRatio) * ReferenceContactPressure;
+        double normalizingStress = (1 - PoissonRatio * PoissonRatio) * ReferenceContactPressure;
         var imaginaryIntegral = new double[WavenumberSamples]; var absoluteIntegral = new double[WavenumberSamples];
         for (int k = 0; k < MasterCurveSamples; k++)
         {
             double reducedSpeed = System.Math.Pow(10, MasterCurveMin + k * MasterCurveStep);   // master curve abscissa: sliding speed shifted by aT, log-spaced (m/s)
             for (int i = 0; i < WavenumberSamples; i++)
-                AngleIntegrals(wavenumbers[i] * reducedSpeed, cosines, angleWeights, normalisingStress, payneEffect, out imaginaryIntegral[i], out absoluteIntegral[i]);
+                AngleIntegrals(wavenumbers[i] * reducedSpeed, cosines, angleWeights, normalizingStress, payneEffect, out imaginaryIntegral[i], out absoluteIntegral[i]);
             IntegrateOverWavenumber(wavenumbers, imaginaryIntegral, absoluteIntegral, out frictionCurve[k], out areaCurve[k]);   // P(q1) = A/A0 real contact area
         }
         hysteresisFrictionTable[payneIndex] = frictionCurve; contactAreaTable[payneIndex] = areaCurve;
@@ -131,15 +131,15 @@ public static class ViscoTire
     // @param {double} wavenumberTimesSpeed - q v in rad/s (reduced)
     // @param {double[]} cosines - cos(phi) at the midpoint-rule nodes
     // @param {double[]} angleWeights - midpoint-rule weights
-    // @param {double} normalisingStress - (1 - nu^2) sigma0 in Pa
+    // @param {double} normalizingStress - (1 - nu^2) sigma0 in Pa
     // @param {bool} payneEffect - Payne softening on/off
     // @param {double} imaginaryIntegral - (out) 4 sum w cos Im(E*)/s0
     // @param {double} absoluteIntegral - (out) 4 sum w |E*/s0|^2
     // @return {Void}
-    static void AngleIntegrals(double wavenumberTimesSpeed, double[] cosines, double[] angleWeights, double normalisingStress, bool payneEffect, out double imaginaryIntegral, out double absoluteIntegral)
+    static void AngleIntegrals(double wavenumberTimesSpeed, double[] cosines, double[] angleWeights, double normalizingStress, bool payneEffect, out double imaginaryIntegral, out double absoluteIntegral)
     {
         double sumImaginary = 0, sumAbsolute = 0;
-        for (int j = 0; j < AngleSamples; j++) { var modulus = ComplexModulus(wavenumberTimesSpeed * cosines[j], FrictionStrain, payneEffect) / normalisingStress; sumImaginary += angleWeights[j] * cosines[j] * modulus.Imaginary; sumAbsolute += angleWeights[j] * (modulus.Real * modulus.Real + modulus.Imaginary * modulus.Imaginary); }
+        for (int j = 0; j < AngleSamples; j++) { var modulus = ComplexModulus(wavenumberTimesSpeed * cosines[j], FrictionStrain, payneEffect) / normalizingStress; sumImaginary += angleWeights[j] * cosines[j] * modulus.Imaginary; sumAbsolute += angleWeights[j] * (modulus.Real * modulus.Real + modulus.Imaginary * modulus.Imaginary); }
         imaginaryIntegral = 4 * sumImaginary; absoluteIntegral = 4 * sumAbsolute;
     }
 

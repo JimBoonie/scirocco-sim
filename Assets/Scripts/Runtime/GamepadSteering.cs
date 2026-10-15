@@ -4,17 +4,17 @@
 //   target range: full mechanical lock at parking speed, blended (speed sensitivity) towards a physics-aware limit at speed:
 //     road angle = (caster follow) x front-axle travel angle + stick x (grip limit x tire peak slip angle)
 //   i.e. full stick puts the front tires at their peak-grip slip angle (BeamNG "understeer reduction" / Advanced Steering idea),
-//   released stick lets the wheels follow the direction the front axle is travelling (self-aligning / caster, BeamNG "oversteer reduction").
-//   rate: steering speed when winding on; x countersteer factor when unwinding / crossing centre or steering into a rear slide
+//   released stick lets the wheels follow the direction the front axle is traveling (self-aligning / caster, BeamNG "oversteer reduction").
+//   rate: steering speed when winding on; x countersteer factor when unwinding / crossing center or steering into a rear slide
 //   (rear axle travel angle beyond the tire's peak slip angle).
 // All numbers here are user preferences (GamepadSteerSettings, saved in the bindings file); the peak slip angle comes from the tire model.
 using System; using UnityEngine;
 [Serializable] public class GamepadSteerSettings
 {
-    public bool enabled = true;           // off = previous direct behaviour (stick position -> full-lock target at CarParams.steeringRateDegPerSecond)
-    public float steerSpeed = 30f;        // road-wheel deg/s when turning in (~500 deg/s at the handwheel on this car's ~17:1 centre ratio)
+    public bool enabled = true;           // off = previous direct behavior (stick position -> full-lock target at CarParams.steeringRateDegPerSecond)
+    public float steerSpeed = 30f;        // road-wheel deg/s when turning in (~500 deg/s at the handwheel on this car's ~17:1 center ratio)
     public float gamma = 2.0f;            // response exponent: target = |s|^gamma (1 = linear)
-    public float deadzone = 0.05f;        // stick fraction ignored around centre, the rest rescaled to 0..1
+    public float deadzone = 0.05f;        // stick fraction ignored around center, the rest rescaled to 0..1
     public float smoothing = 0.04f;       // low-pass time constant on the stick (s), 0 = off
     public float speedSensitivity = 1f;   // 0 = full mechanical lock at any speed, 1 = fully grip-limited at speed
     public float gripLimit = 1.0f;        // full stick at speed = this x the front tire's peak-grip slip angle
@@ -34,16 +34,16 @@ public class GamepadSteering
 {
     public GamepadSteerSettings settings;
     public float roadDeg, filtered, lastTarget; public bool countersteering;
-    // speed band over which the grip limit fades in (m/s): below ~2 m/s the travel angle is undefined (slip-regularisation floor); by 6 m/s
+    // speed band over which the grip limit fades in (m/s): below ~2 m/s the travel angle is undefined (slip-regularization floor); by 6 m/s
     // the kinematic angle at full lock already exceeds the peak slip angle, so the blend is invisible at parking speed and complete before it matters
     public const float BlendLo = 2f, BlendHi = 6f;
     // @description - Creates the steering assist with a set of user preferences (deadzone, response curve, speed sensitivity, countersteer factor, ...).
     // @param {GamepadSteerSettings} settings - user preferences saved in the bindings file; the object is kept by reference, so menu edits take effect immediately
     // @return {Void} - the new instance
     public GamepadSteering(GamepadSteerSettings settings) { this.settings = settings; }
-    // @description - Turns raw stick deflection into a shaped steering demand: removes the deadzone, rescales the rest to 0..1 and applies the response exponent |s|^gamma (gamma > 1 gives fine control near centre).
+    // @description - Turns raw stick deflection into a shaped steering demand: removes the deadzone, rescales the rest to 0..1 and applies the response exponent |s|^gamma (gamma > 1 gives fine control near center).
     // @param {float} stick - raw stick deflection, -1..1 (+ = right)
-    // @param {float} deadzone - fraction of deflection ignored around centre, 0..1
+    // @param {float} deadzone - fraction of deflection ignored around center, 0..1
     // @param {float} gamma - response exponent, dimensionless (1 = linear; clamped to >= 0.1)
     // @return {float} - shaped demand, -1..1 (same sign as the stick)
     public static float Shape(float stick, float deadzone, float gamma)

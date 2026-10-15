@@ -88,7 +88,7 @@ MonoBehaviour:
   - -0.00277959
   - -0.00414334
   - -0.00576316
-  frontRollCentreHeight:
+  frontRollCenterHeight:
   - 0.272237
   - 0.25591
   - 0.23997
@@ -1497,7 +1497,7 @@ MonoBehaviour:
   - -1.04358
   - -0.950458
   rearCamberRollFraction: 0.206599
-  rearRollCentreHeight: 0.18
+  rearRollCenterHeight: 0.18
   rearBeamCamberPerOwnTravel: -8.40604
   rearBeamCamberPerOtherTravel: 8.33167
   rearBeamToePerOwnTravel: 0.137577
@@ -1508,7 +1508,7 @@ MonoBehaviour:
   rearBeamCamberPerOtherLateralForce: 0.00000769216
   rearBeamToePerOwnLongitudinalForce: 0.0000270484
   rearBeamToePerOtherLongitudinalForce: -0.0000267966
-  rearBeamRollCentreHeight: 0.0554701
+  rearBeamRollCenterHeight: 0.0554701
   rearBeamAntiLiftCoefficient: 0.595914
   frontToePerLateralForce: -0.0000316078
   frontCamberPerLateralForce: -0.0000443358
@@ -1627,7 +1627,7 @@ MonoBehaviour:
   - -0.00884383
   - -0.00999533
   - 0
-  kingpinWheelCentreOffset:
+  kingpinWheelCenterOffset:
   - -0.00884383
   - -0.00999533
   - 0.2768

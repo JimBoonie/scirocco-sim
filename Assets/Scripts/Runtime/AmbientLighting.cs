@@ -3,11 +3,11 @@
 using UnityEngine;
 public static class AmbientLighting
 {
-    // gradient at brightness 1.0 (perceptual choices, linear-ish colours): sky = clear Monterey sky, equator = haze, ground = sunlit dry grass bounce
+    // gradient at brightness 1.0 (perceptual choices, linear-ish colors): sky = clear Monterey sky, equator = haze, ground = sunlit dry grass bounce
     static readonly Color Sky = new Color(0.50f, 0.58f, 0.72f), Equator = new Color(0.46f, 0.45f, 0.40f), Ground = new Color(0.33f, 0.30f, 0.23f);
     const float FillFraction = 0.12f;   // fill intensity = 12 % of the sun x brightness, no shadows
     static float applied = -1f; static Light fill;
-    // @description - Sets the tri-light ambient colours (sky, equator, ground) scaled by the brightness and keeps a weak shadowless fill light opposite the sun, so shaded sides are not black. Visual only; skipped when the brightness is unchanged.
+    // @description - Sets the tri-light ambient colors (sky, equator, ground) scaled by the brightness and keeps a weak shadowless fill light opposite the sun, so shaded sides are not black. Visual only; skipped when the brightness is unchanged.
     // @param {float} brightness - ambient brightness multiplier, clamped to 0.5..2 (1 = reference)
     // @return {Void} - nothing
     public static void Apply(float brightness)

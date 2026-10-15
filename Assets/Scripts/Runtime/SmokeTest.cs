@@ -57,8 +57,8 @@ public class SmokeTest : MonoBehaviour
         else if (car.engine.rpm < 2200f && car.drivetrain.gear > 1) { car.drivetrain.Shift(-1); lastShift = elapsedTime; }
     }
     // @description - PI speed controller for the scripted driver: command = 0.4 x error + 0.15 x integral of error (integral limited to +/-5 m), positive command goes to the throttle, negative to the brake at half scale.
-    // @param {float} vTarget - target speed in metres per second
-    // @param {float} speed - current speed in metres per second
+    // @param {float} vTarget - target speed in meters per second
+    // @param {float} speed - current speed in meters per second
     // @return {float} - controller command (dimensionless, positive = throttle)
     float SpeedCtl(float vTarget, float speed)   // PI throttle/brake controller, m/s
     {
@@ -66,7 +66,7 @@ public class SmokeTest : MonoBehaviour
         float command = 0.4f * error + 0.15f * iErr; car.throttle = Mathf.Clamp01(command); car.brake = Mathf.Clamp01(-command * 0.5f); return command;
     }
     // @description - Pure-pursuit steering for a clockwise circle of the given radius that touches the origin: aims at a point ahead on the circle (look-ahead of 6 m or 0.6 s of travel) and returns the bicycle-model road wheel angle atan(2 L sin(alpha) / look-ahead distance), where L is the wheelbase and alpha the angle to the target in the car frame.
-    // @param {float} radius - circle radius in metres (centre at x = radius, z = 0)
+    // @param {float} radius - circle radius in meters (center at x = radius, z = 0)
     // @return {float} - road wheel steer angle in degrees (positive = right)
     float CircleSteer(float radius)
     {
@@ -113,8 +113,8 @@ public class SmokeTest : MonoBehaviour
             Debug.Log(string.Format(System.Globalization.CultureInfo.InvariantCulture, "TQ,{0:0.00},{1:0.000},{2:0.000},{3:0.000},{4:0.00},{5:0.0},{6:0.0},{7:0},{8:0},{9:0},{10:0}",
                 elapsedTime, ayF, car.frontLeftWheel.relaxedSlipAngle * Mathf.Rad2Deg, car.frontRightWheel.relaxedSlipAngle * Mathf.Rad2Deg, car.columnTorque, car.leftRoadTorque, car.rightRoadTorque, car.frontLeftWheel.force.y, car.frontRightWheel.force.y, car.frontLeftWheel.verticalLoad, car.frontRightWheel.verticalLoad));
         }
-        float tEnd = scenario == "skidpad" ? 160f : scenario == "accel" ? 60f : scenario == "topspeed" ? 150f : scenario == "laguna" ? lagEnd : scenario == "lagunagrass" ? 400f : scenario == "lagunakerb" ? 90f : scenario == "bumpstart" ? 60f : scenario == "lagunaoff" ? 200f : scenario == "powerstep" ? 220f : scenario == "lagunatherm" ? 900f : scenario == "thermslide" ? 200f : scenario.StartsWith("gp") ? 40f : 70f;
-        if (scenario == "lagunakerb" && (elapsedTime > tEnd || phase == 99) && !quitting) KerbReport();
+        float tEnd = scenario == "skidpad" ? 160f : scenario == "accel" ? 60f : scenario == "topspeed" ? 150f : scenario == "laguna" ? lagEnd : scenario == "lagunagrass" ? 400f : scenario == "lagunacurb" ? 90f : scenario == "bumpstart" ? 60f : scenario == "lagunaoff" ? 200f : scenario == "powerstep" ? 220f : scenario == "lagunatherm" ? 900f : scenario == "thermslide" ? 200f : scenario.StartsWith("gp") ? 40f : 70f;
+        if (scenario == "lagunacurb" && (elapsedTime > tEnd || phase == 99) && !quitting) CurbReport();
         if (scenario == "laguna" && elapsedTime > tEnd && !quitting) LagunaReport();
         if (scenario == "laguna" && phase == 99 && !quitting) LagunaReport();
         if ((elapsedTime > tEnd || phase == 99) && !quitting) { quitting = true; WriteWav(); Debug.Log("SMOKE done " + scenario); Application.Quit(0); }
@@ -177,7 +177,7 @@ public class SmokeTest : MonoBehaviour
     // -ignoff: ignition switched off at the stall -> must NOT re-fire. Clutch pedal/auto clutch never used.
     float bsStallV, bsMaxRpm; bool bsIgnOff;
     // @description - Bump-start scenario. Phase 0: drive up to 40 km/h in 2nd gear. Phase 1: lock the brakes with the clutch engaged until the engine stalls (optionally switch the ignition off, -ignoff). Phase 2: release the brake and check that the engine restarts from the rolling wheels (or stays off with the ignition off). Logs a PASS or FAIL result line.
-    // @param {float} speed - current speed in metres per second
+    // @param {float} speed - current speed in meters per second
     // @return {Void} - nothing
     void BumpStart(float speed)
     {
@@ -210,7 +210,7 @@ public class SmokeTest : MonoBehaviour
     // Phase 1: steering FROZEN, throttle -> psThr (or kept at the steady value as a control run), gear held, 3 s. Per-wheel logging every 10 ms.
     float psSteer, psThrHold, psThrF; float[] psRef; readonly System.Collections.Generic.List<string> psOut = new System.Collections.Generic.List<string>(); float psNext;
     // @description - Snapshot of the car state during a power-step test: speed (km/h), yaw rate (deg/s), curvature (1/m), body slip angle (deg), lateral and longitudinal acceleration (g), mean front and rear slip angles (deg), friction usage of the four wheels (|F| / peak force) and axle loads (N).
-    // @param {float} speed - current speed in metres per second
+    // @param {float} speed - current speed in meters per second
     // @return {float[]} - array of 14 values in the order listed above
     float[] PsState(float speed)
     {
@@ -218,7 +218,7 @@ public class SmokeTest : MonoBehaviour
         float beta = Mathf.Atan2(lateralVelocity, Mathf.Max(0.1f, forwardVelocity)) * Mathf.Rad2Deg; float frontSlipAngleDeg = 0.5f * (car.frontLeftWheel.relaxedSlipAngle + car.frontRightWheel.relaxedSlipAngle) * Mathf.Rad2Deg, rearSlipAngleDeg = 0.5f * (car.rearLeftWheel.relaxedSlipAngle + car.rearRightWheel.relaxedSlipAngle) * Mathf.Rad2Deg;
         return new[] { speed * 3.6f, yawRateDeg, yawRateDeg * Mathf.Deg2Rad / Mathf.Max(0.1f, speed), beta, ayF, axF, frontSlipAngleDeg, rearSlipAngleDeg, FrictionUsage(car.frontLeftWheel), FrictionUsage(car.frontRightWheel), FrictionUsage(car.rearLeftWheel), FrictionUsage(car.rearRightWheel), car.frontLeftWheel.verticalLoad + car.frontRightWheel.verticalLoad, car.rearLeftWheel.verticalLoad + car.rearRightWheel.verticalLoad };
     }
-    // @description - Friction usage of one wheel: tire force magnitude divided by the available peak force mu_y(Fz) x Fz, with mu_y falling linearly with load change (lateral peak friction coefficient plus slope times normalised load change) and the peak force floored at 1 N. 1.0 means the tire is at its limit.
+    // @description - Friction usage of one wheel: tire force magnitude divided by the available peak force mu_y(Fz) x Fz, with mu_y falling linearly with load change (lateral peak friction coefficient plus slope times normalized load change) and the peak force floored at 1 N. 1.0 means the tire is at its limit.
     // @param {WheelCorner} wheel - wheel corner to evaluate
     // @return {float} - friction usage (dimensionless, 1 = at the limit)
     float FrictionUsage(WheelCorner wheel) { var carParams = car.carParams; float normalizedLoadChange = (wheel.verticalLoad - carParams.nominalVerticalLoad) / carParams.nominalVerticalLoad; float peakForce = Mathf.Max(1f, (carParams.lateralPeakFrictionCoefficient + carParams.lateralPeakFrictionLoadSlope * normalizedLoadChange) * wheel.verticalLoad); return wheel.force.magnitude / peakForce; }   // friction usage ~ |F| / (mu_y(Fz) Fz)
@@ -232,7 +232,7 @@ public class SmokeTest : MonoBehaviour
     // @return {float} - body slip angle in radians (positive = moving to the right of the heading)
     float PsBeta() { var velocity = body.velocity; return Mathf.Atan2(Vector3.Dot(velocity, car.transform.right), Mathf.Max(0.1f, Vector3.Dot(velocity, car.transform.forward))); }
     // @description - Power-on / lift-off diagnostic in a steady turn. Phase 0: hold a circle of radius psR at the target lateral acceleration until the state is steady (error under 1 m, speed within 0.15 m/s, no acceleration). Phase 1: freeze the steering, change the throttle for 3 s with the gear held, and log per-wheel data every 10 ms plus the change in curvature, yaw rate and slip angle.
-    // @param {float} speed - current speed in metres per second
+    // @param {float} speed - current speed in meters per second
     // @return {Void} - nothing
     void PowerStep(float speed)
     {
@@ -259,10 +259,10 @@ public class SmokeTest : MonoBehaviour
     }
     float curvatureAtOneSecond;
     // @description - Alias of CircleSteer used by the power-step scenario.
-    // @param {float} radius - circle radius in metres
+    // @param {float} radius - circle radius in meters
     // @return {float} - road wheel steer angle in degrees (positive = right)
     float CircleSteerR(float radius) => CircleSteer(radius);
-    // ---- track drive (-track laguna -scenario laguna): spawn on S/F, follow the centreline with pure pursuit at a curvature-limited speed,
+    // ---- track drive (-track laguna -scenario laguna): spawn on S/F, follow the centerline with pure pursuit at a curvature-limited speed,
     // and check the car stays on the surface (all wheels hit a collider, body above the surface, within the track edges + shoulder).
     float lagEnd = 63f; int lagIdx, lagUngrounded, lagSamples, lagMaxUngroundedRun, lagRun, lagLaps; float lagMaxOff = 0f, lagMinClear = 99f, lagDist, lagMaxV, lagWorstY = 99f; Vector3 lagPrev; bool lagFail; string lagWhy = "";
     float thNext = 4f; Vector3 thHead;
@@ -279,25 +279,25 @@ public class SmokeTest : MonoBehaviour
         }
         Debug.Log(line);
     }
-    // @description - Track-following driver for the Laguna Seca scenarios: finds the nearest centreline point, steers with pure pursuit towards a point ahead (aiming at the inside kerb in kerb mode), limits speed by the tightest corner in the next 70 m (v = sqrt(a R), then braking at 4 m/s2 to that speed), and records metrics (all wheels grounded, distance beyond the edge, clearance, fall below the road) that decide PASS or FAIL.
-    // @param {float} speed - current speed in metres per second
+    // @description - Track-following driver for the Laguna Seca scenarios: finds the nearest centerline point, steers with pure pursuit towards a point ahead (aiming at the inside curb in curb mode), limits speed by the tightest corner in the next 70 m (v = sqrt(a R), then braking at 4 m/s2 to that speed), and records metrics (all wheels grounded, distance beyond the edge, clearance, fall below the road) that decide PASS or FAIL.
+    // @param {float} speed - current speed in meters per second
     // @return {Void} - nothing
     void LagunaDrive(float speed)
     {
-        car.autoClutch = true; var trackInfo = TrackManager.Instance.info; var centreline = trackInfo.Centreline; int pointCount = centreline.Count; Vector3 position = body.position;
+        car.autoClutch = true; var trackInfo = TrackManager.Instance.info; var centerline = trackInfo.Centerline; int pointCount = centerline.Count; Vector3 position = body.position;
         int bestIndex = lagIdx; float bestDistanceSquared = float.MaxValue;
-        for (int k = -5; k < 40; k++) { int index = (lagIdx + k + pointCount) % pointCount; float distanceSquared = (new Vector2(centreline[index].x - position.x, centreline[index].z - position.z)).sqrMagnitude; if (distanceSquared < bestDistanceSquared) { bestDistanceSquared = distanceSquared; bestIndex = index; } }
+        for (int k = -5; k < 40; k++) { int index = (lagIdx + k + pointCount) % pointCount; float distanceSquared = (new Vector2(centerline[index].x - position.x, centerline[index].z - position.z)).sqrMagnitude; if (distanceSquared < bestDistanceSquared) { bestDistanceSquared = distanceSquared; bestIndex = index; } }
         if (bestIndex < lagIdx - pointCount / 2) { lagLaps++; if (scenario == "lagunatherm") { ThermLog($"LAP {lagLaps} {elapsedTime - 4f:0.0}s"); if (lagLaps >= 3) phase = 99; } } lagIdx = bestIndex;
-        float look = Mathf.Max(8f, speed * 0.9f); int targetIndex = (lagIdx + Mathf.CeilToInt(look / 2f)) % pointCount; var target = centreline[targetIndex];
-        if (kerbMode)   // kerb test: aim the car's centre (edge - 0.3 m) on the inside of each corner, where Blender Bot's procedural kerbs are
+        float look = Mathf.Max(8f, speed * 0.9f); int targetIndex = (lagIdx + Mathf.CeilToInt(look / 2f)) % pointCount; var target = centerline[targetIndex];
+        if (curbMode)   // curb test: aim the car's center (edge - 0.3 m) on the inside of each corner, where Blender Bot's procedural curbs are
         {
-            Vector3 headingBefore = centreline[(targetIndex + 1) % pointCount] - centreline[(targetIndex + pointCount - 1) % pointCount], headingAfter = centreline[(targetIndex + 6) % pointCount] - centreline[(targetIndex + 4) % pointCount]; headingBefore.y = headingAfter.y = 0f; float turn = Vector3.SignedAngle(headingBefore, headingAfter, Vector3.up);
+            Vector3 headingBefore = centerline[(targetIndex + 1) % pointCount] - centerline[(targetIndex + pointCount - 1) % pointCount], headingAfter = centerline[(targetIndex + 6) % pointCount] - centerline[(targetIndex + 4) % pointCount]; headingBefore.y = headingAfter.y = 0f; float turn = Vector3.SignedAngle(headingBefore, headingAfter, Vector3.up);
             if (Mathf.Abs(turn) > 2f) { var forwardDirection = headingBefore.normalized; var right = new Vector3(forwardDirection.z, 0f, -forwardDirection.x); float cornerSide = Mathf.Sign(turn); float insideHalfWidth = cornerSide > 0 ? trackInfo.HalfWidths[targetIndex].y : trackInfo.HalfWidths[targetIndex].x; target += right * cornerSide * (insideHalfWidth - 0.3f); }
         }
         Vector3 localTarget = car.transform.InverseTransformPoint(new Vector3(target.x, position.y, target.z)); float alpha = Mathf.Atan2(localTarget.x, localTarget.z);
         car.steer = Mathf.Clamp(Mathf.Atan(2f * car.carParams.wheelbase * Mathf.Sin(alpha) / Mathf.Max(1f, localTarget.magnitude)) * Mathf.Rad2Deg, -car.carParams.MeanLockDeg, car.carParams.MeanLockDeg);
-        bool isHotRun = scenario == "lagunatherm"; float targetSpeed = isHotRun ? 30f : 24f, lateralAccelerationG = isHotRun ? 0.45f : 0.55f;   // m/s cap; corner speed from the tightest radius in the next ~70 m at 0.55 g (lagunatherm: 0.45 g, 30 m/s; 0.75 and 0.6 g left the road on cold tyres)
-        for (int k = 2; k < 35; k++) { var previousPoint = centreline[(lagIdx + k - 2) % pointCount]; var currentPoint = centreline[(lagIdx + k) % pointCount]; var nextPoint = centreline[(lagIdx + k + 2) % pointCount];
+        bool isHotRun = scenario == "lagunatherm"; float targetSpeed = isHotRun ? 30f : 24f, lateralAccelerationG = isHotRun ? 0.45f : 0.55f;   // m/s cap; corner speed from the tightest radius in the next ~70 m at 0.55 g (lagunatherm: 0.45 g, 30 m/s; 0.75 and 0.6 g left the road on cold tires)
+        for (int k = 2; k < 35; k++) { var previousPoint = centerline[(lagIdx + k - 2) % pointCount]; var currentPoint = centerline[(lagIdx + k) % pointCount]; var nextPoint = centerline[(lagIdx + k + 2) % pointCount];
             Vector3 segmentBefore = currentPoint - previousPoint, segmentAfter = nextPoint - currentPoint; segmentBefore.y = segmentAfter.y = 0f; float turnAngle = Vector3.Angle(segmentBefore, segmentAfter) * Mathf.Deg2Rad; float cornerRadius = turnAngle > 1e-4f ? segmentBefore.magnitude / turnAngle : 1e4f;
             float cornerSpeed = Mathf.Sqrt(lateralAccelerationG * 9.81f * cornerRadius), distanceAhead = 2f * k; targetSpeed = Mathf.Min(targetSpeed, Mathf.Sqrt(cornerSpeed * cornerSpeed + 2f * 4f * distanceAhead)); }
         SpeedCtl(targetSpeed, speed);
@@ -306,42 +306,42 @@ public class SmokeTest : MonoBehaviour
         if (!allGrounded) { lagUngrounded++; lagRun++; lagMaxUngroundedRun = Mathf.Max(lagMaxUngroundedRun, lagRun); } else lagRun = 0;
         trackInfo.Nearest(position, out float lateralOffset); var halfWidths = trackInfo.HalfWidths[lagIdx]; float edge = lateralOffset > 0f ? halfWidths.y : halfWidths.x; lagMaxOff = Mathf.Max(lagMaxOff, Mathf.Abs(lateralOffset) - edge);
         if (Physics.Raycast(position + Vector3.up * 3f, Vector3.down, out var hit, 20f)) { float clearance = position.y - hit.point.y; lagMinClear = Mathf.Min(lagMinClear, clearance); } else { lagFail = true; lagWhy += "no surface under car; "; }
-        lagWorstY = Mathf.Min(lagWorstY, position.y - centreline[lagIdx].y);
+        lagWorstY = Mathf.Min(lagWorstY, position.y - centerline[lagIdx].y);
         if (lagPrev != Vector3.zero) lagDist += Vector3.Distance(lagPrev, position); lagPrev = position; lagMaxV = Mathf.Max(lagMaxV, speed);
         if (lagRun * Time.fixedDeltaTime > 0.25f && !lagFail) { lagFail = true; lagWhy += $"wheels off the surface >0.25 s at t={elapsedTime:0.0}; "; }
         if (Mathf.Abs(lateralOffset) - edge > 3.5f && !lagFail) { lagFail = true; lagWhy += $"left the road (+shoulder) at s~{lagIdx * 2} m; "; }
-        if (position.y - centreline[lagIdx].y < -1.5f && !lagFail) { lagFail = true; lagWhy += $"fell below the road at s~{lagIdx * 2} m; "; }
-        if (kerbMode) { lagFail = false; lagWhy = ""; return; }   // kerb test: cutting kerbs is intended; its own checks are in KerbReport
+        if (position.y - centerline[lagIdx].y < -1.5f && !lagFail) { lagFail = true; lagWhy += $"fell below the road at s~{lagIdx * 2} m; "; }
+        if (curbMode) { lagFail = false; lagWhy = ""; return; }   // curb test: cutting curbs is intended; its own checks are in CurbReport
         if (lagFail) { if (scenario == "lagunatherm") { ThermLog("FAIL " + lagWhy); } Next(99); }
     }
-    // ---- kerb test: per-wheel surface under the contact (SurfaceTag of the collider hit) and its load / travel; kerb vs asphalt
-    bool kerbMode; readonly float[] kerbSampleCounts = new float[2], kFz = new float[2], kFz2 = new float[2], kTrMin = { 9f, 9f }, kTrMax = { -9f, -9f }, kdFz = new float[2]; readonly float[] lastFz = new float[4];
-    int kerbHitObjects;
-    // @description - Kerb test sampling: for each grounded wheel finds the surface tag under it and accumulates sample count, vertical load statistics, suspension travel range and load change rate, separately for kerb and asphalt.
+    // ---- curb test: per-wheel surface under the contact (SurfaceTag of the collider hit) and its load / travel; curb vs asphalt
+    bool curbMode; readonly float[] curbSampleCounts = new float[2], kFz = new float[2], kFz2 = new float[2], kTrMin = { 9f, 9f }, kTrMax = { -9f, -9f }, kdFz = new float[2]; readonly float[] lastFz = new float[4];
+    int curbHitObjects;
+    // @description - Curb test sampling: for each grounded wheel finds the surface tag under it and accumulates sample count, vertical load statistics, suspension travel range and load change rate, separately for curb and asphalt.
     // @return {Void} - nothing
-    void KerbSample()
+    void CurbSample()
     {
         if (elapsedTime < 4f) return; var wheels = new[] { car.frontLeftWheel, car.frontRightWheel, car.rearLeftWheel, car.rearRightWheel };
         for (int i = 0; i < 4; i++)
         {
             var wheel = wheels[i]; float loadRate = Mathf.Abs(wheel.verticalLoad - lastFz[i]) / Time.fixedDeltaTime; lastFz[i] = wheel.verticalLoad;
             if (!wheel.grounded || !Physics.Raycast(wheel.transform.position, -wheel.transform.up, out var hit, 1.5f)) continue;
-            var surface = SurfaceTag.Of(hit.collider); int surfaceIndex = surface == SurfaceType.Kerb ? 0 : surface == SurfaceType.Asphalt ? 1 : -1; if (surfaceIndex < 0) continue;
-            kerbSampleCounts[surfaceIndex]++; kFz[surfaceIndex] += wheel.verticalLoad; kFz2[surfaceIndex] += wheel.verticalLoad * wheel.verticalLoad; kTrMin[surfaceIndex] = Mathf.Min(kTrMin[surfaceIndex], wheel.travel); kTrMax[surfaceIndex] = Mathf.Max(kTrMax[surfaceIndex], wheel.travel); kdFz[surfaceIndex] += loadRate;
+            var surface = SurfaceTag.Of(hit.collider); int surfaceIndex = surface == SurfaceType.Curb ? 0 : surface == SurfaceType.Asphalt ? 1 : -1; if (surfaceIndex < 0) continue;
+            curbSampleCounts[surfaceIndex]++; kFz[surfaceIndex] += wheel.verticalLoad; kFz2[surfaceIndex] += wheel.verticalLoad * wheel.verticalLoad; kTrMin[surfaceIndex] = Mathf.Min(kTrMin[surfaceIndex], wheel.travel); kTrMax[surfaceIndex] = Mathf.Max(kTrMax[surfaceIndex], wheel.travel); kdFz[surfaceIndex] += loadRate;
         }
     }
-    // @description - Prints the kerb versus asphalt statistics and the PASS or FAIL result (needs at least 200 kerb samples, a kerb load rate above 1.5 times the asphalt rate and no fall resets), then quits.
+    // @description - Prints the curb versus asphalt statistics and the PASS or FAIL result (needs at least 200 curb samples, a curb load rate above 1.5 times the asphalt rate and no fall resets), then quits.
     // @return {Void} - nothing
-    void KerbReport()
+    void CurbReport()
     {
-        // @description - Text summary of the kerb-test wheel samples on one surface: sample count, vertical load mean and standard deviation (N), mean load rate (kN/s) and suspension travel range (mm).
-        // @param {int} surfaceIndex - 0 = kerb, 1 = asphalt
+        // @description - Text summary of the curb-test wheel samples on one surface: sample count, vertical load mean and standard deviation (N), mean load rate (kN/s) and suspension travel range (mm).
+        // @param {int} surfaceIndex - 0 = curb, 1 = asphalt
         // @return {string} - one-line report
-        string Describe(int surfaceIndex) { float sampleCount = Mathf.Max(1f, kerbSampleCounts[surfaceIndex]), meanLoad = kFz[surfaceIndex] / sampleCount, loadDeviation = Mathf.Sqrt(Mathf.Max(0f, kFz2[surfaceIndex] / sampleCount - meanLoad * meanLoad)); return $"{kerbSampleCounts[surfaceIndex]:0} wheel-samples, Fz mean {meanLoad:0} N sd {loadDeviation:0} N, mean |dFz/dt| {kdFz[surfaceIndex] / sampleCount / 1000f:0.0} kN/s, travel {kTrMin[surfaceIndex] * 1000f:0}..{kTrMax[surfaceIndex] * 1000f:0} mm"; }
-        float kerbSamples = Mathf.Max(1f, kerbSampleCounts[0]), asphaltSamples = Mathf.Max(1f, kerbSampleCounts[1]); float kerbRate = kdFz[0] / kerbSamples, asphaltRate = kdFz[1] / asphaltSamples;
-        bool ok = kerbSampleCounts[0] >= 200 && kerbRate > 1.5f * asphaltRate && TrackManager.Instance.FallResets == 0;
-        Debug.Log("KERB on kerb: " + Describe(0)); Debug.Log("KERB on asphalt: " + Describe(1));
-        Debug.Log($"LAGUNAKERB RESULT {(ok ? "PASS" : "FAIL")} kerb load-rate ratio {kerbRate / Mathf.Max(1e-3f, asphaltRate):0.0}x asphalt (need >1.5x, >=200 kerb samples), drove {lagDist:0} m, fall resets {TrackManager.Instance.FallResets}");
+        string Describe(int surfaceIndex) { float sampleCount = Mathf.Max(1f, curbSampleCounts[surfaceIndex]), meanLoad = kFz[surfaceIndex] / sampleCount, loadDeviation = Mathf.Sqrt(Mathf.Max(0f, kFz2[surfaceIndex] / sampleCount - meanLoad * meanLoad)); return $"{curbSampleCounts[surfaceIndex]:0} wheel-samples, Fz mean {meanLoad:0} N sd {loadDeviation:0} N, mean |dFz/dt| {kdFz[surfaceIndex] / sampleCount / 1000f:0.0} kN/s, travel {kTrMin[surfaceIndex] * 1000f:0}..{kTrMax[surfaceIndex] * 1000f:0} mm"; }
+        float curbSamples = Mathf.Max(1f, curbSampleCounts[0]), asphaltSamples = Mathf.Max(1f, curbSampleCounts[1]); float curbRate = kdFz[0] / curbSamples, asphaltRate = kdFz[1] / asphaltSamples;
+        bool ok = curbSampleCounts[0] >= 200 && curbRate > 1.5f * asphaltRate && TrackManager.Instance.FallResets == 0;
+        Debug.Log("CURB on curb: " + Describe(0)); Debug.Log("CURB on asphalt: " + Describe(1));
+        Debug.Log($"LAGUNACURB RESULT {(ok ? "PASS" : "FAIL")} curb load-rate ratio {curbRate / Mathf.Max(1e-3f, asphaltRate):0.0}x asphalt (need >1.5x, >=200 curb samples), drove {lagDist:0} m, fall resets {TrackManager.Instance.FallResets}");
         quitting = true; Application.Quit(ok ? 0 : 3);
     }
     // ---- off-road rest test: teleport onto grass/runoff at several places (beside the track and far away), let the car settle 4 s on the brake,
@@ -350,31 +350,31 @@ public class SmokeTest : MonoBehaviour
     // @description - Returns the test positions for the off-road rest test: points beside the track at several corners and three far-field points, each placed high above the ground so the car is dropped onto the surface.
     // @param {int} pointIndex - index of the test point
     // @param {string} name - receives a description of the point
-    // @return {Vector3} - world position in metres (zero vector when pointIndex is past the last point)
+    // @return {Vector3} - world position in meters (zero vector when pointIndex is past the last point)
     Vector3 GrassPoint(int pointIndex, out string name)
     {
-        var trackInfo = TrackManager.Instance.info; var centreline = trackInfo.Centreline; int pointCount = centreline.Count;
-        // @description - World point beside the track centreline at a distance along it: the road edge on the chosen side plus an extra offset, at 200 m height for a downward ray; also builds the spot description.
-        // @param {float} distanceAlong - distance along the centreline (m)
+        var trackInfo = TrackManager.Instance.info; var centerline = trackInfo.Centerline; int pointCount = centerline.Count;
+        // @description - World point beside the track centerline at a distance along it: the road edge on the chosen side plus an extra offset, at 200 m height for a downward ray; also builds the spot description.
+        // @param {float} distanceAlong - distance along the centerline (m)
         // @param {float} side - +1 right edge, -1 left edge
         // @param {float} extra - additional offset beyond the road edge (m)
         // @param {string} description - output text naming the spot and its offset
         // @param {string} label - spot name used in the description
         // @return {Vector3} - the world point (m)
-        Vector3 OffsetFromCentreline(float distanceAlong, float side, float extra, out string description, string label)
+        Vector3 OffsetFromCenterline(float distanceAlong, float side, float extra, out string description, string label)
         {
-            int index = Mathf.RoundToInt(distanceAlong / 2f) % pointCount; var forward = centreline[(index + 1) % pointCount] - centreline[index]; forward.y = 0f; forward.Normalize(); var right = new Vector3(forward.z, 0f, -forward.x);
-            float edge = side > 0 ? trackInfo.HalfWidths[index].y : trackInfo.HalfWidths[index].x; description = $"{label} (s={distanceAlong:0} m, {(side > 0 ? "right" : "left")} {edge + extra:0} m from centreline)";
-            var point = centreline[index] + right * side * (edge + extra); point.y = 200f; return point;
+            int index = Mathf.RoundToInt(distanceAlong / 2f) % pointCount; var forward = centerline[(index + 1) % pointCount] - centerline[index]; forward.y = 0f; forward.Normalize(); var right = new Vector3(forward.z, 0f, -forward.x);
+            float edge = side > 0 ? trackInfo.HalfWidths[index].y : trackInfo.HalfWidths[index].x; description = $"{label} (s={distanceAlong:0} m, {(side > 0 ? "right" : "left")} {edge + extra:0} m from centerline)";
+            var point = centerline[index] + right * side * (edge + extra); point.y = 200f; return point;
         }
         switch (pointIndex)
         {
-            case 0: return OffsetFromCentreline(246f, 1f, 30f, out name, "outside T1");
-            case 1: return OffsetFromCentreline(500f, 1f, 18f, out name, "outside Andretti hairpin");
-            case 2: return OffsetFromCentreline(2500f, -1f, 10f, out name, "Corkscrew entry, left");
-            case 3: return OffsetFromCentreline(2560f, 1f, 12f, out name, "Corkscrew, right");
-            case 4: return OffsetFromCentreline(1100f, -1f, 25f, out name, "T4 inside");
-            case 5: return OffsetFromCentreline(3290f, 1f, 15f, out name, "outside T11");
+            case 0: return OffsetFromCenterline(246f, 1f, 30f, out name, "outside T1");
+            case 1: return OffsetFromCenterline(500f, 1f, 18f, out name, "outside Andretti hairpin");
+            case 2: return OffsetFromCenterline(2500f, -1f, 10f, out name, "Corkscrew entry, left");
+            case 3: return OffsetFromCenterline(2560f, 1f, 12f, out name, "Corkscrew, right");
+            case 4: return OffsetFromCenterline(1100f, -1f, 25f, out name, "T4 inside");
+            case 5: return OffsetFromCenterline(3290f, 1f, 15f, out name, "outside T11");
             case 6: name = "far field NE (900, -600)"; return new Vector3(900f, 200f, -600f);
             case 7: name = "far field W (-500, 500)"; return new Vector3(-500f, 200f, 500f);
             case 8: name = "far field S (300, -1000)"; return new Vector3(300f, 200f, -1000f);
@@ -385,7 +385,7 @@ public class SmokeTest : MonoBehaviour
     // Measured 3-10 s after each change: displacement (creep), max speed and max |accel| (oscillation). Checks the low-speed stick tire model.
     Vector3 pkPos0; float pkMaxV, pkMaxA, pkSlope; bool pkHave; Vector3 pkVPrev; readonly string[] pkRow = new string[2]; int pkFail;
     // @description - Parking test: brake plus handbrake from 0 to 13 s, then handbrake only to 23 s, measuring displacement, max speed and acceleration in the last 7 s of each part. Passes if the car moved under 5 mm and stayed under 0.01 m/s.
-    // @param {float} speed - current speed in metres per second (unused)
+    // @param {float} speed - current speed in meters per second (unused)
     // @return {Void} - nothing
     void Park(float speed)
     {
@@ -411,7 +411,7 @@ public class SmokeTest : MonoBehaviour
     }
     Vector3 gPos2; bool gHave2;
     // @description - Off-road rest test: teleports the car onto grass, runoff and far-field terrain one point after another, lets it settle for 4 s on the brakes and measures each point.
-    // @param {float} speed - current speed in metres per second
+    // @param {float} speed - current speed in meters per second
     // @return {Void} - nothing
     void LagunaGrass(float speed)
     {
@@ -430,7 +430,7 @@ public class SmokeTest : MonoBehaviour
         }
     }
     // @description - Checks one off-road rest point: at least 3 wheels grounded, the car at rest (or on a slope above 20 degrees), and the car height within 0.5 m of the collider surface under it; also reports the offset from the DEM terrain height and warns if the surface mesh disagrees with the heightmap.
-    // @param {float} speed - current speed in metres per second
+    // @param {float} speed - current speed in meters per second
     // @return {Void} - nothing
     void GrassMeasure(float speed)
     {
@@ -460,25 +460,25 @@ public class SmokeTest : MonoBehaviour
         (2440f, -1f, "wide LEFT before the Corkscrew (T8 approach)"), (3330f, 1f, "outside RIGHT of T11 exit"), (260f, 1f, "outside RIGHT of T1"),
         (2600f, 1f, "Corkscrew exit RIGHT (T8A)"), (1990f, 1f, "outside RIGHT of T6"), (2440f, 1f, "RIGHT before the Corkscrew") };
     // @description - Off-track at speed test: starts on the road 150 m upstream at 132 km/h with matched wheel spin, coasts in neutral and steers off the asphalt onto runoff, grass or terrain at each listed spot. Each step checks that the car stays above the heightmap and that a collider is under it.
-    // @param {float} speed - current speed in metres per second
+    // @param {float} speed - current speed in meters per second
     // @return {Void} - nothing
     void LagunaOff(float speed)
     {
-        var trackManager = TrackManager.Instance; var trackInfo = trackManager.info; var centreline = trackInfo.Centreline; int pointCount = centreline.Count;
+        var trackManager = TrackManager.Instance; var trackInfo = trackManager.info; var centerline = trackInfo.Centerline; int pointCount = centerline.Count;
         if (oIdx < 0 || elapsedTime - offPhaseStartTime > 7f)
         {
             if (oIdx >= 0) OffReport1();
             oIdx++; if (oIdx >= OffSpots.Length) { foreach (var row in oRows) Debug.Log(row); Debug.Log($"LAGUNAOFF RESULT {(oFails == 0 ? "PASS" : "FAIL")} {OffSpots.Length - oFails}/{OffSpots.Length} runs, fall resets {trackManager.FallResets}"); Next(99); return; }
-            var startSpot = OffSpots[oIdx]; int startIndex = ((int)((startSpot.distanceAlong - 150f) / 2f) + pointCount) % pointCount; var forward = centreline[(startIndex + 1) % pointCount] - centreline[startIndex]; forward.y = 0f;
-            trackManager.Place(centreline[startIndex], Mathf.Atan2(forward.x, forward.z) * Mathf.Rad2Deg);
+            var startSpot = OffSpots[oIdx]; int startIndex = ((int)((startSpot.distanceAlong - 150f) / 2f) + pointCount) % pointCount; var forward = centerline[(startIndex + 1) % pointCount] - centerline[startIndex]; forward.y = 0f;
+            trackManager.Place(centerline[startIndex], Mathf.Atan2(forward.x, forward.z) * Mathf.Rad2Deg);
             body.velocity = car.transform.forward * (132f / 3.6f); foreach (var wheel in new[] { car.frontLeftWheel, car.frontRightWheel, car.rearLeftWheel, car.rearRightWheel }) wheel.angularVelocity = 132f / 3.6f / car.carParams.wheelRadius;
             offPhaseStartTime = elapsedTime; oMinAboveDem = 99f; oNoSurf = 0; oSteps = 0; oMaxOff = 0f; oMinV = 999f; oName = startSpot.name; oResets0 = trackManager.FallResets; oSurf.Clear();
         }
         var spot = OffSpots[oIdx]; Vector3 bodyPosition = body.position; int nearestIndex = trackInfo.Nearest(bodyPosition, out float lateralOffset);
-        // target line: centreline until 120 m before the spot, then ramps out to edge + 25 m on the chosen side by the spot, stays there
+        // target line: centerline until 120 m before the spot, then ramps out to edge + 25 m on the chosen side by the spot, stays there
         float distanceToSpot = (nearestIndex * 2f - spot.distanceAlong + 3600f + 1800f) % 3600f - 1800f;   // signed distance to the spot along the lap (m)
-        float rampFraction = Mathf.Clamp01((distanceToSpot + 120f) / 120f); int targetIndex = (nearestIndex + 12) % pointCount; var headingDirection = centreline[(targetIndex + 1) % pointCount] - centreline[targetIndex]; headingDirection.y = 0f; headingDirection.Normalize(); var right = new Vector3(headingDirection.z, 0f, -headingDirection.x);
-        float edge = spot.side > 0 ? trackInfo.HalfWidths[targetIndex].y : trackInfo.HalfWidths[targetIndex].x; var target = centreline[targetIndex] + right * spot.side * rampFraction * (edge + 25f);
+        float rampFraction = Mathf.Clamp01((distanceToSpot + 120f) / 120f); int targetIndex = (nearestIndex + 12) % pointCount; var headingDirection = centerline[(targetIndex + 1) % pointCount] - centerline[targetIndex]; headingDirection.y = 0f; headingDirection.Normalize(); var right = new Vector3(headingDirection.z, 0f, -headingDirection.x);
+        float edge = spot.side > 0 ? trackInfo.HalfWidths[targetIndex].y : trackInfo.HalfWidths[targetIndex].x; var target = centerline[targetIndex] + right * spot.side * rampFraction * (edge + 25f);
         Vector3 localTarget = car.transform.InverseTransformPoint(new Vector3(target.x, bodyPosition.y, target.z)); float alpha = Mathf.Atan2(localTarget.x, localTarget.z);
         car.steer = Mathf.Clamp(Mathf.Atan(2f * car.carParams.wheelbase * Mathf.Sin(alpha) / Mathf.Max(1f, localTarget.magnitude)) * Mathf.Rad2Deg, -car.carParams.MeanLockDeg, car.carParams.MeanLockDeg);
         car.throttle = 0f; car.brake = 0f; car.handbrake = false; car.drivetrain.SelectGear(0);
@@ -501,7 +501,7 @@ public class SmokeTest : MonoBehaviour
     void LagunaReport()
     {
         Debug.Log(string.Format(System.Globalization.CultureInfo.InvariantCulture,
-            "LAGUNA RESULT {0} drove {1:0} m in {2:0.0} s (track s reached {3} m, laps {4}), vmax {5:0} km/h, all-4-wheels-grounded {6:0.0}% (longest gap {7:0} ms), max beyond edge {8:0.00} m, min body-origin clearance {9:0.00} m, min (car y - centreline z) {10:0.00} m {11}",
+            "LAGUNA RESULT {0} drove {1:0} m in {2:0.0} s (track s reached {3} m, laps {4}), vmax {5:0} km/h, all-4-wheels-grounded {6:0.0}% (longest gap {7:0} ms), max beyond edge {8:0.00} m, min body-origin clearance {9:0.00} m, min (car y - centerline z) {10:0.00} m {11}",
             lagFail ? "FAIL" : "PASS", lagDist, elapsedTime - 4f, lagIdx * 2, lagLaps, lagMaxV * 3.6f, 100f * (lagSamples - lagUngrounded) / Mathf.Max(1, lagSamples), lagMaxUngroundedRun * Time.fixedDeltaTime * 1000f, lagMaxOff, lagMinClear, lagWorstY, lagWhy));
     }
     // ---- gamepad steering assist comparison (-gpassist 0 = direct: stick = lock fraction at CarParams.steeringRateDegPerSecond, 1 = GamepadSteering defaults) ----
@@ -518,7 +518,7 @@ public class SmokeTest : MonoBehaviour
     // @return {bool} - true unless -gpassist 0 was passed
     bool GpAssistOn() { var arguments = System.Environment.GetCommandLineArgs(); int flagIndex = System.Array.IndexOf(arguments, "-gpassist"); return flagIndex < 0 || arguments[flagIndex + 1] != "0"; }
     // @description - Gamepad steering assist comparison with a scripted "loose" gamepad driver: a path and heading controller whose output is tripled and saturated, plus seeded sample-and-hold noise. Runs a lane change (gplane) or an oversteer provocation with handbrake (gpoversteer), with the assist on or off, and logs lateral error, slip angle, steering activity and reversals.
-    // @param {float} speed - current speed in metres per second
+    // @param {float} speed - current speed in meters per second
     // @return {Void} - nothing
     void GpRun(float speed)
     {
@@ -558,7 +558,7 @@ public class SmokeTest : MonoBehaviour
         }
     }
     // @description - Scenario dispatcher: sets pedals and steering for the selected scenario (revsweep, park, kbdlaunch, stallrestart, gamepad and Laguna tests, thermal tests, accel, topspeed, skidpad, rampsteer, stepsteer, lanechange, brake, brakethr, brakeinturn, liftoff) and ends it by setting phase 99.
-    // @param {float} speed - current speed in metres per second
+    // @param {float} speed - current speed in meters per second
     // @return {Void} - nothing
     void Run(float speed)
     {
@@ -586,7 +586,7 @@ public class SmokeTest : MonoBehaviour
                 if (elapsedTime >= thNext) { thNext = elapsedTime + 5f; ThermLog($"t {elapsedTime:0} {(elapsedTime < 63f ? "slide" : "straight")}"); }
                 return;
             case "lagunaoff": LaunchDiag(); LagunaOff(speed); return;
-            case "lagunakerb": kerbMode = true; LagunaDrive(speed); KerbSample(); return;
+            case "lagunacurb": curbMode = true; LagunaDrive(speed); CurbSample(); return;
             case "lagunagrass": LagunaGrass(speed); return;
             case "accel": case "topspeed":   // topspeed = accel held for 150 s
                 car.steer = 0f; car.brake = 0f; car.throttle = 1f;

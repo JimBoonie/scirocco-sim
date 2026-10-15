@@ -30,11 +30,11 @@ public class CarController : MonoBehaviour
     {
         if (Time.fixedDeltaTime > 0.00101f) Time.fixedDeltaTime = 0.001f;     // 1 kHz suspension/body, 2 kHz tire/drivetrain
         sourceParams = carParams; carParams = sourceParams.RuntimeCopy();   // runtime copy (tire preset); asset untouched. Single handling baseline: no profile switch
-        body = GetComponent<Rigidbody>(); body.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;   // chassis box vs thin track MeshColliders at speed: no tunnelling
+        body = GetComponent<Rigidbody>(); body.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;   // chassis box vs thin track MeshColliders at speed: no tunneling
         ApplyParams();
         engine = new Engine(carParams); drivetrain = new Drivetrain(carParams);
     }
-    // @description - Applies CarParams to the Rigidbody (sprung mass, centre of mass shifted for unsprung masses, inertia) and to each wheel (static sag, half track, unsprung load).
+    // @description - Applies CarParams to the Rigidbody (sprung mass, center of mass shifted for unsprung masses, inertia) and to each wheel (static sag, half track, unsprung load).
     // @return {Void} - nothing
     void ApplyParams()
     {
@@ -155,7 +155,7 @@ public class CarController : MonoBehaviour
             autoClutchPedal = autoClutch ? Mathf.Clamp01((carParams.idleRpm - engine.rpm) / (carParams.idleRpm - carParams.stallRpm)) : 0f;
             // launch metering (2026-10-13, needed once the tires have real static grip): while the gearbox input shaft turns slower than idle the
             // clutch must slip; its capacity is metered by engine speed above idle, full at the WOT peak-torque rpm (centrifugal / clutch-by-wire
-            // behaviour), and closes as the input shaft approaches idle. Input >= idle: the law above, unchanged (locked unless rpm < idle).
+            // behavior), and closes as the input shaft approaches idle. Input >= idle: the law above, unchanged (locked unless rpm < idle).
             if (autoClutch && drivetrain.gear != 0)
             {
                 float gearboxInputRpm = Mathf.Abs((frontLeftWheel.angularVelocity + frontRightWheel.angularVelocity) * 0.5f * drivetrain.TotalRatio) * 30f / Mathf.PI;

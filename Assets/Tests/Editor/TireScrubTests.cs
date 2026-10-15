@@ -41,7 +41,7 @@ public class TireScrubTests
     // @param {float} slider - tire volume multiplier (0 = mute, 1 = default)
     // @param {float} engineRms - engine RMS level used for the ceiling, in full-scale units
     // @param {float} seconds - duration in seconds
-    // @param {TireSoundDsp} dsp - tire sound synthesiser instance
+    // @param {TireSoundDsp} dsp - tire sound synthesizer instance
     // @return {float[]} - mono samples at SampleRateHz
     static float[] RenderTireSound(float scrubRatio, float slider, float engineRms, float seconds, out TireSoundDsp dsp)
     {
@@ -50,17 +50,17 @@ public class TireScrubTests
         return rendered;
     }
     // @description - Root-mean-square level of a buffer from a start sample to its end.
-    // @param {float[]} samples - mono samples to analyse (full-scale units, +-1)
+    // @param {float[]} samples - mono samples to analyze (full-scale units, +-1)
     // @param {int} firstSample - index of the first sample to include (earlier samples are start-up)
     // @return {float} - RMS level in full-scale units
     static float RootMeanSquare(float[] samples, int firstSample) { double sumOfSquares = 0; for (int i = firstSample; i < samples.Length; i++) sumOfSquares += samples[i] * samples[i]; return (float)System.Math.Sqrt(sumOfSquares / (samples.Length - firstSample)); }
     // @description - Amplitude of one frequency in a buffer by the Goertzel algorithm (a single-bin DFT) from a start sample to the end.
-    // @param {float[]} samples - mono samples to analyse (full-scale units, +-1)
+    // @param {float[]} samples - mono samples to analyze (full-scale units, +-1)
     // @param {int} firstSample - index of the first sample to include (earlier samples are start-up)
     // @param {float} frequencyHz - frequency to measure in hertz
-    // @return {float} - amplitude of that frequency (sum of the samples' projections, not normalised)
+    // @return {float} - amplitude of that frequency (sum of the samples' projections, not normalized)
     static float GoertzelAmplitude(float[] samples, int firstSample, float frequencyHz) { double omega = 2 * System.Math.PI * frequencyHz / SampleRateHz, coefficient = 2 * System.Math.Cos(omega), state1 = 0, state2 = 0; for (int i = firstSample; i < samples.Length; i++) { double newState = samples[i] + coefficient * state1 - state2; state2 = state1; state1 = newState; } return (float)System.Math.Sqrt(state1 * state1 + state2 * state2 - coefficient * state1 * state2); }
-    // @description - Verifies that at tire volume sliders 1, 2 and 4 the rendered tire RMS stays within 2 % of the engine ceiling and the synthesiser's own last tire level within 0.1 %.
+    // @description - Verifies that at tire volume sliders 1, 2 and 4 the rendered tire RMS stays within 2 % of the engine ceiling and the synthesizer's own last tire level within 0.1 %.
     // @return {Void} - nothing
     [Test] public void Ceiling_Holds_Under_Engine_Any_Slider()
     {
@@ -75,22 +75,22 @@ public class TireScrubTests
         Assert.AreEqual(0.5f, RootMeanSquare(half, 12000) / RootMeanSquare(full, 12000), 0.02f); Assert.AreEqual(0f, RootMeanSquare(zero, 0), 1e-9);
     }
     // @description - Finds the frequency of the strongest component between two frequencies in 0.5 Hz steps by Goertzel amplitude.
-    // @param {float[]} samples - mono samples to analyse (full-scale units, +-1)
+    // @param {float[]} samples - mono samples to analyze (full-scale units, +-1)
     // @param {int} firstSample - index of the first sample to include (earlier samples are start-up)
     // @param {float} lowHz - lowest frequency of the search range in hertz
     // @param {float} highHz - highest frequency of the search range in hertz
     // @return {float} - frequency of the strongest component in hertz
     static float PeakHz(float[] samples, int firstSample, float lowHz, float highHz) { float bestHz = lowHz, bestPower = -1f; for (float candidateHz = lowHz; candidateHz <= highHz; candidateHz += 0.5f) { float power = GoertzelAmplitude(samples, firstSample, candidateHz); if (power > bestPower) { bestPower = power; bestHz = candidateHz; } } return bestHz; }
-    // @description - noise band centre: Goertzel power at 1 Hz steps smoothed over +-12 Hz, then the power-weighted centroid of the region above half max (single bins / argmax of bandpassed noise fluctuate by several Hz; the half-max centroid is stable to ~1 %)
-    // @param {float[]} samples - mono samples to analyse (full-scale units, +-1)
+    // @description - noise band center: Goertzel power at 1 Hz steps smoothed over +-12 Hz, then the power-weighted centroid of the region above half max (single bins / argmax of bandpassed noise fluctuate by several Hz; the half-max centroid is stable to ~1 %)
+    // @param {float[]} samples - mono samples to analyze (full-scale units, +-1)
     // @param {int} firstSample - index of the first sample to include (earlier samples are start-up)
     // @param {float} lowHz - lowest frequency of the search range in hertz
     // @param {float} highHz - highest frequency of the search range in hertz
-    // @return {float} - the band centre hz
-    static float BandCentreHz(float[] samples, int firstSample, float lowHz, float highHz) { int binCount = (int)(highHz - lowHz) + 1; var power = new float[binCount]; var smoothed = new float[binCount]; for (int i = 0; i < binCount; i++) power[i] = GoertzelAmplitude(samples, firstSample, lowHz + i) * GoertzelAmplitude(samples, firstSample, lowHz + i);
+    // @return {float} - the band center hz
+    static float BandCenterHz(float[] samples, int firstSample, float lowHz, float highHz) { int binCount = (int)(highHz - lowHz) + 1; var power = new float[binCount]; var smoothed = new float[binCount]; for (int i = 0; i < binCount; i++) power[i] = GoertzelAmplitude(samples, firstSample, lowHz + i) * GoertzelAmplitude(samples, firstSample, lowHz + i);
         float maxSmoothed = 0f; for (int i = 0; i < binCount; i++) { float windowSum = 0f; for (int j = System.Math.Max(0, i - 12); j <= System.Math.Min(binCount - 1, i + 12); j++) windowSum += power[j]; smoothed[i] = windowSum; maxSmoothed = System.Math.Max(maxSmoothed, windowSum); }
         double weightSum = 0, weightedFrequencySum = 0; for (int i = 0; i < binCount; i++) if (smoothed[i] > 0.5f * maxSmoothed) { weightSum += smoothed[i]; weightedFrequencySum += smoothed[i] * (lowHz + i); } return (float)(weightedFrequencySum / weightSum); }
-    // @description - Verifies the tire spectrum at scrub ratios 0.35, 0.7 and 2.5: the low tone dominates 1 kHz by 5x and its 1.5th harmonic by 3x (no screech), is audible below the peak (above -45 dBFS), and the band centre rises 1.6 to 3 semitones from ratio 0.35 to 2.5.
+    // @description - Verifies the tire spectrum at scrub ratios 0.35, 0.7 and 2.5: the low tone dominates 1 kHz by 5x and its 1.5th harmonic by 3x (no screech), is audible below the peak (above -45 dBFS), and the band center rises 1.6 to 3 semitones from ratio 0.35 to 2.5.
     // @return {Void} - nothing
     [Test] public void Spectrum_Low_Tone_Present_Below_Peak_And_Pitch_Span()
     {
@@ -102,7 +102,7 @@ public class TireScrubTests
             Assert.Greater(GoertzelAmplitude(rendered, 24000, toneHz), 3f * GoertzelAmplitude(rendered, 24000, toneHz * 1.5f), $"r={scrubRatio}: tone at f0");
         }
         Assert.Greater(20f * Mathf.Log10(RootMeanSquare(midRatio, 24000)), -45f, "low tone audible below the peak (pre-ceiling)");
-        float lowPeakHz = BandCentreHz(lowRatio, 24000, 100f, 260f), overPeakHz = BandCentreHz(overRatio, 24000, 100f, 260f), span = 12f * Mathf.Log(overPeakHz / lowPeakHz, 2f);
+        float lowPeakHz = BandCenterHz(lowRatio, 24000, 100f, 260f), overPeakHz = BandCenterHz(overRatio, 24000, 100f, 260f), span = 12f * Mathf.Log(overPeakHz / lowPeakHz, 2f);
         Debug.Log($"TIRESOUND peak {lowPeakHz:0.0} Hz @0.35 -> {overPeakHz:0.0} Hz @2.5 = {span:0.00} semitones; rms {20 * Mathf.Log10(RootMeanSquare(lowRatio, 24000)):0.0}/{20 * Mathf.Log10(RootMeanSquare(midRatio, 24000)):0.0}/{20 * Mathf.Log10(RootMeanSquare(overRatio, 24000)):0.0} dBFS");
         Assert.That(span, Is.InRange(1.6f, 3f));
     }
@@ -110,7 +110,7 @@ public class TireScrubTests
     // @return {Void} - nothing
     [Test] public void Engine_Has_No_Throttle_Hiss()
     {
-        // @description - Renders 9600 samples of the engine synthesiser at 4000 rpm, 0.8 load and a given throttle.
+        // @description - Renders 9600 samples of the engine synthesizer at 4000 rpm, 0.8 load and a given throttle.
         // @param {float} throttle - throttle fraction 0..1
         // @return {float[]} - mono samples
         float[] RenderThrottle(float throttle) { var gameObject = new GameObject("e"); var synth = gameObject.AddComponent<EngineSynth>(); synth.SetOfflineState(SampleRateHz, 4000f, 0.8f, throttle); var buffer = new float[9600]; synth.Render(buffer, buffer.Length); Object.DestroyImmediate(gameObject); return buffer; }

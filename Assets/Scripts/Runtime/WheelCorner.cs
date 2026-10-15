@@ -1,8 +1,8 @@
 using UnityEngine;
 // One corner. Raycast wheel position -> wheel travel t (m, +bump, 0 = design ride height).
 // Vertical: spring (wheel rate, preloaded to carry static load at t=0) + piecewise damper through the kinematic motion ratio
-// + progressive bump stop + ARB/beam (from controller) + jacking force from the roll-centre height.
-// Tire: Pacejka combined slip with relaxation length; lateral force applied at roll-centre height (geometric load transfer).
+// + progressive bump stop + ARB/beam (from controller) + jacking force from the roll-center height.
+// Tire: Pacejka combined slip with relaxation length; lateral force applied at roll-center height (geometric load transfer).
 public class WheelCorner : MonoBehaviour
 {
     public CarParams carParams;
@@ -16,7 +16,7 @@ public class WheelCorner : MonoBehaviour
     [HideInInspector] public float jackingForce;
     [HideInInspector] public float antiPitchForce;
     [HideInInspector] public float steerDeg, driveTorque, brakeTorque, camberDeg;
-    [HideInInspector] public float rollCentreHeight;
+    [HideInInspector] public float rollCenterHeight;
     [HideInInspector] public float angularVelocity;
     [HideInInspector] public float slipRatio, slipAngle;
     [HideInInspector] public float relaxedSlipAngle;
@@ -24,21 +24,21 @@ public class WheelCorner : MonoBehaviour
     [HideInInspector] public Vector2 force; [HideInInspector] public bool grounded;
     [HideInInspector] public Vector3 bodyForce;             // total force this corner puts into the body (world)
     float lastTravel, spinDeg; bool haveLastTravel; RaycastHit hit; Rigidbody body;
-    public RaycastHit Hit => hit; public float WheelY => wheelCentreHeight;   // diagnostics
+    public RaycastHit Hit => hit; public float WheelY => wheelCenterHeight;   // diagnostics
     public float DriveInertia;
     // @description - Caches the parent Rigidbody (the car body) that every corner pushes its forces into.
     // @return {Void} - nothing
     void Awake() { body = GetComponentInParent<Rigidbody>(); }
     float BumpTravel => front ? carParams.frontBumpTravel : carParams.rearBumpTravel;
     float ReboundTravel => front ? carParams.frontReboundTravel : carParams.rearReboundTravel;
-    // @description - Spring/damper motion ratio at a wheel travel: wheel-centre velocity times this equals damper velocity (table from SuspensionTables).
+    // @description - Spring/damper motion ratio at a wheel travel: wheel-center velocity times this equals damper velocity (table from SuspensionTables).
     // @param {float} wheelTravel - wheel travel in m (+ = bump)
     // @return {float} - motion ratio, dimensionless (1 when no kinematics tables are assigned)
     float MotionRatio(float wheelTravel) { var tables = carParams.suspensionTables; if (!tables) return 1f; return SuspensionTables.Interpolate1D(tables.travel, front ? tables.frontMotionRatio : tables.rearMotionRatio, wheelTravel); }
-    // @description - Roll-centre height above ground for this axle at a wheel travel (front: table; rear: twist-beam value or table).
+    // @description - Roll-center height above ground for this axle at a wheel travel (front: table; rear: twist-beam value or table).
     // @param {float} wheelTravel - wheel travel in m (+ = bump)
-    // @return {float} - roll-centre height in m
-    public float RollCentreHeightAt(float wheelTravel) { var tables = carParams.suspensionTables; if (!tables) return 0f; if (front) return SuspensionTables.Interpolate1D(tables.travel, tables.frontRollCentreHeight, wheelTravel); return carParams.rearModel == CarParams.RearModel.FullTwistBeam ? tables.rearBeamRollCentreHeight : tables.rearRollCentreHeight; }
+    // @return {float} - roll-center height in m
+    public float RollCenterHeightAt(float wheelTravel) { var tables = carParams.suspensionTables; if (!tables) return 0f; if (front) return SuspensionTables.Interpolate1D(tables.travel, tables.frontRollCenterHeight, wheelTravel); return carParams.rearModel == CarParams.RearModel.FullTwistBeam ? tables.rearBeamRollCenterHeight : tables.rearRollCenterHeight; }
     [HideInInspector] public float antiCoef;   // vertical body force per N of +x tire force (set by controller)
     // @description - Bump-stop force from compression, integrating the piecewise-linear stiffness table: F(x) = integral of rate(x) dx, linear extrapolation past the last point.
     // @param {float} compression - bump-stop compression in m (<= 0 means not touching)
@@ -66,10 +66,10 @@ public class WheelCorner : MonoBehaviour
         return damperVelocity >= 0f ? force : -force;
     }
     public float WheelRate => front ? carParams.frontWheelRate : carParams.rearWheelRate;
-    // ---- unsprung vertical DOF (carParams.useUnsprungMass): wheel-centre height yw / velocity vw in world, tire spring to ground ----
+    // ---- unsprung vertical DOF (carParams.useUnsprungMass): wheel-center height yw / velocity vw in world, tire spring to ground ----
     [HideInInspector] public float tireForce;
     [HideInInspector] public float suspensionForce;
-    [HideInInspector] public float unsprungMass; float wheelCentreHeight, wheelCentreVelocity; bool wheelHeightInitialised; Vector3 lastPointVelocity; bool havePointVelocity;
+    [HideInInspector] public float unsprungMass; float wheelCenterHeight, wheelCenterVelocity; bool wheelHeightInitialized; Vector3 lastPointVelocity; bool havePointVelocity;
     // @description - 1 kHz vertical update: raycasts the ground, computes wheel travel, spring/damper/bump/ARB/jacking forces, optionally integrates the unsprung wheel height, and applies the force to the body.
     // @param {float} deltaTime - suspension step in s
     // @param {float} arbForce - anti-roll bar / twist beam force from the controller, in N
@@ -86,7 +86,7 @@ public class WheelCorner : MonoBehaviour
         if (!useUnsprungMass)
         {
             if (grounded && hit.distance > carParams.hubDropDesign + ReboundTravel + carParams.wheelRadius) grounded = false;
-            if (!grounded) { travel = -ReboundTravel; haveLastTravel = false; verticalLoad = tireForce = suspensionForce = springForce = damperForce = bumpStopTotalForce = antiRollBarForce = jackingForce = antiPitchForce = 0f; rollCentreHeight = RollCentreHeightAt(travel); bodyForce = Vector3.zero; return; }
+            if (!grounded) { travel = -ReboundTravel; haveLastTravel = false; verticalLoad = tireForce = suspensionForce = springForce = damperForce = bumpStopTotalForce = antiRollBarForce = jackingForce = antiPitchForce = 0f; rollCenterHeight = RollCenterHeightAt(travel); bodyForce = Vector3.zero; return; }
             float unclampedTravel = carParams.hubDropDesign - (hit.distance - carParams.wheelRadius);
             travel = Mathf.Clamp(unclampedTravel, -ReboundTravel, BumpTravel);
             float travelVelocity = haveLastTravel ? (travel - lastTravel) / deltaTime : 0f; lastTravel = travel; haveLastTravel = true;
@@ -96,22 +96,22 @@ public class WheelCorner : MonoBehaviour
             return;
         }
         Vector3 bodyPointVelocity = body.GetPointVelocity(designHubPosition);
-        if (!wheelHeightInitialised) { wheelCentreHeight = designHubPosition.y; wheelCentreVelocity = bodyPointVelocity.y; wheelHeightInitialised = true; }
-        travel = (wheelCentreHeight - designHubPosition.y) / chassisUpY; float relativeVelocity = (wheelCentreVelocity - bodyPointVelocity.y) / chassisUpY;
+        if (!wheelHeightInitialized) { wheelCenterHeight = designHubPosition.y; wheelCenterVelocity = bodyPointVelocity.y; wheelHeightInitialized = true; }
+        travel = (wheelCenterHeight - designHubPosition.y) / chassisUpY; float relativeVelocity = (wheelCenterVelocity - bodyPointVelocity.y) / chassisUpY;
         ComputeSuspensionForces(relativeVelocity, travel, arbForce);
         float topOutForce = travel < -ReboundTravel ? -2e5f * (-ReboundTravel - travel) : 0f;   // damper top-out stop (E)
         suspensionForce += topOutForce;
         // tire: deflection relative to the free radius
         if (grounded)
         {
-            float tireDeflection = hit.point.y + carParams.wheelRadius + tireStaticDeflection - wheelCentreHeight;
-            tireForce = tireDeflection > 0f ? Mathf.Max(0f, carParams.tireVerticalStiffness * tireDeflection - carParams.tireVerticalDamping * wheelCentreVelocity) : 0f;
+            float tireDeflection = hit.point.y + carParams.wheelRadius + tireStaticDeflection - wheelCenterHeight;
+            tireForce = tireDeflection > 0f ? Mathf.Max(0f, carParams.tireVerticalStiffness * tireDeflection - carParams.tireVerticalDamping * wheelCenterVelocity) : 0f;
             if (tireForce <= 0f) grounded = false;
         }
         else tireForce = 0f;
         verticalLoad = tireForce;
         // semi-implicit wheel integration (1 kHz): m_u yw'' = tireForce - suspensionForce*up.y - m_u g
-        wheelCentreVelocity += ((tireForce - suspensionForce * chassisUpY) / unsprungMass - 9.81f) * deltaTime; wheelCentreHeight += wheelCentreVelocity * deltaTime;
+        wheelCenterVelocity += ((tireForce - suspensionForce * chassisUpY) / unsprungMass - 9.81f) * deltaTime; wheelCenterHeight += wheelCenterVelocity * deltaTime;
         Vector3 suspensionBodyForce = transform.up * suspensionForce; body.AddForceAtPosition(suspensionBodyForce, transform.position);
         // unsprung horizontal inertia (wheels move with the body horizontally; body Rigidbody carries sprung mass only)
         Vector3 pointVelocity = body.GetPointVelocity(designHubPosition);
@@ -122,8 +122,8 @@ public class WheelCorner : MonoBehaviour
     [HideInInspector] public float unsprungStaticLoad;   // tire static load (sprung + unsprung corner weight), set by controller
     // @description - Clears the unsprung-wheel and tire state after a teleport so a stale wheel height cannot launch the car.
     // @return {Void} - nothing
-    public void ResetState() { wheelHeightInitialised = false; haveLastTravel = false; havePointVelocity = false; wheelCentreVelocity = 0f; angularVelocity = 0f; relaxedSlipAngle = 0f; }   // after a teleport: re-seed the unsprung wheel height from the body (stale yw launched the car)
-    // @description - Sums the vertical suspension force: spring + damper (through the motion ratio) + bump stop + ARB + jacking from roll-centre height + anti-dive/squat lift.
+    public void ResetState() { wheelHeightInitialized = false; haveLastTravel = false; havePointVelocity = false; wheelCenterVelocity = 0f; angularVelocity = 0f; relaxedSlipAngle = 0f; }   // after a teleport: re-seed the unsprung wheel height from the body (stale yw launched the car)
+    // @description - Sums the vertical suspension force: spring + damper (through the motion ratio) + bump stop + ARB + jacking from roll-center height + anti-dive/squat lift.
     // @param {float} suspensionVelocity - wheel travel velocity in m/s
     // @param {float} unclampedTravel - travel before clamping to the rebound/bump limits, in m
     // @param {float} arbForce - anti-roll bar force in N
@@ -135,10 +135,10 @@ public class WheelCorner : MonoBehaviour
         damperForce = DamperForceAt(suspensionVelocity * motionRatio) * motionRatio;
         bumpStopTotalForce = BumpStopForce(unclampedTravel - carParams.bumpStopGap) + (unclampedTravel > BumpTravel ? 2e6f * (unclampedTravel - BumpTravel) : 0f);   // + hard limit past full bump
         antiRollBarForce = arbForce;
-        rollCentreHeight = RollCentreHeightAt(Mathf.Clamp(travel, -ReboundTravel, BumpTravel));
-        // jacking: lateral force (previous step) toward car centre * h_rc / half-track (swing-arm equivalent)
+        rollCenterHeight = RollCenterHeightAt(Mathf.Clamp(travel, -ReboundTravel, BumpTravel));
+        // jacking: lateral force (previous step) toward car center * h_rc / half-track (swing-arm equivalent)
         float inwardLateralForce = left ? force.y : -force.y;
-        jackingForce = carParams.useJacking ? inwardLateralForce * rollCentreHeight / Mathf.Max(halfTrack, 0.3f) : 0f;
+        jackingForce = carParams.useJacking ? inwardLateralForce * rollCenterHeight / Mathf.Max(halfTrack, 0.3f) : 0f;
         antiPitchForce = antiCoef * force.x;
         suspensionForce = springForce + damperForce + bumpStopTotalForce + antiRollBarForce + jackingForce + antiPitchForce;
     }
@@ -148,10 +148,10 @@ public class WheelCorner : MonoBehaviour
     // slip stiffness exactly (C_kappa = B*C*D = pKx1*verticalLoad, C_alpha = Ky, both at the current load). At standstill |Vx| -> 0, the leak vanishes
     // and the deflection is a spring that holds the car (static friction) instead of the viscous creep of a slip-based model.
     // Damping c = 2*zeta*sqrt(k*m_corner), m_corner = static corner load / g. ASSUMPTION: zeta = 1 (critically damped patch mode; the
-    // real tread/carcass hysteresis is not modelled, and a parked car must not ring at the ~3 Hz patch-spring frequency).
+    // real tread/carcass hysteresis is not modeled, and a parked car must not ring at the ~3 Hz patch-spring frequency).
     // Limit: friction ellipse with the Pacejka peak coefficients D_x, D_y (load-sensitive, camber factor) -> full static grip mu*verticalLoad;
     // beyond it the patch slides and the deflection is reset to the elastic limit.
-    // Blend: weight w of the slip-based Pacejka path = smoothstep over contact speed from vB/2 to vB, vB = the slip-regularisation floor
+    // Blend: weight w of the slip-based Pacejka path = smoothstep over contact speed from vB/2 to vB, vB = the slip-regularization floor
     // max(minDen, 0.5 m/s) below which the slip-based path no longer sees the true slip. Above vB the original path is used unchanged.
     public const float StickZeta = 1f;
     [HideInInspector] public float patchDeflectionX;
@@ -193,7 +193,7 @@ public class WheelCorner : MonoBehaviour
     void ViscoUpdate(float longitudinalSpeed, float lateralSpeed, ref float relaxationLength, ref TireScale scale, ref float rollingResistanceScale)
     {
         viscoFlags = ViscoTire.FromParams(carParams); if (viscoReferenceSlipSpeed < 0) viscoReferenceSlipSpeed = ViscoTire.VsRef(carParams);
-        double gripTemperature = thermal != null ? thermal.GripTemp() : TireThermal.OptimalTemperature;              // base coefficients = tyre at its optimum (D, as TireThermal)
+        double gripTemperature = thermal != null ? thermal.GripTemp() : TireThermal.OptimalTemperature;              // base coefficients = tire at its optimum (D, as TireThermal)
         double contactPressure = thermal != null ? System.Math.Max(thermal.gaugePressure, 20000.0) : TireThermal.NominalGaugePressure;   // nominal contact pressure ~ inflation
         double slipSpeedX = longitudinalSpeed - angularVelocity * carParams.wheelRadius, slipSpeed = System.Math.Sqrt(slipSpeedX * slipSpeedX + lateralSpeed * lateralSpeed);   // slip speed in m/s: longitudinal part is travel speed minus wheel surface speed (omega x r), lateral part is the sideways speed
         double gripFactor = ViscoTire.GripFactor(slipSpeed, gripTemperature, contactPressure, viscoReferenceSlipSpeed, viscoFlags, out double flashTemperatureRise);
@@ -314,8 +314,8 @@ public class WheelCorner : MonoBehaviour
             frictionHeatAccumulated += -((force.x + rollingResistanceForce) * slipSpeedX + force.y * lateralSpeed) * forceScale * substep; rollingResistanceHeatAccumulated += rollingResistanceForce * longitudinalSpeed * forceScale * substep; thermalAccumulatedTime += substep;
             if (isViscoCompound && viscoFlags.bulkHeating) bulkHeatAccumulated += BulkHysteresisPower(longitudinalSpeed, force.x + rollingResistanceForce, force.y, effectiveScale) * forceScale * substep;
         }
-        // longitudinal at the contact patch; lateral at roll-centre height (geometric lateral load transfer)
-        Vector3 lateralForcePoint = carParams.useJacking ? hit.point + transform.up * rollCentreHeight : hit.point;
+        // longitudinal at the contact patch; lateral at roll-center height (geometric lateral load transfer)
+        Vector3 lateralForcePoint = carParams.useJacking ? hit.point + transform.up * rollCenterHeight : hit.point;
         body.AddForceAtPosition(forwardDirection * force.x * forceScale, hit.point);
         body.AddForceAtPosition(rightDirection * force.y * forceScale, lateralForcePoint);
     }

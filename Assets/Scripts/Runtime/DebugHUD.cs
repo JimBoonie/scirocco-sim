@@ -11,7 +11,7 @@ public class DebugHUD : MonoBehaviour
     {
         if (!car || car.engine == null) return;
         if (mono == null) { mono = new GUIStyle(GUI.skin.label) { fontSize = 10, wordWrap = false, padding = new RectOffset(0, 0, 0, 0) }; mono.normal.textColor = Color.white; }
-        bool info = HudVisible(car);   // H toggles the grey info boxes (telemetry / FFB / joints); the bottom input strip is always shown
+        bool info = HudVisible(car);   // H toggles the gray info boxes (telemetry / FFB / joints); the bottom input strip is always shown
         var body = car.GetComponent<Rigidbody>();
         string gearText = car.drivetrain.gear == 0 ? "N" : car.drivetrain.gear < 0 ? "R" : car.drivetrain.gear.ToString();
         string text = $"handling baseline (single)  tire {car.carParams.tirePreset} {(car.carParams.tireCompound == CarParams.TireCompound.ExperimentalViscoelastic ? "[Experimental viscoelastic]" : "")}\n" + $"{body.velocity.magnitude * MphPerMs,3:0} mph  {car.engine.rpm,4:0} rpm  gear {gearText}  MAP {car.engine.manifoldPressureRatio:0.00}  thr {car.engine.throttleArea:0.000}\n" +
@@ -32,7 +32,7 @@ public class DebugHUD : MonoBehaviour
         if (info) { text = text.TrimEnd('\n'); Box(8f, 8f, text); }
         if (info) DrawWheel(car);
         if (car.router && car.router.LookSource.Length > 0) GUI.Label(new Rect(UiSurface.Width * 0.5f - 200f, 64f, 400f, 16f), $"LOOK {car.router.LookX * 120f:0}° from {car.router.LookSource}", mono);   // look offset active (shown even with info hidden)
-        // driver strip: gear / pedals / ignition, large, bottom centre
+        // driver strip: gear / pedals / ignition, large, bottom center
         if (big == null) { big = new GUIStyle(GUI.skin.label) { fontSize = 17, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter }; big.normal.textColor = Color.white; }
         var engine = car.engine; float screenWidth = UiSurface.Width, screenHeight = UiSurface.Height;
         string strip = $"GEAR {gearText}    THROTTLE {car.throttle * 100f,3:0}%    CLUTCH {car.clutch * 100f,3:0}%    BRAKE {car.brake * 100f,3:0}%    HANDBRAKE {car.handbrakeInput * 100f,3:0}%    IGN {(engine.ignition ? "ON" : "OFF")}  ENGINE {engine.State} {engine.rpm,4:0} rpm" + (car.autoClutch && car.autoClutchPedal > 0f ? $"  (auto clutch {car.autoClutchPedal * 100f:0}%)" : "");
@@ -61,13 +61,13 @@ public class DebugHUD : MonoBehaviour
     // @param {double} celsius - temperature in degrees Celsius
     // @return {double} - temperature in degrees Fahrenheit
     static double ToFahrenheit(double celsius) => TireThermal.CelsiusToFahrenheit(celsius);
-    // @description - Draws a text label on a grey box sized to fit the text.
+    // @description - Draws a text label on a gray box sized to fit the text.
     // @param {float} left - left edge in logical UI pixels
     // @param {float} top - top edge in logical UI pixels
     // @param {string} text - text to show
     // @return {Void} - nothing
     void Box(float left, float top, string text) { var textSize = mono.CalcSize(new GUIContent(text)); GUI.Box(new Rect(left, top, textSize.x + 10f, textSize.y + 6f), GUIContent.none); GUI.Label(new Rect(left + 5f, top + 3f, textSize.x + 2f, textSize.y), text, mono); }
-    // @description - Tells whether the grey info boxes are shown (the H key setting); true when no input profile exists.
+    // @description - Tells whether the gray info boxes are shown (the H key setting); true when no input profile exists.
     // @param {CarController} car - car whose input router holds the profile
     // @return {bool} - true if the info boxes should be drawn
     static bool HudVisible(CarController car) => !(car.router && car.router.map != null && car.router.map.profile != null) || car.router.map.profile.hudVisible;
@@ -80,10 +80,10 @@ public class DebugHUD : MonoBehaviour
         float centerX = UiSurface.Width - 110f;
         GUI.Label(new Rect(centerX - 100f, 20f, 200f, 40f), $"wheel {car.handwheelDeg,6:0}°\nL/R {car.frontLeftWheel.steerDeg,5:0.0}/{car.frontRightWheel.steerDeg,5:0.0}°");
     }
-    // Joint reaction forces on the car body (tire-to-body force path), from the linear maps in compliance.json (linearised at design
+    // Joint reaction forces on the car body (tire-to-body force path), from the linear maps in compliance.json (linearized at design
     // ride height, bush rates ESTIMATED). Shown as |F| in N with the vertical component; front corners use previous-step tire forces.
     static readonly string[] FrontJointNames = { "armF", "armR", "tieRod", "topMnt", "ballJ" }, RearJointNames = { "pivL", "pivR", "dampL", "dampR" };
-    // @description - Computes the reaction force at each of the five front suspension joints (lower arm front and rear, tie rod, top mount, ball joint) on the car body from the tire forces, using the linearised joint map from the suspension tables (E: bush rates estimated). The map has 4 load cases (brake longitudinal, drive longitudinal, lateral, vertical) times 5 joints times 3 axes. The lateral sign mirrors the right corner onto the left-corner frame.
+    // @description - Computes the reaction force at each of the five front suspension joints (lower arm front and rear, tie rod, top mount, ball joint) on the car body from the tire forces, using the linearized joint map from the suspension tables (E: bush rates estimated). The map has 4 load cases (brake longitudinal, drive longitudinal, lateral, vertical) times 5 joints times 3 axes. The lateral sign mirrors the right corner onto the left-corner frame.
     // @param {SuspensionTables} suspensionTables - suspension tables holding the front joint reaction map
     // @param {WheelCorner} wheel - front wheel corner whose tire forces are used (newtons)
     // @return {Vector3[]} - five joint force vectors in newtons (all zero if the map is missing)
@@ -97,7 +97,7 @@ public class DebugHUD : MonoBehaviour
         { int mapOffset = (loadIndex * 5 + jointIndex) * 3; reactions[jointIndex] += loads[loadIndex] * new Vector3(suspensionTables.frontJointReactions[mapOffset], lateralSign * suspensionTables.frontJointReactions[mapOffset + 1], suspensionTables.frontJointReactions[mapOffset + 2]); }
         return reactions;
     }
-    // @description - Computes the reaction force at each of the four rear beam joints (left and right pivot, left and right damper) on the car body from both rear tire forces, using the linearised joint map (3 load cases: longitudinal, lateral, vertical). The right wheel is mirrored into the left frame and its result is swapped to the right-hand joints.
+    // @description - Computes the reaction force at each of the four rear beam joints (left and right pivot, left and right damper) on the car body from both rear tire forces, using the linearized joint map (3 load cases: longitudinal, lateral, vertical). The right wheel is mirrored into the left frame and its result is swapped to the right-hand joints.
     // @param {SuspensionTables} suspensionTables - suspension tables holding the rear beam joint reaction map
     // @param {WheelCorner} leftWheel - rear left wheel corner
     // @param {WheelCorner} rightWheel - rear right wheel corner

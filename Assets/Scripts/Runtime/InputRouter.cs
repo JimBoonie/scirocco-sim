@@ -31,10 +31,10 @@ public class InputRouter : MonoBehaviour
         switch (EscapeAction(escapePressed, capturing != null, calibrating != null, menuOpen))
         {
             case EscResult.CancelCapture:
-                var cancelledAction = capturing.Value; capturing = null; map.EndCapture();
-                if (keyboard.leftShiftKey.isPressed || keyboard.rightShiftKey.isPressed) status = $"cleared {map.ClearDeviceBindings(cancelledAction)} device binding(s) of {cancelledAction}"; else status = "capture cancelled (Shift+Esc clears this action's device bindings)";
+                var canceledAction = capturing.Value; capturing = null; map.EndCapture();
+                if (keyboard.leftShiftKey.isPressed || keyboard.rightShiftKey.isPressed) status = $"cleared {map.ClearDeviceBindings(canceledAction)} device binding(s) of {canceledAction}"; else status = "capture canceled (Shift+Esc clears this action's device bindings)";
                 return;
-            case EscResult.CancelCalibration: calibrating = null; map.Flush(); status = "calibration cancelled"; return;
+            case EscResult.CancelCalibration: calibrating = null; map.Flush(); status = "calibration canceled"; return;
             case EscResult.CloseMenu: menuOpen = false; map.MenuOpen = false; InputMapper.Save(map.profile); status = "saved"; if (ffb) ffb.TryOpen(); Time.timeScale = 1f; return;
             case EscResult.OpenMenu: menuOpen = true; map.MenuOpen = true; return;
         }
@@ -57,11 +57,11 @@ public class InputRouter : MonoBehaviour
         hintNeutral = car.drivetrain.gear == 0 && car.throttle > 0.05f;
         if (map.assist == null) { map.assist = new GamepadSteering(map.profile.gamepadSteer); map.meanToHandwheel = meanRoadAngleDeg => SteeringLinkage.HandwheelForMean(car.carParams, meanRoadAngleDeg); }
         map.assistCtx = GamepadSteering.Context(car);
-        car.handwheelDeg = map.StepSteer(Time.deltaTime, carParams.handwheelLockDeg, carParams.steeringRateDegPerSecond, SteeringLinkage.CentreRatio(carParams));
+        car.handwheelDeg = map.StepSteer(Time.deltaTime, carParams.handwheelLockDeg, carParams.steeringRateDegPerSecond, SteeringLinkage.CenterRatio(carParams));
         car.handwheelInput = true;                                            // column -> pinion -> rack -> per-wheel kinematics (CarController)
         if (map.Pressed(InAction.ShiftUp)) car.drivetrain.Shift(1);
         if (map.Pressed(InAction.ShiftDown)) car.drivetrain.Shift(-1);
-        // H-pattern: a held gear button selects that gear; a gear button on a shifter device (non-keyboard) returning to centre = neutral
+        // H-pattern: a held gear button selects that gear; a gear button on a shifter device (non-keyboard) returning to center = neutral
         InAction[] gears = { InAction.GearR, InAction.Gear1, InAction.Gear2, InAction.Gear3, InAction.Gear4, InAction.Gear5 };
         bool anyShifterHeld = false, haveShifter = false;
         for (int i = 0; i < gears.Length; i++)
@@ -123,7 +123,7 @@ public class InputRouter : MonoBehaviour
         { float rawValue = InputMapper.Raw(calibrating.resolved); calMin = Mathf.Min(calMin, rawValue); calMax = Mathf.Max(calMax, rawValue); }
     }
     // @description - Ends an axis calibration: stores the captured min, max and rest value in the binding, or reports that the axis never moved and leaves the calibration unchanged.
-    // @param {InAction} action - action whose binding was calibrated (decides whether the axis is centred or a pedal)
+    // @param {InAction} action - action whose binding was calibrated (decides whether the axis is centered or a pedal)
     // @return {Void} - nothing
     void FinishCalibration(InAction action)
     {
@@ -199,7 +199,7 @@ public class InputRouter : MonoBehaviour
             }
         }
     }
-    // @description - Draws the Calibration tab: raw versus mapped value for every analogue binding, invert and dead zone controls, and the Calibrate / Done buttons.
+    // @description - Draws the Calibration tab: raw versus mapped value for every analog binding, invert and dead zone controls, and the Calibrate / Done buttons.
     // @param {BindingProfile} profile - settings profile being edited
     // @return {Void} - nothing
     void DrawCalibration(BindingProfile profile)
@@ -221,8 +221,8 @@ public class InputRouter : MonoBehaviour
                 GUILayout.Label($"raw {(binding.resolved != null ? InputMapper.Raw(binding.resolved).ToString("+0.000;-0.000") : "MISSING")}  mapped {(isBipolar ? mappedValue.ToString("+0.00;-0.00") : mappedValue.ToString("0.00"))} ({mappedValue * 100f,4:0}%)  {(binding.calibration.calibrated ? (binding.calibration.hasRest ? $"cal {binding.calibration.rest:0.00}->{binding.calibration.PressedEnd:0.00}" : $"cal {binding.calibration.min:0.00}..{binding.calibration.max:0.00}") : uncalibrated ? "NOT calibrated (rest-relative)" : "default range")}", labelStyle, GUILayout.Width(400));
                 binding.calibration.invert = GUILayout.Toggle(binding.calibration.invert, "inv", GUILayout.Width(45));   // with hasRest, toggling swaps which end counts as pressed
                 GUILayout.Label($"dz {binding.calibration.deadzone:0.00}", labelStyle, GUILayout.Width(55)); binding.calibration.deadzone = GUILayout.HorizontalSlider(binding.calibration.deadzone, 0f, 0.3f, GUILayout.Width(70));
-                if (calibrating == binding) { GUILayout.Label($"[{calMin:0.00} .. {calMax:0.00}]", labelStyle, GUILayout.Width(110)); if (GUILayout.Button(isBipolar ? "Done (centred)" : "Done (released)", GUILayout.Width(120))) FinishCalibration(action); }
-                else if (binding.resolved != null && GUILayout.Button("Calibrate", GUILayout.Width(80))) { calibrating = binding; calMin = calMax = InputMapper.Raw(binding.resolved); status = isBipolar ? "turn fully both ways, centre, press Done" : "press fully, release, press Done"; }
+                if (calibrating == binding) { GUILayout.Label($"[{calMin:0.00} .. {calMax:0.00}]", labelStyle, GUILayout.Width(110)); if (GUILayout.Button(isBipolar ? "Done (centered)" : "Done (released)", GUILayout.Width(120))) FinishCalibration(action); }
+                else if (binding.resolved != null && GUILayout.Button("Calibrate", GUILayout.Width(80))) { calibrating = binding; calMin = calMax = InputMapper.Raw(binding.resolved); status = isBipolar ? "turn fully both ways, center, press Done" : "press fully, release, press Done"; }
                 GUILayout.EndHorizontal();
             }
         }
@@ -285,7 +285,7 @@ public class InputRouter : MonoBehaviour
         if (GUILayout.Toggle(profile.mapping == SteerMapping.RealColumn1to1, " 1:1 column (wheel angle = car steering-wheel angle, soft lock at your wheel's limit)")) profile.mapping = SteerMapping.RealColumn1to1;
         if (GUILayout.Toggle(profile.mapping == SteerMapping.ScaleToCarLock, " Scale to car lock")) profile.mapping = SteerMapping.ScaleToCarLock;
         float halfRotationDeg = profile.RotationDeg(carParams.handwheelLockDeg) * 0.5f, colAtLimit = profile.mapping == SteerMapping.RealColumn1to1 ? Mathf.Min(halfRotationDeg, carParams.handwheelLockDeg) : carParams.handwheelLockDeg;
-        GUILayout.Label($"  -> at your wheel's limit (±{halfRotationDeg:0}°): car column ±{colAtLimit:0}° = mean road wheel ±{SteeringLinkage.MeanAngle(carParams, colAtLimit):0.0}°; effective on-centre ratio {halfRotationDeg / colAtLimit * SteeringLinkage.CentreRatio(carParams):0.00}:1", labelStyle);
+        GUILayout.Label($"  -> at your wheel's limit (±{halfRotationDeg:0}°): car column ±{colAtLimit:0}° = mean road wheel ±{SteeringLinkage.MeanAngle(carParams, colAtLimit):0.0}°; effective on-center ratio {halfRotationDeg / colAtLimit * SteeringLinkage.CenterRatio(carParams):0.00}:1", labelStyle);
         GUILayout.Space(8);
         profile.forceFeedbackEnabled = GUILayout.Toggle(profile.forceFeedbackEnabled, " Force feedback");
         GUILayout.BeginHorizontal(); GUILayout.Label("Wheelbase max torque N m (SC2 Sport 17 / Pro 25 / Ultimate 32):", labelStyle, GUILayout.Width(420));
@@ -298,7 +298,7 @@ public class InputRouter : MonoBehaviour
         GUILayout.BeginHorizontal(); GUILayout.Label("FFB device (name contains, empty = first):", labelStyle, GUILayout.Width(300)); profile.forceFeedbackDevice = GUILayout.TextField(profile.forceFeedbackDevice ?? "", GUILayout.Width(220)); GUILayout.EndHorizontal();
         if (ffb != null) { foreach (var deviceName in ffb.devices) if (GUILayout.Button(deviceName, GUILayout.Width(260))) profile.forceFeedbackDevice = deviceName; GUILayout.Label(ffb.status, labelStyle); }
     }
-    // @description - Draws the VR and seat page: VR on/off, recentre, camera mode, seat position sliders (millimetre offsets within the car's seat travel), the VR debug HUD toggle and the flat-screen field of view.
+    // @description - Draws the VR and seat page: VR on/off, recenter, camera mode, seat position sliders (millimeter offsets within the car's seat travel), the VR debug HUD toggle and the flat-screen field of view.
     // @param {BindingProfile} profile - settings profile being edited
     // @param {CarParams} carParams - car parameters (seat travel limits)
     // @return {Void} - nothing
@@ -422,13 +422,13 @@ public class InputRouter : MonoBehaviour
     public struct GpSlider { public string label, fmt, help; public float min, max, step; public System.Func<GamepadSteerSettings, float> get; public System.Action<GamepadSteerSettings, float> set; }
     public static readonly GpSlider[] GpSliders = {
         new GpSlider { label = "Steering speed", fmt = "{0:0} deg/s road", help = "how fast the wheel turns towards the stick target (lower = calmer)", min = 5f, max = 120f, step = 5f, get = settings => settings.steerSpeed, set = (settings, value) => settings.steerSpeed = value },
-        new GpSlider { label = "Response curve (gamma)", fmt = "{0:0.0}", help = "1 = linear; higher = less sensitive near centre", min = 1f, max = 4f, step = 0.1f, get = settings => settings.gamma, set = (settings, value) => settings.gamma = value },
-        new GpSlider { label = "Deadzone", fmt = "{0:P0}", help = "stick travel ignored around centre (rest rescaled)", min = 0f, max = 0.3f, step = 0.01f, get = settings => settings.deadzone, set = (settings, value) => settings.deadzone = value },
+        new GpSlider { label = "Response curve (gamma)", fmt = "{0:0.0}", help = "1 = linear; higher = less sensitive near center", min = 1f, max = 4f, step = 0.1f, get = settings => settings.gamma, set = (settings, value) => settings.gamma = value },
+        new GpSlider { label = "Deadzone", fmt = "{0:P0}", help = "stick travel ignored around center (rest rescaled)", min = 0f, max = 0.3f, step = 0.01f, get = settings => settings.deadzone, set = (settings, value) => settings.deadzone = value },
         new GpSlider { label = "Smoothing", fmt = "{0:0.00} s", help = "filter time constant on the stick (0 = off)", min = 0f, max = 0.3f, step = 0.01f, get = settings => settings.smoothing, set = (settings, value) => settings.smoothing = value },
         new GpSlider { label = "Speed sensitivity", fmt = "{0:P0}", help = "0 = full lock at any speed; 100% = full stick limited to peak tire grip at speed", min = 0f, max = 1f, step = 0.05f, get = settings => settings.speedSensitivity, set = (settings, value) => settings.speedSensitivity = value },
         new GpSlider { label = "Grip limit", fmt = "{0:P0} of peak slip", help = "full stick at speed puts the front tires at this fraction of their peak-grip slip angle", min = 0.5f, max = 2f, step = 0.05f, get = settings => settings.gripLimit, set = (settings, value) => settings.gripLimit = value },
         new GpSlider { label = "Countersteer speed", fmt = "x{0:0.0}", help = "steering-speed factor when unwinding / catching a rear slide", min = 1f, max = 4f, step = 0.1f, get = settings => settings.countersteer, set = (settings, value) => settings.countersteer = value },
-        new GpSlider { label = "Self-centre (caster follow)", fmt = "{0:P0}", help = "released stick: wheels follow the front-axle travel direction (0 = straight ahead)", min = 0f, max = 1f, step = 0.05f, get = settings => settings.casterFollow, set = (settings, value) => settings.casterFollow = value },
+        new GpSlider { label = "Self-center (caster follow)", fmt = "{0:P0}", help = "released stick: wheels follow the front-axle travel direction (0 = straight ahead)", min = 0f, max = 1f, step = 0.05f, get = settings => settings.casterFollow, set = (settings, value) => settings.casterFollow = value },
     };
     public static int GpItemCount => GpSliders.Length + 2;   // [0] assist on/off, sliders, [last] reset all
     // @description - Applies a left, right or select action to a gamepad steering menu item: item 0 toggles the assist, the last item resets everything, the others step one slider (rounded to its step and clamped to its range, select resets it to the default).

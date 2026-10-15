@@ -5,11 +5,11 @@ public class Cockpit : MonoBehaviour
 {
     public CarController car;
     public Transform eyeAnchor, recenter, wheelSpin, speedNeedle, rpmNeedle, root; public TextMesh speedText, rpmText, gearText;
-    public Vector3 eyeDefault, hPoint, wheelCentre;
+    public Vector3 eyeDefault, hPoint, wheelCenter;
     public float seatForwardOffset, seatUpOffset;   // user offsets (m), saved in the input profile
     static readonly Dictionary<Color, Material> mats = new Dictionary<Color, Material>();
 
-    // @description - Height of the ground plane in the car frame at design ride height (wheel-centre drop plus tire radius, below the corner origin).
+    // @description - Height of the ground plane in the car frame at design ride height (wheel-center drop plus tire radius, below the corner origin).
     // @param {CarParams} carParams - car parameters
     // @return {float} - ground height in m (negative = below the car origin)
     public static float GroundY(CarParams carParams) => -(carParams.hubDropDesign + carParams.wheelRadius);
@@ -25,10 +25,10 @@ public class Cockpit : MonoBehaviour
         float torsoLength = carParams.sittingEyeRatio * carParams.driverStature - carParams.hipPointAboveSeat, seatBackAngleRad = carParams.seatBackAngle * Mathf.Deg2Rad;   // H-point -> eye along the reclined torso
         return HPoint(carParams) + new Vector3(0f, torsoLength * Mathf.Cos(seatBackAngleRad), -torsoLength * Mathf.Sin(seatBackAngleRad));
     }
-    // @description - Centre of the steering wheel relative to the H-point (ahead and above it, E).
+    // @description - Center of the steering wheel relative to the H-point (ahead and above it, E).
     // @param {CarParams} carParams - car parameters
-    // @return {Vector3} - steering-wheel centre in m in the car frame
-    public static Vector3 WheelCentre(CarParams carParams) => HPoint(carParams) + new Vector3(0f, carParams.wheelCentreAboveHipPoint, carParams.wheelCentreAheadOfHipPoint);
+    // @return {Vector3} - steering-wheel center in m in the car frame
+    public static Vector3 WheelCenter(CarParams carParams) => HPoint(carParams) + new Vector3(0f, carParams.wheelCenterAboveHipPoint, carParams.wheelCenterAheadOfHipPoint);
     // @description - Moves the driver eye anchor by the user seat adjustment, limited to the seat travel range of the car.
     // @param {float} forwardOffset - seat movement forward in m (+ = forward)
     // @param {float} upOffset - seat height offset in m (+ = up; a VR viewing offset)
@@ -38,7 +38,7 @@ public class Cockpit : MonoBehaviour
         var carParams = car.carParams; seatForwardOffset = Mathf.Clamp(forwardOffset, -carParams.seatTravelAft, carParams.seatTravelFore); seatUpOffset = Mathf.Clamp(upOffset, -carParams.seatTravelDown, carParams.seatTravelUp);
         if (eyeAnchor) eyeAnchor.localPosition = eyeDefault + new Vector3(0f, seatUpOffset, seatForwardOffset);
     }
-    // @description - Re-centres a tracked VR head: rotates and shifts the recenter transform so the current head pose lands on the eye point, facing forward.
+    // @description - Re-centers a tracked VR head: rotates and shifts the recenter transform so the current head pose lands on the eye point, facing forward.
     // @param {Transform} head - the tracked camera (child of the recenter transform)
     // @return {Void} - nothing
     public void Recenter(Transform head)   // head = tracked camera under 'recenter'; puts the current head pose on the eye point, facing forward
@@ -47,20 +47,20 @@ public class Cockpit : MonoBehaviour
         float headYawDeg = head.localEulerAngles.y; recenter.localRotation = Quaternion.Euler(0f, -headYawDeg, 0f);
         recenter.localPosition = -(recenter.localRotation * head.localPosition);
     }
-    // @description - Returns a shared simple opaque material for a colour (one material per colour is created and cached).
-    // @param {Color} color - albedo colour
+    // @description - Returns a shared simple opaque material for a color (one material per color is created and cached).
+    // @param {Color} color - albedo color
     // @return {Material} - the cached material
     static Material Mat(Color color)
     {
         if (mats.TryGetValue(color, out var material) && material) return material;
-        material = new Material(Shader.Find("Standard")) { color = color }; material.SetFloat("_Glossiness", 0.2f); mats[color] = material; return material;   // one shared simple material per colour
+        material = new Material(Shader.Find("Standard")) { color = color }; material.SetFloat("_Glossiness", 0.2f); mats[color] = material; return material;   // one shared simple material per color
     }
     // @description - Creates a collider-free unlit-shadow cube used as placeholder cockpit geometry.
     // @param {string} objectName - name of the new object
     // @param {Transform} parent - transform to attach to
     // @param {Vector3} position - local position in m
     // @param {Vector3} scale - local size in m
-    // @param {Color} color - albedo colour
+    // @param {Color} color - albedo color
     // @param {Quaternion?} rotation - optional local rotation (identity if null)
     // @return {Transform} - the new object transform
     Transform Box(string objectName, Transform parent, Vector3 position, Vector3 scale, Color color, Quaternion? rotation = null)
@@ -75,18 +75,18 @@ public class Cockpit : MonoBehaviour
     // @param {Vector3} startPoint - first end point, local m
     // @param {Vector3} endPoint - second end point, local m
     // @param {float} thickness - cross-section thickness in m
-    // @param {Color} color - albedo colour
+    // @param {Color} color - albedo color
     // @return {Transform} - the new strut transform
     Transform Strut(string objectName, Transform parent, Vector3 startPoint, Vector3 endPoint, float thickness, Color color)
     {
         var direction = endPoint - startPoint; return Box(objectName, parent, (startPoint + endPoint) * 0.5f, new Vector3(thickness, thickness, direction.magnitude), color, Quaternion.LookRotation(direction));
     }
-    // @description - Creates a centred 3D text label for the gauges.
+    // @description - Creates a centered 3D text label for the gauges.
     // @param {string} objectName - name of the new object
     // @param {Transform} parent - transform to attach to
     // @param {Vector3} position - local position in m
     // @param {float} size - character size in m
-    // @param {Color} color - text colour
+    // @param {Color} color - text color
     // @return {TextMesh} - the text mesh
     TextMesh Text(string objectName, Transform parent, Vector3 position, float size, Color color)
     {
@@ -99,14 +99,14 @@ public class Cockpit : MonoBehaviour
     public void Build()
     {
         if (root) return; var carParams = car.carParams;
-        eyeDefault = EyePoint(carParams); hPoint = HPoint(carParams); wheelCentre = WheelCentre(carParams);
+        eyeDefault = EyePoint(carParams); hPoint = HPoint(carParams); wheelCenter = WheelCenter(carParams);
         root = new GameObject("Cockpit").transform; root.SetParent(car.transform, false);
         float groundY = GroundY(carParams), roofY = groundY + 1.28f - 0.07f;   // overall height 1.28 m (S) minus roof skin + headliner (E)
-        Color trim = new Color(0.30f, 0.29f, 0.27f), rimColour = new Color(0.07f, 0.07f, 0.07f), paint = new Color(0.55f, 0.08f, 0.06f), glassFrame = new Color(0.05f, 0.05f, 0.05f);
-        Vector3 wheelCentrePosition = wheelCentre; float cowlZ = wheelCentrePosition.z + 0.55f, cowlY = wheelCentrePosition.y + 0.17f, halfW = 0.68f;   // cowl/windscreen base and interior half width (E)
+        Color trim = new Color(0.30f, 0.29f, 0.27f), rimColor = new Color(0.07f, 0.07f, 0.07f), paint = new Color(0.55f, 0.08f, 0.06f), glassFrame = new Color(0.05f, 0.05f, 0.05f);
+        Vector3 wheelCenterPosition = wheelCenter; float cowlZ = wheelCenterPosition.z + 0.55f, cowlY = wheelCenterPosition.y + 0.17f, halfW = 0.68f;   // cowl/windscreen base and interior half width (E)
         float windscreenRake = 57f * Mathf.Deg2Rad, roofFrontZ = cowlZ - (roofY - cowlY) * Mathf.Tan(windscreenRake);   // windscreen rake from vertical (E, wedge coupe)
-        Box("Dash", root, new Vector3(0f, wheelCentrePosition.y + 0.06f, wheelCentrePosition.z + 0.33f), new Vector3(2f * halfW, 0.16f, 0.36f), trim);
-        Box("Binnacle", root, new Vector3(-carParams.driverLateral, wheelCentrePosition.y + 0.15f, wheelCentrePosition.z + 0.24f), new Vector3(0.42f, 0.04f, 0.2f), trim);
+        Box("Dash", root, new Vector3(0f, wheelCenterPosition.y + 0.06f, wheelCenterPosition.z + 0.33f), new Vector3(2f * halfW, 0.16f, 0.36f), trim);
+        Box("Binnacle", root, new Vector3(-carParams.driverLateral, wheelCenterPosition.y + 0.15f, wheelCenterPosition.z + 0.24f), new Vector3(0.42f, 0.04f, 0.2f), trim);
         Box("Bonnet", root, new Vector3(0f, cowlY - 0.04f, (cowlZ + carParams.wheelbase * 0.5f + 0.8f) * 0.5f), new Vector3(1.5f, 0.02f, carParams.wheelbase * 0.5f + 0.8f - cowlZ), paint);
         Box("Roof", root, new Vector3(0f, roofY, roofFrontZ - 0.65f), new Vector3(2f * halfW, 0.03f, 1.3f), trim);
         foreach (float side in new[] { -1f, 1f })
@@ -119,19 +119,19 @@ public class Cockpit : MonoBehaviour
         Box("Seat", root, hPoint + new Vector3(0f, -0.08f, 0.05f), new Vector3(0.5f, 0.1f, 0.5f), new Color(0.2f, 0.2f, 0.22f));
         Box("SeatBack", root, hPoint + new Vector3(0f, 0.3f, -0.2f), new Vector3(0.5f, 0.6f, 0.08f), new Color(0.2f, 0.2f, 0.22f), Quaternion.Euler(-carParams.seatBackAngle, 0f, 0f));
         // steering wheel: tilted column, spin child rotates with the real column angle (1:1, full 2 x lock)
-        var steeringWheelTilt = new GameObject("SteeringWheel").transform; steeringWheelTilt.SetParent(root, false); steeringWheelTilt.localPosition = wheelCentrePosition; steeringWheelTilt.localRotation = Quaternion.Euler(carParams.wheelTiltDeg, 0f, 0f);
+        var steeringWheelTilt = new GameObject("SteeringWheel").transform; steeringWheelTilt.SetParent(root, false); steeringWheelTilt.localPosition = wheelCenterPosition; steeringWheelTilt.localRotation = Quaternion.Euler(carParams.wheelTiltDeg, 0f, 0f);
         wheelSpin = new GameObject("Spin").transform; wheelSpin.SetParent(steeringWheelTilt, false);
         int rimSegmentCount = 24; float wheelRadius = carParams.wheelDiameter * 0.5f;
         for (int i = 0; i < rimSegmentCount; i++)
         {
             float segmentStartAngle = i * 2f * Mathf.PI / rimSegmentCount, segmentEndAngle = (i + 1) * 2f * Mathf.PI / rimSegmentCount;
-            Strut("Rim", wheelSpin, new Vector3(wheelRadius * Mathf.Sin(segmentStartAngle), wheelRadius * Mathf.Cos(segmentStartAngle), 0f), new Vector3(wheelRadius * Mathf.Sin(segmentEndAngle), wheelRadius * Mathf.Cos(segmentEndAngle), 0f), 0.028f, rimColour);
+            Strut("Rim", wheelSpin, new Vector3(wheelRadius * Mathf.Sin(segmentStartAngle), wheelRadius * Mathf.Cos(segmentStartAngle), 0f), new Vector3(wheelRadius * Mathf.Sin(segmentEndAngle), wheelRadius * Mathf.Cos(segmentEndAngle), 0f), 0.028f, rimColor);
         }
         foreach (float spokeAngleDeg in new[] { 90f, 180f, 270f }) { float spokeAngleRad = spokeAngleDeg * Mathf.Deg2Rad; Strut("Spoke", wheelSpin, Vector3.zero, new Vector3(wheelRadius * Mathf.Sin(spokeAngleRad), wheelRadius * Mathf.Cos(spokeAngleRad), 0f), 0.025f, new Color(0.65f, 0.65f, 0.68f)); }
         Box("TopMark", wheelSpin, new Vector3(0f, wheelRadius, -0.005f), new Vector3(0.02f, 0.035f, 0.035f), new Color(0.9f, 0.6f, 0.1f));
         Strut("Column", steeringWheelTilt, new Vector3(0f, 0f, 0.02f), new Vector3(0f, 0f, 0.35f), 0.05f, trim);
         // gauges (face the driver, same tilt as the binnacle top)
-        var gaugePanel = new GameObject("Gauges").transform; gaugePanel.SetParent(root, false); gaugePanel.localPosition = new Vector3(-carParams.driverLateral, wheelCentrePosition.y + 0.08f, wheelCentrePosition.z + 0.2f); gaugePanel.localRotation = Quaternion.Euler(carParams.wheelTiltDeg, 0f, 0f);
+        var gaugePanel = new GameObject("Gauges").transform; gaugePanel.SetParent(root, false); gaugePanel.localPosition = new Vector3(-carParams.driverLateral, wheelCenterPosition.y + 0.08f, wheelCenterPosition.z + 0.2f); gaugePanel.localRotation = Quaternion.Euler(carParams.wheelTiltDeg, 0f, 0f);
         speedNeedle = Gauge(gaugePanel, -0.09f, "mph", out speedText); rpmNeedle = Gauge(gaugePanel, 0.09f, "rpm", out rpmText);
         gearText = Text("Gear", gaugePanel, new Vector3(0f, -0.02f, -0.006f), 0.006f, new Color(1f, 0.8f, 0.2f));
         eyeAnchor = new GameObject("EyeAnchor").transform; eyeAnchor.SetParent(car.transform, false);
@@ -140,17 +140,17 @@ public class Cockpit : MonoBehaviour
     }
     // @description - Builds one round dial: face, needle pivot with needle, label and value text.
     // @param {Transform} transform - parent (the gauge panel)
-    // @param {float} centreX - horizontal position of the dial centre in m
+    // @param {float} centerX - horizontal position of the dial center in m
     // @param {string} label - unit label shown under the dial
     // @param {TextMesh} valueText - receives the numeric value text
     // @return {Transform} - the needle pivot to rotate
-    Transform Gauge(Transform transform, float centreX, string label, out TextMesh valueText)
+    Transform Gauge(Transform transform, float centerX, string label, out TextMesh valueText)
     {
-        Box("Face", transform, new Vector3(centreX, 0f, 0f), new Vector3(0.14f, 0.14f, 0.005f), new Color(0.02f, 0.02f, 0.02f));
-        var pivot = new GameObject("NeedlePivot").transform; pivot.SetParent(transform, false); pivot.localPosition = new Vector3(centreX, 0f, -0.004f);
+        Box("Face", transform, new Vector3(centerX, 0f, 0f), new Vector3(0.14f, 0.14f, 0.005f), new Color(0.02f, 0.02f, 0.02f));
+        var pivot = new GameObject("NeedlePivot").transform; pivot.SetParent(transform, false); pivot.localPosition = new Vector3(centerX, 0f, -0.004f);
         Box("Needle", pivot, new Vector3(0f, 0.03f, 0f), new Vector3(0.004f, 0.06f, 0.002f), new Color(1f, 0.35f, 0.1f));
-        Text(label, transform, new Vector3(centreX, -0.045f, -0.004f), 0.0022f, Color.white);
-        valueText = Text(label + "Value", transform, new Vector3(centreX, -0.022f, -0.004f), 0.0035f, Color.white); return pivot;
+        Text(label, transform, new Vector3(centerX, -0.045f, -0.004f), 0.0022f, Color.white);
+        valueText = Text(label + "Value", transform, new Vector3(centerX, -0.022f, -0.004f), 0.0035f, Color.white); return pivot;
     }
     // @description - Animates the cockpit each frame: hides the 3D text behind the pause menu, turns the wheel with the handwheel angle and sweeps the dials. Dial sweep is 240 deg over 0-150 mph and 0-8000 rpm (E).
     // @return {Void} - nothing

@@ -86,7 +86,7 @@ public class VrMouseClickTests
         queue.Sample(false, dragEnd, 0f); Frame(queue, dragEnd, Draw);
         Assert.Greater(sliderValue, 0.8f, "slider must follow the VR cursor drag");
     }
-    // @description - Verifies VrMouse.MapToPanel for the window's bottom-left corner (0, 480) and the window centre (426.67, 240) on a 1280x720 panel at 1.5 scale.
+    // @description - Verifies VrMouse.MapToPanel for the window's bottom-left corner (0, 480) and the window center (426.67, 240) on a 1280x720 panel at 1.5 scale.
     // @return {Void} - nothing
     [Test] public void MapToPanel_Corners()
     {

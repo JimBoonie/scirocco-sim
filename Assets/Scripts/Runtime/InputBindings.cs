@@ -6,7 +6,7 @@ using System; using System.Collections.Generic; using UnityEngine;
 using UnityEngine.InputSystem; using UnityEngine.InputSystem.Controls; using UnityEngine.InputSystem.LowLevel;
 
 public enum InAction { Steer, Throttle, Brake, Clutch, Handbrake, ShiftUp, ShiftDown, Gear1, Gear2, Gear3, Gear4, Gear5, GearR, Reset, Menu, LookX, LookY, Recenter, CameraToggle, HudToggle, MenuUp, MenuDown, MenuLeft, MenuRight, MenuSelect, Ignition, Starter, MenuTabNext, MenuTabPrev, ResetToStart }   // saved as ints in the settings file; changing the order or removing a member requires bumping BindingProfile.CurrentVersion
-public enum AxisHalf { Full, Positive, Negative }      // Positive/Negative: use one half of a combined pedal axis (centre -> max / centre -> min)
+public enum AxisHalf { Full, Positive, Negative }      // Positive/Negative: use one half of a combined pedal axis (center -> max / center -> min)
 public enum SteerSource { Wheel, Stick }               // Wheel: absolute angle (user's wheel = steering column). Stick/keys: target lock, rate-limited like the keyboard
 public enum SteerMapping { RealColumn1to1, ScaleToCarLock }
 
@@ -15,11 +15,11 @@ public enum SteerMapping { RealColumn1to1, ScaleToCarLock }
     public float min = 0f, max = 1f, center = 0f; public bool invert; public bool calibrated; public float deadzone = 0f; public AxisHalf half = AxisHalf.Full;
     public bool hasRest; public float rest;             // full-range pedal: raw value at rest (maps to 0); the far end of the captured range maps to 1
     public float PressedEnd => invert ? min : max;
-    // @description - Stores a calibration capture (the user moves a pedal or wheel through its full travel). Rejects a capture whose travel is under 0.05 so a pedal that never moved keeps its old calibration. For a combined (bipolar) axis the rest value becomes the centre; for a full-range pedal the end nearer the rest value is treated as released and the axis is inverted if that end is the maximum.
+    // @description - Stores a calibration capture (the user moves a pedal or wheel through its full travel). Rejects a capture whose travel is under 0.05 so a pedal that never moved keeps its old calibration. For a combined (bipolar) axis the rest value becomes the center; for a full-range pedal the end nearer the rest value is treated as released and the axis is inverted if that end is the maximum.
     // @param {float} capturedMin - smallest raw axis value seen during the capture (raw device units, normally -1..1)
     // @param {float} capturedMax - largest raw axis value seen during the capture (raw device units)
     // @param {float} restRaw - raw axis value when the control was at rest (raw device units)
-    // @param {bool} bipolar - true for wheels and sticks that are centred at rest, false for pedals that rest at one end
+    // @param {bool} bipolar - true for wheels and sticks that are centered at rest, false for pedals that rest at one end
     // @return {bool} - true if the capture was accepted, false if the control barely moved and the old calibration was kept
     public bool ApplyCapture(float capturedMin, float capturedMax, float restRaw, bool bipolar)
     {
@@ -29,9 +29,9 @@ public enum SteerMapping { RealColumn1to1, ScaleToCarLock }
         invert = Mathf.Abs(restRaw - max) < Mathf.Abs(restRaw - min);   // rest nearer max -> axis reads high when released -> inverted
         rest = restRaw; hasRest = true; return true;
     }
-    // @description - Converts a raw device axis value into the 0..1 (pedal) or -1..1 (wheel, stick) range the sim uses, applying the stored calibration: centre, half-axis selection, rest position, inversion and a dead zone that is subtracted and the remainder rescaled to full range.
+    // @description - Converts a raw device axis value into the 0..1 (pedal) or -1..1 (wheel, stick) range the sim uses, applying the stored calibration: center, half-axis selection, rest position, inversion and a dead zone that is subtracted and the remainder rescaled to full range.
     // @param {float} rawValue - raw axis value from the device (raw device units, normally -1..1)
-    // @param {bool} bipolar - true for a centred axis returning -1..1, false for a pedal returning 0..1
+    // @param {bool} bipolar - true for a centered axis returning -1..1, false for a pedal returning 0..1
     // @return {float} - calibrated value, -1..1 if bipolar, otherwise 0..1 (dimensionless)
     public float Normalize(float rawValue, bool bipolar)
     {
@@ -62,7 +62,7 @@ public enum SteerMapping { RealColumn1to1, ScaleToCarLock }
     public AxisCalibration calibration = new AxisCalibration();
     [NonSerialized] public InputControl resolved; [NonSerialized] public float restRaw = float.NaN;
     // debounce state (button actions): raw sample, debounced state, candidate state + real time since it has been stable, chatterCount counter
-    [NonSerialized] public bool debounceRawState, debounceStableState, debounceCandidateState, debounceInitialised; [NonSerialized] public double debounceCandidateSince; [NonSerialized] public uint debounceLastUpdateId = uint.MaxValue; [NonSerialized] public int chatterCount;   // first reading of an uncalibrated pedal axis = its rest position
+    [NonSerialized] public bool debounceRawState, debounceStableState, debounceCandidateState, debounceInitialized; [NonSerialized] public double debounceCandidateSince; [NonSerialized] public uint debounceLastUpdateId = uint.MaxValue; [NonSerialized] public int chatterCount;   // first reading of an uncalibrated pedal axis = its rest position
     public string Label => (string.IsNullOrEmpty(product) ? layout : product) + (index > 0 ? $"#{index}" : "") + ": " + control + (negative ? " (-)" : "");
 }
 [Serializable] public class ActionSlots { public InAction action; public List<Binding> slots = new List<Binding>(); }
@@ -76,7 +76,7 @@ public enum SteerMapping { RealColumn1to1, ScaleToCarLock }
     public bool experimentalDrivelineEnabled = false;   // Experimental tab: driveline shuffle model placeholder (not implemented yet; the toggle is disabled). A new JSON field: files without it load as false, so no version bump and no binding reset
     public bool experimentalTransmissionEnabled = false;   // Experimental tab: transmission and synchronizer model placeholder (not implemented yet; the toggle is disabled). Independent of experimentalDrivelineEnabled. New JSON field: absent in old files = false, no version bump
     public bool tireThermal = false; public float frontColdPressurePsi = 24.7f, rearColdPressurePsi = 24.7f;   // tire thermal model option; cold pressures in psi (VW 1.7 bar = 24.7 psi)
-    public float audioVolume = 0.8f, tireVolume = 1f, ambientBrightness = 1.3f; public bool audioMute; public bool hudVisible = true;   // H: grey info boxes (telemetry / FFB / joints) shown   // master volume 0..1   // autoClutch: for keyboard/gamepad drivers without a clutch pedal (option)   // spawn with engine stopped; starter only with clutch fully in or neutral (1984 car had no interlock)
+    public float audioVolume = 0.8f, tireVolume = 1f, ambientBrightness = 1.3f; public bool audioMute; public bool hudVisible = true;   // H: gray info boxes (telemetry / FFB / joints) shown   // master volume 0..1   // autoClutch: for keyboard/gamepad drivers without a clutch pedal (option)   // spawn with engine stopped; starter only with clutch fully in or neutral (1984 car had no interlock)
     public bool vrEnabled = false, cockpitView = false;   // VR on/off (launch flags -vr / -novr override); flat-screen camera
     public float seatForwardOffset = 0f, seatUpOffset = 0f;             // seat adjustment from the estimated eye point (m), range in CarParams
     public float wheelRotationDeg = 0f;                 // user's wheel lock-to-lock rotation; 0 = the car's own lock-to-lock (2 x handwheelLockDeg = 1269 deg, D from sourced lock + ratio)
@@ -90,7 +90,7 @@ public enum SteerMapping { RealColumn1to1, ScaleToCarLock }
     public float debounceMs = 0f;                       // OPTIONAL button debounce safety (0 = off): a raw change registers only after it is stable this long (real time). Not the fix for twitching: see HidReportFilter                // user safety cap on the device command
     public bool forceFeedbackInvert;                              // device direction convention (calibration, not a gain)
     // @description - Wheel rotation the user's wheel covers lock to lock. Uses the value from the settings, or twice the car's lock when the setting is 0 (the car's own range).
-    // @param {float} carLockDeg - car steering lock from centre to one side, in degrees of handwheel rotation
+    // @param {float} carLockDeg - car steering lock from center to one side, in degrees of handwheel rotation
     // @return {float} - lock-to-lock rotation of the user's wheel in degrees
     public float RotationDeg(float carLockDeg) => wheelRotationDeg > 0f ? wheelRotationDeg : 2f * carLockDeg;
     public SteerMapping mapping = SteerMapping.RealColumn1to1;
@@ -105,13 +105,13 @@ public class InputMapper
 {
     public BindingProfile profile; bool dirty = true;
     readonly Dictionary<InAction, bool> prevPressed = new Dictionary<InAction, bool>();
-    // @description - Tells whether an action is a centred axis (steering and the two look axes, -1..1) rather than a pedal or button (0..1).
+    // @description - Tells whether an action is a centered axis (steering and the two look axes, -1..1) rather than a pedal or button (0..1).
     // @param {InAction} action - action to test
     // @return {bool} - true for Steer, LookX and LookY
     public static bool IsBipolar(InAction action) => action == InAction.Steer || action == InAction.LookX || action == InAction.LookY;
-    // @description - Tells whether an action is read as an analogue axis (pedals, handbrake, steering and look) rather than as a button.
+    // @description - Tells whether an action is read as an analog axis (pedals, handbrake, steering and look) rather than as a button.
     // @param {InAction} action - action to test
-    // @return {bool} - true for analogue actions, false for button actions such as shifting and menu keys
+    // @return {bool} - true for analog actions, false for button actions such as shifting and menu keys
     public static bool IsAxisAction(InAction action) => action <= InAction.Handbrake || action == InAction.LookX || action == InAction.LookY;
 
     // @description - Creates the mapper for a binding profile and starts listening for devices being plugged or unplugged so bindings are re-resolved.
@@ -197,12 +197,12 @@ public class InputMapper
     public static float Raw(InputControl control) => control is AxisControl axisControl ? axisControl.ReadUnprocessedValue() : 0f;   // skip layout processors (e.g. stick deadzone); calibration is explicit
 
     // ---------- reading ----------
-    // @description - Reads an action as a single value from all of its bindings. For centred axes the strongest analogue value wins unless the summed digital keys are stronger; for pedals the largest value wins. A binding with steer source Wheel reports separately so the wheel can bypass the gamepad assist.
+    // @description - Reads an action as a single value from all of its bindings. For centered axes the strongest analog value wins unless the summed digital keys are stronger; for pedals the largest value wins. A binding with steer source Wheel reports separately so the wheel can bypass the gamepad assist.
     // @param {InAction} action - action to read
     // @param {bool} anyWheel - set to true if a wheel-source binding is bound and resolved
     // @param {float} wheel - wheel-source value, -1..1 (0 if none)
     // @param {float} digital - summed key and button contribution, clamped to -1..1
-    // @return {float} - combined value, -1..1 for centred axes and 0..1 for pedals (dimensionless)
+    // @return {float} - combined value, -1..1 for centered axes and 0..1 for pedals (dimensionless)
     public float Axis(InAction action, out bool anyWheel, out float wheel, out float digital)
     {
         if (dirty) Resolve();
@@ -220,7 +220,7 @@ public class InputMapper
     }
     // @description - Short form of Axis for callers that only need the combined value and not the wheel and digital breakdown.
     // @param {InAction} action - action to read
-    // @return {float} - combined value, -1..1 for centred axes and 0..1 for pedals (dimensionless)
+    // @return {float} - combined value, -1..1 for centered axes and 0..1 for pedals (dimensionless)
     public float Axis(InAction action) => Axis(action, out _, out _, out _);
     // @description - Describes which control is currently driving an action (device, control and value), for the bindings menu live display.
     // @param {InAction} action - action to describe
@@ -238,7 +238,7 @@ public class InputMapper
     public static float LookDeadzone(float axisValue) { float deadzone = InputSystem.settings.defaultDeadzoneMin; float magnitude = Mathf.Abs(axisValue); return magnitude <= deadzone ? 0f : Mathf.Sign(axisValue) * Mathf.Clamp01((magnitude - deadzone) / (1f - deadzone)); }
     // @description - Detects a HID pedal axis the user has not calibrated yet (still at the default -1..1 range, not a gamepad or keyboard) so it can be read relative to its rest position instead of a wrong fixed range.
     // @param {Binding} binding - binding to test
-    // @param {bool} isBipolar - true if the action is a centred axis (such bindings are never treated as pedals)
+    // @param {bool} isBipolar - true if the action is a centered axis (such bindings are never treated as pedals)
     // @return {bool} - true if the binding should use rest-relative reading
     public static bool UncalibratedPedal(Binding binding, bool isBipolar) => !isBipolar && !binding.calibration.calibrated && binding.calibration.half == AxisHalf.Full && binding.resolved is AxisControl
         && !(binding.resolved is ButtonControl) && !(binding.resolved.device is Gamepad) && !(binding.resolved.device is Keyboard) && binding.calibration.min == -1f && binding.calibration.max == 1f;
@@ -253,7 +253,7 @@ public class InputMapper
     // @description - Counts bound and connected pedal axes that still need calibrating, for the menu warning.
     // @return {int} - number of uncalibrated pedal bindings
     public int UncalibratedCount() { int count = 0; foreach (var actionSlots in profile.actions) foreach (var binding in actionSlots.slots) if (binding.resolved != null && UncalibratedPedal(binding, IsBipolar(actionSlots.action))) count++; return count; }
-    // @description - Tells whether an action is currently held: a debounced button, or an analogue axis past half travel.
+    // @description - Tells whether an action is currently held: a debounced button, or an analog axis past half travel.
     // @param {InAction} action - action to test
     // @return {bool} - true while the action is held
     public bool Held(InAction action)
@@ -313,7 +313,7 @@ public class InputMapper
         foreach (var binding in profile.Get(action)) if (binding.resolved is ButtonControl buttonControl && (exclude == null || !exclude.Contains(buttonControl)) && buttonControl.wasPressedThisFrame) return true;   // catches sub-frame taps
         return false;
     }
-    // @description - Tells whether an analogue binding of an action is past half travel, skipping the controls in an exclusion set.
+    // @description - Tells whether an analog binding of an action is past half travel, skipping the controls in an exclusion set.
     // @param {InAction} action - action to test
     // @param {HashSet<InputControl>} exclude - controls to ignore, may be null
     // @return {bool} - true if any non-excluded binding is past 0.5
@@ -333,7 +333,7 @@ public class InputMapper
         float rawValue = Raw(binding.resolved); if (float.IsNaN(binding.restRaw)) binding.restRaw = rawValue;
         return Mathf.Clamp01(Mathf.Abs(rawValue - binding.restRaw));   // full travel of a -1..1 axis away from rest = 2 -> clamped; half travel = pressed
     }
-    // @description - Tells whether an action is active, using the axis threshold for analogue actions and the debounced state for buttons, skipping excluded controls.
+    // @description - Tells whether an action is active, using the axis threshold for analog actions and the debounced state for buttons, skipping excluded controls.
     // @param {InAction} action - action to test
     // @param {HashSet<InputControl>} exclude - controls to ignore, may be null
     // @param {bool} latched - whether the action was already latched (kept for the caller's signature, not used in the decision)
@@ -346,7 +346,7 @@ public class InputMapper
     }
     /// real-time clock for debounce (seconds); unscaled, independent of physics ticks and timeScale (menu pauses). Replaceable in tests.
     public static Func<double> Clock = () => Time.realtimeSinceStartupAsDouble;
-    // @description - Returns the debounced pressed state of a button binding. A change must stay stable for the profile's debounce time (real seconds) before it is accepted; analogue controls use hysteresis (on at 0.65, off at 0.35). Counts chatter (a change that reverts before being accepted). Evaluated once per input update.
+    // @description - Returns the debounced pressed state of a button binding. A change must stay stable for the profile's debounce time (real seconds) before it is accepted; analog controls use hysteresis (on at 0.65, off at 0.35). Counts chatter (a change that reverts before being accepted). Evaluated once per input update.
     // @param {Binding} binding - binding to read
     // @return {bool} - debounced pressed state
     public bool Debounced(Binding binding)
@@ -354,7 +354,7 @@ public class InputMapper
         uint updateId = InputState.updateCount; if (binding.debounceLastUpdateId == updateId) return binding.debounceStableState; binding.debounceLastUpdateId = updateId;
         double now = Clock(), debounceSeconds = Mathf.Max(0f, profile.debounceMs) * 1e-3;
         bool rawPressed = ButtonLevel(binding) > (binding.debounceStableState ? PressOff : PressOn);
-        if (!binding.debounceInitialised) { binding.debounceInitialised = true; binding.debounceRawState = binding.debounceStableState = binding.debounceCandidateState = rawPressed; binding.debounceCandidateSince = now; return rawPressed; }
+        if (!binding.debounceInitialized) { binding.debounceInitialized = true; binding.debounceRawState = binding.debounceStableState = binding.debounceCandidateState = rawPressed; binding.debounceCandidateSince = now; return rawPressed; }
         if (binding.resolved is ButtonControl buttonControl && rawPressed == binding.debounceRawState && (buttonControl.wasPressedThisFrame || buttonControl.wasReleasedThisFrame)) binding.chatterCount++;   // bounced and came back within one update
         if (rawPressed != binding.debounceRawState) { if (rawPressed == binding.debounceStableState) binding.chatterCount++; binding.debounceRawState = rawPressed; }   // went back before the change was accepted -> chatterCount
         if (rawPressed != binding.debounceCandidateState) { binding.debounceCandidateState = rawPressed; binding.debounceCandidateSince = now; }
@@ -399,11 +399,11 @@ public class InputMapper
     public GamepadSteering assist; public GamepadSteerContext? assistCtx; public Func<float, float> meanToHandwheel;   // set by InputRouter each frame   // unclamped: physical wheel angle beyond the car's rack stop (FFB soft lock)
     // @description - Advances the steering column by one frame. A real wheel (source Wheel, no stick or key input) drives the column directly, 1:1 or scaled to the car's lock. Stick or keys go through the gamepad assist if it is enabled, otherwise move towards the target at the rate limit. The result is clamped to the car's rack end stop; the unclamped wheel angle is kept for force feedback soft lock.
     // @param {float} deltaTime - frame time in seconds
-    // @param {float} carLockDeg - car steering lock from centre to one side, in degrees of handwheel rotation
+    // @param {float} carLockDeg - car steering lock from center to one side, in degrees of handwheel rotation
     // @param {float} steerRateRoadDegPerS - steering rate limit in road-wheel degrees per second
-    // @param {float} centreRatio - handwheel degrees per road-wheel degree at centre (dimensionless)
+    // @param {float} centerRatio - handwheel degrees per road-wheel degree at center (dimensionless)
     // @return {float} - handwheel angle in degrees (positive = right), within plus or minus carLockDeg
-    public float StepSteer(float deltaTime, float carLockDeg, float steerRateRoadDegPerS, float centreRatio)
+    public float StepSteer(float deltaTime, float carLockDeg, float steerRateRoadDegPerS, float centerRatio)
     {
         float steerInput = Axis(InAction.Steer, out bool anyWheel, out float wheel, out float digital);
         float halfWheelRotationDeg = 0.5f * profile.RotationDeg(carLockDeg);
@@ -416,8 +416,8 @@ public class InputMapper
             else
             {
                 float target = steerInput * carLockDeg;
-                handwheelDeg = Mathf.MoveTowards(handwheelDeg, target, steerRateRoadDegPerS * centreRatio * deltaTime);
-                if (assist != null) { assist.roadDeg = handwheelDeg / centreRatio; assist.filtered = steerInput; }
+                handwheelDeg = Mathf.MoveTowards(handwheelDeg, target, steerRateRoadDegPerS * centerRatio * deltaTime);
+                if (assist != null) { assist.roadDeg = handwheelDeg / centerRatio; assist.filtered = steerInput; }
             }
         }
         else
@@ -425,7 +425,7 @@ public class InputMapper
             // (2026-10-14 fix: this branch used to be an `else if (assist != null)` that only synced the assist state, so once InputRouter
             // created the assist the wheel angle was never applied and wheel steering froze, whether the assist was on or off.)
             handwheelDeg = profile.mapping == SteerMapping.RealColumn1to1 ? wheel * halfWheelRotationDeg : wheel * carLockDeg;
-            if (assist != null) { assist.roadDeg = handwheelDeg / centreRatio; assist.filtered = 0f; }   // keep the assist bumpless if a stick takes over
+            if (assist != null) { assist.roadDeg = handwheelDeg / centerRatio; assist.filtered = 0f; }   // keep the assist bumpless if a stick takes over
         }
         wheelDegUnclamped = anyWheel && Mathf.Abs(steerInput) == 0f ? (profile.mapping == SteerMapping.RealColumn1to1 ? wheel * halfWheelRotationDeg : wheel * carLockDeg) : handwheelDeg;
         handwheelDeg = Mathf.Clamp(handwheelDeg, -carLockDeg, carLockDeg);   // car's rack end stop
@@ -518,7 +518,7 @@ public class InputMapper
         AddGamepadBinding(InAction.Menu, "start"); AddGamepadBinding(InAction.LookX, "rightStick/x", true); AddGamepadBinding(InAction.LookY, "rightStick/y", true);
         return profile;
     }
-    // @description - Adds the default keys and gamepad controls for recentring, camera and HUD toggles, menu navigation, ignition and starter.
+    // @description - Adds the default keys and gamepad controls for recentering, camera and HUD toggles, menu navigation, ignition and starter.
     // @param {BindingProfile} profile - profile to add the bindings to
     // @return {Void} - nothing
     static void AddVrAndMenuDefaults(BindingProfile profile)   // defaults for actions added in profile version 2 (VR / menu navigation); wheel buttons can be bound to them in the menu

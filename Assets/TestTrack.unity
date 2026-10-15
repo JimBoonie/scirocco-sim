@@ -167,7 +167,7 @@ MonoBehaviour:
   driveTorque: 0
   brakeTorque: 0
   camberDeg: 0
-  rollCentreHeight: 0
+  rollCenterHeight: 0
   angularVelocity: 0
   slipRatio: 0
   slipAngle: 0
@@ -246,7 +246,7 @@ MonoBehaviour:
   driveTorque: 0
   brakeTorque: 0
   camberDeg: 0
-  rollCentreHeight: 0
+  rollCenterHeight: 0
   angularVelocity: 0
   slipRatio: 0
   slipAngle: 0
@@ -408,7 +408,7 @@ MonoBehaviour:
   driveTorque: 0
   brakeTorque: 0
   camberDeg: 0
-  rollCentreHeight: 0
+  rollCenterHeight: 0
   angularVelocity: 0
   slipRatio: 0
   slipAngle: 0
@@ -2149,7 +2149,7 @@ MonoBehaviour:
   driveTorque: 0
   brakeTorque: 0
   camberDeg: 0
-  rollCentreHeight: 0
+  rollCenterHeight: 0
   angularVelocity: 0
   slipRatio: 0
   slipAngle: 0
@@ -2875,7 +2875,7 @@ MonoBehaviour:
   gearText: {fileID: 0}
   eyeDefault: {x: 0, y: 0, z: 0}
   hPoint: {x: 0, y: 0, z: 0}
-  wheelCentre: {x: 0, y: 0, z: 0}
+  wheelCenter: {x: 0, y: 0, z: 0}
   seatFwd: 0
   seatUp: 0
 --- !u!114 &1784268895

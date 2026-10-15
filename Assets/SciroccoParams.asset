@@ -158,7 +158,7 @@ MonoBehaviour:
   pneumaticTrailAtZeroSlip: 0.035
   peakSlipTrail: 0.15
   columnFriction: 0.6
-  columnFrictionRegularisationSpeed: 0.05
+  columnFrictionRegularizationSpeed: 0.05
   columnDamping: 0.03
   steeringRateDegPerSecond: 90
   handbrakeTorque: 1500
@@ -169,8 +169,8 @@ MonoBehaviour:
   sittingEyeRatio: 0.45
   hipPointAboveSeat: 0.09
   seatBackAngle: 25
-  wheelCentreAheadOfHipPoint: 0.45
-  wheelCentreAboveHipPoint: 0.33
+  wheelCenterAheadOfHipPoint: 0.45
+  wheelCenterAboveHipPoint: 0.33
   wheelDiameter: 0.37
   wheelTiltDeg: 25
   seatTravelFore: 0.1

@@ -1,6 +1,6 @@
 // Force feedback: physical steering-column torque (CarController.columnTorque from SteeringTorque) + steering-system
 // friction/damping (E) + rack end stop (soft lock at the car's lock, stiffness = steering-system stiffness referred to the
-// column) -> normalised by the user's wheelbase maximum torque -> DirectInput constant force via SciroccoFFB.dll (Windows).
+// column) -> normalized by the user's wheelbase maximum torque -> DirectInput constant force via SciroccoFFB.dll (Windows).
 // Output = column torque [N m] / wheelbase max torque [N m] x user strength % (100 % = 1:1), clamped to the user's cap.
 // Safety: zero output when FFB off, -noffb, menu/pause, focus lost, or during reset; 1 s ramp-in on (re)start.
 using System; using System.Runtime.InteropServices; using UnityEngine;
@@ -97,9 +97,9 @@ public class FfbController : MonoBehaviour
         float wheelDeg = router != null && router.map != null ? router.map.wheelDegUnclamped : car.handwheelDeg;
         float columnRate = haveLastWheelAngle ? (wheelDeg - lastWheelDeg) * Mathf.Deg2Rad / deltaTime : 0f; lastWheelDeg = wheelDeg; haveLastWheelAngle = true;
         // rack end stop: overtravel against the steering-system stiffness referred to the column (k_road / ratio^2)
-        float overtravelDeg = Mathf.Abs(wheelDeg) - carParams.handwheelLockDeg, centreRatio = SteeringLinkage.CentreRatio(carParams), columnStiffness = carParams.steeringStiffness / (centreRatio * centreRatio);   // on-centre linkage ratio (D)
+        float overtravelDeg = Mathf.Abs(wheelDeg) - carParams.handwheelLockDeg, centerRatio = SteeringLinkage.CenterRatio(carParams), columnStiffness = carParams.steeringStiffness / (centerRatio * centerRatio);   // on-center linkage ratio (D)
         stopTorque = overtravelDeg > 0f ? -Mathf.Sign(wheelDeg) * columnStiffness * overtravelDeg * Mathf.Deg2Rad : 0f;
-        frictionTorque = -carParams.columnFriction * Mathf.Clamp(columnRate / carParams.columnFrictionRegularisationSpeed, -1f, 1f);
+        frictionTorque = -carParams.columnFriction * Mathf.Clamp(columnRate / carParams.columnFrictionRegularizationSpeed, -1f, 1f);
         dampingTorque = -carParams.columnDamping * columnRate;
         totalTorque = car.columnTorque + stopTorque + frictionTorque + dampingTorque;   // + = turns the wheel clockwise (right)
         if (profile == null || profile.wheelbaseMaxTorqueNm <= 0f) { command = 0f; return; }

@@ -6,7 +6,7 @@ public class GamepadSteeringTests
     // @return {CarParams} - the car parameters
     static CarParams CreateCarParams() { var carParams = ScriptableObject.CreateInstance<CarParams>(); carParams.suspensionTables = ScriptableObject.CreateInstance<SuspensionTables>(); SuspensionTablesData.Fill(carParams.suspensionTables); return carParams; }
     // @description - Builds the steering context for the assist at a given speed (a plain data struct the assist reads each step).
-    // @param {float} speed - car speed in metres per second
+    // @param {float} speed - car speed in meters per second
     // @param {float} lockRoadDeg - road-wheel angle at full lock in degrees
     // @param {float} peakSlipDeg - slip angle at peak front tire force in degrees
     // @param {float} frontTravelDeg - front-axle travel direction relative to the car in degrees (negative = sliding to the right)
@@ -113,7 +113,7 @@ public class GamepadSteeringTests
         float handwheelDeg = mapper.StepSteer(0.02f, 630f, 90f, 17f);   // no device input: stick = 0 -> assist target 0
         Assert.AreEqual(0f, handwheelDeg, 1e-4); mapper.Dispose();
     }
-    // @description - Verifies that VrMouse maps a window cursor position to panel pixels (centre of a 1920x1080 window to 426.667, 240 on a 1280x720 panel at 1.5 scale, top-left to 0,0, out-of-window positions clamped to the panel edge) and that the mouse is enabled only when both flags are true.
+    // @description - Verifies that VrMouse maps a window cursor position to panel pixels (center of a 1920x1080 window to 426.667, 240 on a 1280x720 panel at 1.5 scale, top-left to 0,0, out-of-window positions clamped to the panel edge) and that the mouse is enabled only when both flags are true.
     // @return {Void} - nothing
     [Test] public void VrMouse_MapsWindowToPanel()
     {

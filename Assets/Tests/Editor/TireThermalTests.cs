@@ -2,7 +2,7 @@
 using NUnit.Framework; using UnityEngine;
 public class TireThermalTests
 {
-    // @description - Writes a labelled line to the Unity console and the NUnit output so the thermal results appear in the test report.
+    // @description - Writes a labeled line to the Unity console and the NUnit output so the thermal results appear in the test report.
     // @param {string} message - text to log after the prefix
     // @return {Void} - nothing
     static void LogThermal(string message) { Debug.Log("THERMAL " + message); TestContext.Out.WriteLine(message); }

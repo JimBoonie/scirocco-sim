@@ -86,9 +86,9 @@ public class ViscoTireTests
     [Test] public void FlashTemperaturePhysical()
     {
         Assert.AreEqual(0, ViscoTire.Flash(0, 1, ViscoTire.ReferenceContactPressure), 1e-9);
-        double riseAtOneMetre = ViscoTire.Flash(1, 1, ViscoTire.ReferenceContactPressure), riseAtThreeMetres = ViscoTire.Flash(3, 1, ViscoTire.ReferenceContactPressure);
-        Debug.Log($"flash rise mu=1: 1 m/s {riseAtOneMetre:0.0} K, 3 m/s {riseAtThreeMetres:0.0} K");
-        Assert.Greater(riseAtThreeMetres, riseAtOneMetre); Assert.Greater(riseAtOneMetre, 1); Assert.Less(riseAtThreeMetres, 300);
+        double riseAtOneMeter = ViscoTire.Flash(1, 1, ViscoTire.ReferenceContactPressure), riseAtThreeMeters = ViscoTire.Flash(3, 1, ViscoTire.ReferenceContactPressure);
+        Debug.Log($"flash rise mu=1: 1 m/s {riseAtOneMeter:0.0} K, 3 m/s {riseAtThreeMeters:0.0} K");
+        Assert.Greater(riseAtThreeMeters, riseAtOneMeter); Assert.Greater(riseAtOneMeter, 1); Assert.Less(riseAtThreeMeters, 300);
     }
     // @description - Verifies the viscoelastic modulus fit against sourced DMA data: tan delta 0.206 at 10 Hz and 0 C, 0.160 at 10 Hz and 60 C, a glassy modulus above 1e8 Pa at -60 C, and a stiffer modulus at higher rate.
     // @return {Void} - nothing

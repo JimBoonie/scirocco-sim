@@ -2,7 +2,7 @@
 using NUnit.Framework; using UnityEngine;
 public class VrCockpitTests
 {
-    // @description - Verifies that the cockpit eye point is 0.85 to 1.16 m above ground (under the 1.28 m roof with head clearance), between the axles, left of the centreline (left-hand drive), and that the steering wheel is ahead of and below the eye.
+    // @description - Verifies that the cockpit eye point is 0.85 to 1.16 m above ground (under the 1.28 m roof with head clearance), between the axles, left of the centerline (left-hand drive), and that the steering wheel is ahead of and below the eye.
     // @return {Void} - nothing
     [Test] public void EyePoint_Inside_Cabin()
     {
@@ -10,8 +10,8 @@ public class VrCockpitTests
         float eyeH = eyePoint.y - groundHeight; Debug.Log($"eye above ground {eyeH:0.000} m, behind front axle {carParams.wheelbase * 0.5f - eyePoint.z:0.000} m, lateral {eyePoint.x:0.000} m");
         Assert.Greater(eyeH, 0.85f); Assert.Less(eyeH, 1.28f - 0.12f);          // below the 1.28 m roof (S) with head clearance
         Assert.Less(eyePoint.z, carParams.wheelbase * 0.5f); Assert.Greater(eyePoint.z, -carParams.wheelbase * 0.5f); // between the axles
-        Assert.Less(eyePoint.x, 0f);                                                     // LHD: left of centreline
-        var wheelCentre = Cockpit.WheelCentre(carParams); Assert.Greater(wheelCentre.z, eyePoint.z); Assert.Less(wheelCentre.y, eyePoint.y);   // wheel ahead of and below the eye
+        Assert.Less(eyePoint.x, 0f);                                                     // LHD: left of centerline
+        var wheelCenter = Cockpit.WheelCenter(carParams); Assert.Greater(wheelCenter.z, eyePoint.z); Assert.Less(wheelCenter.y, eyePoint.y);   // wheel ahead of and below the eye
     }
     // @description - Verifies that leaving VR restores the flat camera: 60 deg field of view and the plain perspective matrix after a wide custom matrix, RestoreFlatCamera sets 75 deg and clamps 200 deg to the maximum, the 16:9 horizontal field of view is 91.5 deg, and the profile default is 60 deg.
     // @return {Void} - nothing

@@ -60,7 +60,7 @@ public class TrackManager : MonoBehaviour
         Loading = false; Ready = true;
     }
     // @description - Puts the car on the ground at a spawn point. A ray finds the surface height and normal; the car is aligned to the slope (so a car dropped on a hill does not start inside it) with the given heading, and lifted by design hub drop plus wheel radius plus 2 cm.
-    // @param {Vector3} position - spawn position in world metres (height is replaced by the ground height)
+    // @param {Vector3} position - spawn position in world meters (height is replaced by the ground height)
     // @param {float} yawDeg - heading in degrees
     // @return {Void} - nothing
     public void Place(Vector3 position, float yawDeg)
@@ -73,7 +73,7 @@ public class TrackManager : MonoBehaviour
         PlaceExact(position + up * dropHeight, rotation);
     }
     // @description - Teleports the car to an exact pose with zero velocity, resets the wheel states (no stored spin or slip), selects neutral and raises the teleported event.
-    // @param {Vector3} pos - world position in metres
+    // @param {Vector3} pos - world position in meters
     // @param {Quaternion} rot - world rotation
     // @return {Void} - nothing
     void PlaceExact(Vector3 pos, Quaternion rot)
@@ -106,14 +106,14 @@ public class TrackManager : MonoBehaviour
     // @return {Void} - nothing
     public void Respawn() { if (info) Place(info.spawnPosition, info.spawnYawDeg); else PlaceExact(testSpawn, testRot); }
     // @description - Fall safety test: true when the car is more than 5 m under the lowest terrain sample.
-    // @param {float} carY - car height in metres
-    // @param {float} terrainMinY - lowest terrain height in metres
+    // @param {float} carY - car height in meters
+    // @param {float} terrainMinY - lowest terrain height in meters
     // @return {bool} - true if the car has fallen out of the world
     public static bool BelowWorld(float carY, float terrainMinY) => carY < terrainMinY - 5f;   // fall safety threshold: 5 m under the lowest DEM sample
     // @description - Finds the terrain height and steepness at a world position, using the finest terrain (smallest size) that covers the position.
-    // @param {Vector3} worldPosition - world position in metres (x and z are used)
+    // @param {Vector3} worldPosition - world position in meters (x and z are used)
     // @param {float} steepnessDeg - receives the terrain steepness in degrees
-    // @return {float} - terrain height in world metres, or NaN if no terrain covers the position
+    // @return {float} - terrain height in world meters, or NaN if no terrain covers the position
     public static float TerrainHeightAt(Vector3 worldPosition, out float steepnessDeg)
     {
         steepnessDeg = 0f; float best = float.MaxValue, y = float.NaN;

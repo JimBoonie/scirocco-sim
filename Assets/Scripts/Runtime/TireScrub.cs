@@ -4,13 +4,13 @@
 // small speakers) fades in and builds in volume up to peak grip (scrubRatio ~1). Its pitch rises only ~2 semitones from the
 // onset of slip to the peak and reaches its maximum, +2.5 semitones (+15.5 %), at heavy slide (scrubRatio >= OverFull).
 // v4: NOISE ONLY (Taylor: v3's impulse-train tone + 2nd harmonic sounded like "angry bees"). Static/white noise through a
-// resonant bandpass (centre = ToneHz, Q 3..4, i.e. a band ~45-50 Hz wide, never a pitched tone) plus a wide low-Q band at
-// ~2.2 x centre for gentle broadband body. No impulse train, no harmonics.
+// resonant bandpass (center = ToneHz, Q 3..4, i.e. a band ~45-50 Hz wide, never a pitched tone) plus a wide low-Q band at
+// ~2.2 x center for gentle broadband body. No impulse train, no harmonics.
 // v2 problems fixed here: (a) below scrubRatio 0.5 v2 only played a -50 dB lowpassed rub (~30 dB under the engine, fully
 // masked) and the level only built from 0.5, so the low part was never heard; (b) the v2 tone ran 300 -> 380 -> 520 Hz,
 // i.e. +9.5 semitones and far above the "low" register.
 // Signal per tire: white noise -> constant-peak-gain bandpass at f0 (Q ToneQ) + BroadLevel x bandpass at BroadMul*f0 (Q BroadQ),
-//                  normalised to ~unit RMS
+//                  normalized to ~unit RMS
 //                  out = gain(ratio, speed, load) * that
 // Mix: 4 tires panned + summed, x Tires slider, then the ENGINE CEILING limiter (tire RMS <= engine RMS * CeilingDb).
 // No UnityEngine dependency in this part (System.Math only).
@@ -79,16 +79,16 @@ public static class TireSoundTuning
     // @param {float} scrubRatio - scrub ratio (dimensionless)
     // @return {float} - pitch offset in semitones
     public static float Semis(float scrubRatio) => scrubRatio <= BuildEnd ? SemisAtPeak * Build(scrubRatio) : Lerp(SemisAtPeak, SemisMax, Over(scrubRatio));
-    // @description - Centre frequency of the tire noise band: BaseHz raised by the semitone offset (2^(semitones/12)).
+    // @description - Center frequency of the tire noise band: BaseHz raised by the semitone offset (2^(semitones/12)).
     // @param {float} scrubRatio - scrub ratio (dimensionless)
-    // @return {float} - centre frequency in hertz
+    // @return {float} - center frequency in hertz
     public static float ToneHz(float scrubRatio) => BaseHz * (float)System.Math.Pow(2.0, Semis(scrubRatio) / 12.0);
     // @description - Quality factor of the resonant noise bandpass; it narrows slightly as the slip grows but stays at or below 4 so the sound remains noise, not a pitched tone.
     // @param {float} scrubRatio - scrub ratio (dimensionless)
     // @return {float} - filter Q (dimensionless)
     public static float ToneQ(float scrubRatio) => Lerp(ToneQLo, ToneQHi, 0.5f * Build(scrubRatio) + 0.5f * Over(scrubRatio));
     // @description - Silences tire noise at standstill: 0 below 0.5 m/s, rising with the square root to 1 at SpeedFullMs.
-    // @param {float} speed - car speed in metres per second
+    // @param {float} speed - car speed in meters per second
     // @return {float} - speed gate between 0 and 1 (dimensionless)
     public static float SpeedGate(float speed) => (float)System.Math.Sqrt(Clamp01((speed - 0.5f) / (SpeedFullMs - 0.5f)));
     // @description - Scales tire noise with how hard the tire is pressed to the road: square root of load over LoadRefN, capped at 1.4, and 0 for an unloaded tire.
@@ -116,14 +116,14 @@ public class TireSoundDsp
     public static volatile float EngineRms;
     public float ceilGain = 1f, lastTireRms, lastPreCeilRms;
     public bool ceilingOn = true;
-    // @description - Creates the tire sound synthesiser: one noise voice per tire with its own random phase.
+    // @description - Creates the tire sound synthesizer: one noise voice per tire with its own random phase.
     // @param {float} sampleRate - audio sample rate in hertz
     // @param {int} seed - seed of the noise generator (fixed so the sound is repeatable)
     // @return {Void} - nothing (constructor)
     public TireSoundDsp(float sampleRate, int seed = 1984) { sampleRateHz = sampleRate; rng = new System.Random(seed); for (int tireIndex = 0; tireIndex < 4; tireIndex++) { per[tireIndex] = 1f; noisePhase[tireIndex] = rng.NextDouble(); } }
     // @description - Hands the latest physics values to the audio thread (thread-safe); the audio thread smooths towards them.
     // @param {float[]} ratio - scrub ratio per tire (dimensionless), 4 entries in order front-left, front-right, rear-left, rear-right
-    // @param {float} speed - car speed in metres per second, applied to all tires
+    // @param {float} speed - car speed in meters per second, applied to all tires
     // @param {float[]} verticalLoad - vertical load per tire in newtons, 4 entries in the same order
     // @return {Void} - nothing
     public void SetTargets(float[] ratio, float speed, float[] verticalLoad) { lock (gate) { for (int tireIndex = 0; tireIndex < 4; tireIndex++) { targetRatio[tireIndex] = ratio[tireIndex]; targetSpeed[tireIndex] = speed; targetLoad[tireIndex] = verticalLoad[tireIndex]; } } }
@@ -137,7 +137,7 @@ public class TireSoundDsp
     static float K(float sampleRate, float timeConstant) => 1f - (float)System.Math.Exp(-1.0 / (sampleRate * timeConstant));
     // @description - Filters one sample through an RBJ biquad bandpass with constant 0 dB peak gain (direct form I). The caller keeps the previous inputs and outputs so each voice has its own filter state.
     // @param {float} input - input sample (full-scale units)
-    // @param {float} centerHz - centre frequency in hertz
+    // @param {float} centerHz - center frequency in hertz
     // @param {float} qualityFactor - quality factor (dimensionless)
     // @param {float} sampleRate - audio sample rate in hertz
     // @param {float} previousInput - previous input sample, updated by this call
@@ -175,7 +175,7 @@ public class TireSoundDsp
                 if (smoothedGain[tireIndex] < 1e-6f) continue;
                 float centerHz = TireSoundTuning.ToneHz(scrubRatio) * (float)System.Math.Pow(2.0, (tireIndex - 1.5) * TireSoundTuning.TireSpreadCents / 1200.0);
                 float qualityFactor = TireSoundTuning.ToneQ(scrubRatio);
-                // white(+-1) through a peak-gain bandpass of bandwidth f0/q has RMS 0.577 sqrt(pi BW/fs): normalise the main band to ~unit RMS
+                // white(+-1) through a peak-gain bandpass of bandwidth f0/q has RMS 0.577 sqrt(pi BW/fs): normalize the main band to ~unit RMS
                 float noiseNormalization = 1f / (0.577f * (float)System.Math.Sqrt(System.Math.PI * centerHz / qualityFactor / sampleRateHz));
                 float excitation = Noise() * noiseNormalization;
                 float mainBand = Bp(excitation, centerHz, qualityFactor, sampleRateHz, ref mainInputHistory1[tireIndex], ref mainInputHistory2[tireIndex], ref mainOutputHistory1[tireIndex], ref mainOutputHistory2[tireIndex]);
@@ -225,7 +225,7 @@ public static class TireScrubLaw
     // @return {float} - slip ratio of peak longitudinal force (dimensionless)
     public static float PeakKappa(CarParams carParams, float verticalLoad) => Peak(slipRatio => UnityEngine.Mathf.Abs(PacejkaTire.PureLong(carParams, slipRatio, UnityEngine.Mathf.Max(verticalLoad, 1f))), 0.002f, 1.0f);
     // @description - Finds the argument of the maximum of a single-peak function: a coarse 60-step scan, then a golden-section refinement (40 iterations) around the best step.
-    // @param {System.Func<float, float>} function - single-peak function to maximise
+    // @param {System.Func<float, float>} function - single-peak function to maximize
     // @param {float} lowerBound - lower search bound
     // @param {float} upperBound - upper search bound
     // @return {float} - argument of the maximum (same unit as the bounds)

@@ -16,7 +16,7 @@ public class SingleBaselineTests
         Assert.IsNull(typeof(CarController).GetMethod("ToggleProfile"), "no profile switch");
         var runtimeCopy = carParams.RuntimeCopy(); Assert.AreNotSame(carParams, runtimeCopy); Assert.AreEqual(carParams.frontAntiRollBarRate, runtimeCopy.frontAntiRollBarRate);
     }
-    // @description - Verifies that the baked suspension tables use the single baseline hardpoints: front bump steer within +-2 deg/m over +-40 mm of travel, rear beam roll centre 0.055 m, anti-lift coefficient 0.596, and a steering-rack grid of the expected size.
+    // @description - Verifies that the baked suspension tables use the single baseline hardpoints: front bump steer within +-2 deg/m over +-40 mm of travel, rear beam roll center 0.055 m, anti-lift coefficient 0.596, and a steering-rack grid of the expected size.
     // @return {Void} - nothing
     [Test] public void Tables_Are_Resolved_With_The_Single_Baseline_Hardpoints()
     {
@@ -27,7 +27,7 @@ public class SingleBaselineTests
         int lowIndex = System.Array.FindIndex(suspensionTables.travel, travelValue => travelValue >= -BumpWindowM - 1e-4f), highIndex = System.Array.FindLastIndex(suspensionTables.travel, travelValue => travelValue <= BumpWindowM + 1e-4f);
         float slope = (suspensionTables.frontBumpSteer[highIndex] - suspensionTables.frontBumpSteer[lowIndex]) / (suspensionTables.travel[highIndex] - suspensionTables.travel[lowIndex]);
         Assert.AreEqual(0f, slope, MaxBumpSteerDegPerM, "front bump steer near zero with the sourced tie rod");
-        Assert.AreEqual(0.055f, suspensionTables.rearBeamRollCentreHeight, 0.002f, "rear RC with pivot -30 mm / shear centre -2.06 m (re-solve: -2.00 dropped)");
+        Assert.AreEqual(0.055f, suspensionTables.rearBeamRollCenterHeight, 0.002f, "rear RC with pivot -30 mm / shear center -2.06 m (re-solve: -2.00 dropped)");
         Assert.AreEqual(0.596f, suspensionTables.rearBeamAntiLiftCoefficient, 0.01f);
         Assert.Greater(suspensionTables.rackGrid.Length, 10, "steering grid present"); Assert.AreEqual(suspensionTables.rackGrid.Length * suspensionTables.travel.Length, suspensionTables.frontToeTravelRack.Length);
     }

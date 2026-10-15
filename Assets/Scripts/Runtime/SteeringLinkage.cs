@@ -55,8 +55,8 @@ public static class SteeringLinkage
         return (tables.FrontSteerLeft(travel, sideRack + halfStep) - tables.FrontSteerLeft(travel, sideRack - halfStep)) / (2f * halfStep) * carParams.rackPerHandwheelDeg;
     }
 
-    // @description - on-centre overall ratio handwheel / mean road angle (D, for column-referred stiffness and UI only)
+    // @description - on-center overall ratio handwheel / mean road angle (D, for column-referred stiffness and UI only)
     // @param {CarParams} carParams - car parameters
     // @return {float} - ratio in deg of handwheel per deg of road wheel
-    public static float CentreRatio(CarParams carParams) { float probeAngle = 1f; return 2f * probeAngle / (MeanAngle(carParams, probeAngle) - MeanAngle(carParams, -probeAngle)); }
+    public static float CenterRatio(CarParams carParams) { float probeAngle = 1f; return 2f * probeAngle / (MeanAngle(carParams, probeAngle) - MeanAngle(carParams, -probeAngle)); }
 }

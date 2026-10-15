@@ -9,15 +9,15 @@ public class EngineOverrunAudioTests
     // @param {float} manifoldPressureRatio - manifold pressure divided by ambient pressure (dimensionless, 1 = ambient)
     // @param {bool} isCombusting - true when the engine fires, false for fuel cut / motoring
     // @param {int} sampleCount - number of samples to render at SampleRateHz (default 0.5 s)
-    // @return {float[]} - mono samples normalised to full scale (+-1)
+    // @return {float[]} - mono samples normalized to full scale (+-1)
     static float[] RenderEngineSynth(float rpm, float engineLoad, float manifoldPressureRatio, bool isCombusting, int sampleCount = 24000)
     { var gameObject = new GameObject("e"); var synth = gameObject.AddComponent<EngineSynth>(); synth.SetOfflineState(SampleRateHz, rpm, engineLoad, engineLoad, isCombusting, manifoldPressureRatio); var buffer = new float[sampleCount]; synth.Render(buffer, sampleCount); Object.DestroyImmediate(gameObject); return buffer; }
     // @description - Mean power of the second three quarters of a rendered buffer in decibels relative to full scale (10 log10 of the mean square), skipping the first quarter as start-up.
-    // @param {float[]} buffer - mono samples normalised to full scale (+-1)
+    // @param {float[]} buffer - mono samples normalized to full scale (+-1)
     // @return {float} - mean power in dB relative to full scale (negative numbers)
     static float MeanPowerDecibels(float[] buffer) { double sumOfSquares = 0; int firstSample = buffer.Length / 4; for (int i = firstSample; i < buffer.Length; i++) sumOfSquares += buffer[i] * buffer[i]; return 10f * Mathf.Log10((float)(sumOfSquares / (buffer.Length - firstSample))); }
     // @description - Measures the pitch of a rendered engine sound as the lag of the autocorrelation peak within -40 % to +40 % of the expected frequency (skipping the first quarter of the buffer as start-up).
-    // @param {float[]} buffer - mono samples at SampleRateHz, normalised to full scale (+-1)
+    // @param {float[]} buffer - mono samples at SampleRateHz, normalized to full scale (+-1)
     // @param {float} guessHz - expected fundamental in hertz (the search window is 0.6 to 1.4 times this)
     // @return {float} - measured fundamental in hertz
     static float MeasurePitchHz(float[] buffer, float guessHz)   // autocorrelation peak within +-40% of the guess

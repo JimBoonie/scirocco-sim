@@ -4,16 +4,16 @@ public class TrackTests
     // @description - Verifies that TrackManager.Find maps names to track indices: empty and unknown names to 0, 'laguna' and 'LagunaSeca' to 1.
     // @return {Void} - nothing
     [Test] public void Track_Selector_Names() { Assert.AreEqual(0, TrackManager.Find("")); Assert.AreEqual(1, TrackManager.Find("laguna")); Assert.AreEqual(1, TrackManager.Find("LagunaSeca")); Assert.AreEqual(0, TrackManager.Find("nope")); }
-    // @description - Verifies the Laguna Seca centreline: lap length 3602 m +-15, spawn yaw equal to the race direction at start/finish, a corkscrew drop of 18 m +-1, and positive lateral offset for a point 3 m to the right of the race direction.
+    // @description - Verifies the Laguna Seca centerline: lap length 3602 m +-15, spawn yaw equal to the race direction at start/finish, a corkscrew drop of 18 m +-1, and positive lateral offset for a point 3 m to the right of the race direction.
     // @return {Void} - nothing
-    [Test] public void Laguna_Centreline_Length_Spawn_And_Corkscrew()
+    [Test] public void Laguna_Centerline_Length_Spawn_And_Corkscrew()
     {
         var trackObject = new GameObject("ti"); var trackInfo = trackObject.AddComponent<TrackInfo>();
-        trackInfo.centrelineCsv = AssetDatabase.LoadAssetAtPath<TextAsset>("Assets/Tracks/LagunaSeca/centreline.csv"); Assert.NotNull(trackInfo.centrelineCsv);
+        trackInfo.centerlineCsv = AssetDatabase.LoadAssetAtPath<TextAsset>("Assets/Tracks/LagunaSeca/centreline.csv"); Assert.NotNull(trackInfo.centerlineCsv);
         Assert.AreEqual(3602f, trackInfo.LapLength(), 15f, "lap length");
-        var centreline = trackInfo.Centreline; var dir = (centreline[3] - centreline[0]); dir.y = 0f; float yaw = Mathf.Atan2(dir.x, dir.z) * Mathf.Rad2Deg; if (yaw < 0) yaw += 360f;
+        var centerline = trackInfo.Centerline; var dir = (centerline[3] - centerline[0]); dir.y = 0f; float yaw = Mathf.Atan2(dir.x, dir.z) * Mathf.Rad2Deg; if (yaw < 0) yaw += 360f;
         Assert.AreEqual(TrackSetup.SpawnYaw, yaw, 3f, "spawn yaw = race direction at S/F (+X East, +Z North)");
-        float largestDrop = 0f; for (int i = 0; i < centreline.Count; i++) for (int k = 1; k <= 69; k++) largestDrop = Mathf.Max(largestDrop, centreline[i].y - centreline[(i + k) % centreline.Count].y);
+        float largestDrop = 0f; for (int i = 0; i < centerline.Count; i++) for (int k = 1; k <= 69; k++) largestDrop = Mathf.Max(largestDrop, centerline[i].y - centerline[(i + k) % centerline.Count].y);
         Assert.AreEqual(18f, largestDrop, 1f, "Corkscrew drop");
         trackInfo.Nearest(new Vector3(-0.813f * 3f, 0f, 0.583f * 3f), out float lat); Assert.Greater(lat, 2f, "point 3 m right of race direction at S/F has +lateral");
         Object.DestroyImmediate(trackObject);
@@ -29,7 +29,7 @@ public class TrackTests
     // @return {Void} - nothing
     [Test] public void SurfaceTag_FromBlenderNames()
     {
-        Assert.AreEqual(SurfaceType.Asphalt, SurfaceTag.FromName("COL_Road_03")); Assert.AreEqual(SurfaceType.Kerb, SurfaceTag.FromName("COL_Kerbs")); Assert.AreEqual(SurfaceType.Asphalt, SurfaceTag.FromName("COL_PitLane"));
+        Assert.AreEqual(SurfaceType.Asphalt, SurfaceTag.FromName("COL_Road_03")); Assert.AreEqual(SurfaceType.Curb, SurfaceTag.FromName("COL_Kerbs")); Assert.AreEqual(SurfaceType.Asphalt, SurfaceTag.FromName("COL_PitLane"));
         Assert.AreEqual(SurfaceType.RunoffPaved, SurfaceTag.FromName("COL_Runoff_Paved")); Assert.AreEqual(SurfaceType.Gravel, SurfaceTag.FromName("COL_Gravel"));
         Assert.AreEqual(SurfaceType.Grass, SurfaceTag.FromName("COL_Grass")); Assert.AreEqual(SurfaceType.Wall, SurfaceTag.FromName("Walls_Barriers_02"));
         Assert.AreEqual(SurfaceType.Terrain, SurfaceTag.FromName("TerrainCollider_DEM")); Assert.AreEqual(SurfaceType.Unknown, SurfaceTag.FromName("Bld_01"));

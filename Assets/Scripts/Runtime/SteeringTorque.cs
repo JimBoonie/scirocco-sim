@@ -1,11 +1,11 @@
 // Physical steering torque: tire forces/moments about each kingpin (steering) axis -> tie rods/rack -> column torque.
-// Geometry (kpU axis direction, contact patch and wheel centre relative to the axis ground point) is DERIVED from the
+// Geometry (kpU axis direction, contact patch and wheel center relative to the axis ground point) is DERIVED from the
 // suspension hardpoints by kinematics/multibody_compliance.py (left-corner frame: x fwd, y left/outboard, z up).
 // Terms captured by the vector formulation (no separate empirical terms):
 //   lateral force x (pneumatic trail + mechanical trail from caster), longitudinal force x scrub radius (brake force at the
 //   contact patch) or x kingpin offset at hub height (drive force reacted at the hub: FWD torque steer), vertical load x
 //   kingpin inclination / caster (weight-jacking moments that grow with steer angle).
-// Pneumatic trail t_p(alpha) = t0 * max(0, 1 - |alpha|/alpha_tp) (E) shifts the lateral force behind the patch centre (= tire Mz).
+// Pneumatic trail t_p(alpha) = t0 * max(0, 1 - |alpha|/alpha_tp) (E) shifts the lateral force behind the patch center (= tire Mz).
 using UnityEngine;
 public static class SteeringTorque
 {
@@ -14,7 +14,7 @@ public static class SteeringTorque
     {
         public Vector3 kingpinAxis;           // u: unit vector along the kingpin axis
         public Vector3 contactPatchOffset;    // r_cp: contact patch relative to the axis ground point (m)
-        public Vector3 wheelCentreOffset;     // r_wc: wheel centre relative to the axis ground point (m)
+        public Vector3 wheelCenterOffset;     // r_wc: wheel center relative to the axis ground point (m)
     }
 
     // @description - reads the kingpin geometry from the baked tables (vertical-axis fallback when there are none)
@@ -23,7 +23,7 @@ public static class SteeringTorque
     public static Geo FromTables(SuspensionTables tables)
     {
         var geometry = new Geo();
-        if (tables != null && tables.kingpinAxis != null && tables.kingpinAxis.Length == 3) { geometry.kingpinAxis = new Vector3(tables.kingpinAxis[0], tables.kingpinAxis[1], tables.kingpinAxis[2]).normalized; geometry.contactPatchOffset = ToVector3(tables.kingpinContactPatchOffset); geometry.wheelCentreOffset = ToVector3(tables.kingpinWheelCentreOffset); }
+        if (tables != null && tables.kingpinAxis != null && tables.kingpinAxis.Length == 3) { geometry.kingpinAxis = new Vector3(tables.kingpinAxis[0], tables.kingpinAxis[1], tables.kingpinAxis[2]).normalized; geometry.contactPatchOffset = ToVector3(tables.kingpinContactPatchOffset); geometry.wheelCenterOffset = ToVector3(tables.kingpinWheelCenterOffset); }
         else geometry.kingpinAxis = Vector3.forward;   // (x,y,z) = (fwd,left,up) in this frame -> vertical axis fallback (no tables)
         return geometry;
     }
@@ -48,7 +48,7 @@ public static class SteeringTorque
     static Vector3 RotateAboutAxis(Vector3 vector, Vector3 axis, float angle)
     { float cosine = Mathf.Cos(angle), sine = Mathf.Sin(angle); return vector * cosine + CrossProduct(axis, vector) * sine + axis * (Vector3.Dot(axis, vector) * (1f - cosine)); }
 
-    // @description - moment about the kingpin axis (+ = counter-clockwise about +u, i.e. steers a LEFT-frame wheel to the left/outboard) from the tyre forces:
+    // @description - moment about the kingpin axis (+ = counter-clockwise about +u, i.e. steers a LEFT-frame wheel to the left/outboard) from the tire forces:
     //   M = r_cp x (Fx_patch + Fz) + (r_cp - x_w t_p) x Fy + r_wc x Fx_hub, all in the steered wheel frame; forces act in the ground plane
     // @param {Geo} geometry - kingpin geometry
     // @param {float} deltaDeg - wheel steer angle in this frame (+ = towards -y, i.e. right for the left wheel)
@@ -64,9 +64,9 @@ public static class SteeringTorque
         float angle = -deltaDeg * Mathf.Deg2Rad;
         Vector3 wheelX = RotateAboutAxis(new Vector3(1f, 0f, 0f), geometry.kingpinAxis, angle), wheelY = RotateAboutAxis(new Vector3(0f, 1f, 0f), geometry.kingpinAxis, angle);
         wheelX.z = 0f; wheelX.Normalize(); wheelY.z = 0f; wheelY.Normalize();                          // tire forces act in the ground plane
-        Vector3 contactPatch = RotateAboutAxis(geometry.contactPatchOffset, geometry.kingpinAxis, angle), wheelCentre = RotateAboutAxis(geometry.wheelCentreOffset, geometry.kingpinAxis, angle);
+        Vector3 contactPatch = RotateAboutAxis(geometry.contactPatchOffset, geometry.kingpinAxis, angle), wheelCenter = RotateAboutAxis(geometry.wheelCenterOffset, geometry.kingpinAxis, angle);
         Vector3 patchForce = wheelX * patchLongitudinalForce + new Vector3(0f, 0f, verticalForce), lateralForceVector = wheelY * lateralForce;
-        Vector3 moment = CrossProduct(contactPatch, patchForce) + CrossProduct(contactPatch - wheelX * pneumaticTrail, lateralForceVector) + CrossProduct(wheelCentre, wheelX * hubLongitudinalForce);
+        Vector3 moment = CrossProduct(contactPatch, patchForce) + CrossProduct(contactPatch - wheelX * pneumaticTrail, lateralForceVector) + CrossProduct(wheelCenter, wheelX * hubLongitudinalForce);
         return Vector3.Dot(moment, geometry.kingpinAxis);
     }
 
@@ -80,7 +80,7 @@ public static class SteeringTorque
     // @param {Geo} geometry - kingpin geometry
     // @param {bool} left - true = left corner
     // @param {float} steerDeg - road-wheel steer angle in deg (+ = right)
-    // @param {float} longitudinalForce - tyre longitudinal force in N
+    // @param {float} longitudinalForce - tire longitudinal force in N
     // @param {bool} braking - true = treat the longitudinal force as brake force (at the patch), false = drive force (at the hub)
     // @param {float} lateralForceRight - lateral force in N (+ = right, car convention)
     // @param {float} verticalForce - vertical load in N

@@ -15,7 +15,7 @@ public class SteeringLinkageTests
     // lower-arm pivots (E; the +20 mm single-baseline estimate gave 40.50 / 32.90 and was dropped in the 2026-10-13 re-solve). Also checked against the sourced values within 0.25 deg.
     const float LockInnerDeg = 40.34f, LockOuterDeg = 32.91f, LockTolDeg = 0.1f;
     const float LockInnerSrcDeg = 40.367f, LockOuterSrcDeg = 32.917f, LockSrcTolDeg = 0.25f;
-    // @description - Writes a labelled line to the Unity console and the NUnit output so the measured angles appear in the test report.
+    // @description - Writes a labeled line to the Unity console and the NUnit output so the measured angles appear in the test report.
     // @param {string} message - text to log after the STEER prefix
     // @return {Void} - nothing
     static void LogSteer(string message) { Debug.Log("STEER " + message); TestContext.Out.WriteLine(message); }
@@ -32,31 +32,31 @@ public class SteeringLinkageTests
         SteeringLinkage.WheelAngles(carParams.suspensionTables, -rack, 0f, 0f, out float mirroredLeft, out float mirroredRight);
         Assert.AreEqual(-rightAngle, mirroredLeft, 1e-4f, "left lock mirrors"); Assert.AreEqual(-leftAngle, mirroredRight, 1e-4f);
     }
-    // @description - Verifies that at 100 deg of handwheel the mean road-wheel angle is about 5.2 deg, the inner wheel steers more than the outer (Ackermann), the centre gives 0 deg, and the inverse mapping returns the handwheel angle within 0.05 deg.
+    // @description - Verifies that at 100 deg of handwheel the mean road-wheel angle is about 5.2 deg, the inner wheel steers more than the outer (Ackermann), the center gives 0 deg, and the inverse mapping returns the handwheel angle within 0.05 deg.
     // @return {Void} - nothing
     [Test] public void Mid_Range_Angles()
     {
         var carParams = CreateCarParams(); SteeringLinkage.WheelAngles(carParams.suspensionTables, SteeringLinkage.Rack(carParams, 100f), 0f, 0f, out float leftAngle, out float rightAngle);
-        LogSteer($"100 deg handwheel: L {leftAngle:0.000} R {rightAngle:0.000} mean {0.5f * (leftAngle + rightAngle):0.000}; on-centre ratio {SteeringLinkage.CentreRatio(carParams):0.00}:1");
+        LogSteer($"100 deg handwheel: L {leftAngle:0.000} R {rightAngle:0.000} mean {0.5f * (leftAngle + rightAngle):0.000}; on-center ratio {SteeringLinkage.CenterRatio(carParams):0.00}:1");
         Assert.AreEqual(5.2f, 0.5f * (leftAngle + rightAngle), 0.1f, "mean ~5.2 deg at 100 deg");
         Assert.Greater(rightAngle, leftAngle, "inner wheel (right, in a right turn) steers more: geometric Ackermann");
-        Assert.AreEqual(0f, SteeringLinkage.MeanAngle(carParams, 0f), 1e-5f, "straight ahead at centre");
+        Assert.AreEqual(0f, SteeringLinkage.MeanAngle(carParams, 0f), 1e-5f, "straight ahead at center");
         foreach (float handwheelDeg in new[] { -500f, -50f, 3f, 200f, 600f })
             Assert.AreEqual(handwheelDeg, SteeringLinkage.HandwheelForMean(carParams, SteeringLinkage.MeanAngle(carParams, handwheelDeg)), 0.05f, "inverse");
     }
-    // @description - Verifies that at steering centre the kinematic grid reproduces the solver's bump-steer curve, and that the left and right steering levers are equal at centre and equal the reciprocal of the centre ratio.
+    // @description - Verifies that at steering center the kinematic grid reproduces the solver's bump-steer curve, and that the left and right steering levers are equal at center and equal the reciprocal of the center ratio.
     // @return {Void} - nothing
     [Test] public void Bump_Steer_Comes_From_The_Same_Grid()
-    {   // at centre the grid must reproduce the bump-steer curve of the solver; under steer it changes with travel
+    {   // at center the grid must reproduce the bump-steer curve of the solver; under steer it changes with travel
         var carParams = CreateCarParams(); var suspensionTables = carParams.suspensionTables;
         for (int i = 0; i < suspensionTables.travel.Length; i++) Assert.AreEqual(suspensionTables.frontBumpSteer[i], suspensionTables.FrontSteerLeft(suspensionTables.travel[i], 0f), 1e-4f);
         float leftLever = SteeringLinkage.Lever(carParams, true, 0f, 0f), rightLever = SteeringLinkage.Lever(carParams, false, 0f, 0f);
-        Assert.AreEqual(leftLever, rightLever, 1e-5f, "symmetric lever on centre"); Assert.AreEqual(1f / SteeringLinkage.CentreRatio(carParams), leftLever, 2e-4f);
+        Assert.AreEqual(leftLever, rightLever, 1e-5f, "symmetric lever on center"); Assert.AreEqual(1f / SteeringLinkage.CenterRatio(carParams), leftLever, 2e-4f);
     }
     // @description - Finds the rack travel that gives the right (inner) wheel a target angle, by bisection at design ride height.
     // @param {SuspensionTables} suspensionTables - baked suspension tables with the steering grid
     // @param {float} targetInnerDeg - wanted right-wheel angle in degrees
-    // @return {float} - rack travel in metres (right turn positive)
+    // @return {float} - rack travel in meters (right turn positive)
     static float RackForRightWheel(SuspensionTables suspensionTables, float targetInnerDeg)
     {   // bisection on rack (right turn: + rack, right wheel = inner) at design height
         float lowRack = 0f, highRack = suspensionTables.rackGrid[suspensionTables.rackGrid.Length - 1];
@@ -83,7 +83,7 @@ public class SteeringLinkageTests
     // @description - Verifies left/right symmetry: equal toe straight ahead, camber difference within 1 deg, and mirrored full-lock angles within 0.0001 deg.
     // @return {Void} - nothing
     [Test] public void Side_To_Side_Within_Manual_Limits()
-    {   // both sides are modelled mirrored (69.0/67.0 mm inner-joint offset NOT applied), so L/R must agree well inside the limits
+    {   // both sides are modeled mirrored (69.0/67.0 mm inner-joint offset NOT applied), so L/R must agree well inside the limits
         var carParams = CreateCarParams(); var suspensionTables = carParams.suspensionTables;
         SteeringLinkage.WheelAngles(suspensionTables, 0f, 0f, 0f, out float leftStraight, out float rightStraight);
         Assert.AreEqual(leftStraight, rightStraight, 1e-4f, "straight ahead: same toe both sides");

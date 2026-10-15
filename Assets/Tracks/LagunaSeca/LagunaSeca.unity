@@ -599,7 +599,7 @@ MonoBehaviour:
     3DEP \xB7 imagery USDA NAIP"
   spawnPosition: {x: -0.21140599, y: 0, z: 0.15135182}
   spawnYawDeg: 215.6
-  centrelineCsv: {fileID: 4900000, guid: ca7dbfece1249fd43836599667c639fe, type: 3}
+  centerlineCsv: {fileID: 4900000, guid: ca7dbfece1249fd43836599667c639fe, type: 3}
   minY: -92.20603
 --- !u!1 &1784268890
 GameObject:

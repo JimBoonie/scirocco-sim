@@ -30,7 +30,7 @@ public class InputBindingTests : InputTestFixture
     // @return {AxisControl} - the axis control
     static AxisControl GetAxis(InputDevice device, string path) => (AxisControl)device.TryGetChildControl(path);
 
-    // @description - Verifies AxisCalibration.Normalize: a -1..+1 pedal maps -1 to 0 and +1 to 1, inversion flips it, a half-range calibration (negative or positive half) and a centred 0..1 wheel axis normalise as expected, and the deadzone rescales the remainder.
+    // @description - Verifies AxisCalibration.Normalize: a -1..+1 pedal maps -1 to 0 and +1 to 1, inversion flips it, a half-range calibration (negative or positive half) and a centered 0..1 wheel axis normalize as expected, and the deadzone rescales the remainder.
     // @return {Void} - nothing
     [Test] public void Calibration_Math()
     {
@@ -41,7 +41,7 @@ public class InputBindingTests : InputTestFixture
         var wheelCalibration = new AxisCalibration { min = 0f, max = 1f, center = 0.5f }; Assert.AreEqual(-1f, wheelCalibration.Normalize(0f, true), 1e-5); Assert.AreEqual(0.5f, wheelCalibration.Normalize(0.75f, true), 1e-5);   // 0..1 wheel axis
         var deadzoneCalibration = new AxisCalibration { min = 0f, max = 1f, deadzone = 0.1f }; Assert.AreEqual(0f, deadzoneCalibration.Normalize(0.05f, false), 1e-5); Assert.AreEqual(0.5f, deadzoneCalibration.Normalize(0.55f, false), 1e-5);
     }
-    // @description - Verifies that capturing a pedal that reports -1 released to +1 pressed is not inverted, records its rest value, normalises to 0..1 and clamps readings beyond the captured range.
+    // @description - Verifies that capturing a pedal that reports -1 released to +1 pressed is not inverted, records its rest value, normalizes to 0..1 and clamps readings beyond the captured range.
     // @return {Void} - nothing
     [Test] public void Calibration_FullRangeBipolarPedal()   // Heusinkveld Sprint on Windows: -1 released .. +1 pressed
     {
@@ -50,7 +50,7 @@ public class InputBindingTests : InputTestFixture
         Assert.AreEqual(0f, calibration.Normalize(-1f, false), 1e-5); Assert.AreEqual(0.5f, calibration.Normalize(0f, false), 1e-5); Assert.AreEqual(1f, calibration.Normalize(1f, false), 1e-5);
         Assert.AreEqual(0f, calibration.Normalize(-1.2f, false), 1e-5); Assert.AreEqual(1f, calibration.Normalize(1.2f, false), 1e-5);   // clamped
     }
-    // @description - Verifies that capturing a pedal that reports +1 released to -1 pressed sets invert and normalises it so released is 0 and fully pressed is 1.
+    // @description - Verifies that capturing a pedal that reports +1 released to -1 pressed sets invert and normalizes it so released is 0 and fully pressed is 1.
     // @return {Void} - nothing
     [Test] public void Calibration_InvertedBipolarPedal()     // +1 released .. -1 pressed
     {
@@ -74,9 +74,9 @@ public class InputBindingTests : InputTestFixture
     {
         var calibration = new AxisCalibration { min = -1f, max = 1f }; Assert.IsFalse(calibration.ApplyCapture(-1f, -0.99f, -1f, false)); Assert.IsFalse(calibration.calibrated); Assert.IsFalse(calibration.hasRest);
     }
-    // @description - Verifies that capturing a wheel axis or a combined half-range axis records no rest position and normalises relative to its centre.
+    // @description - Verifies that capturing a wheel axis or a combined half-range axis records no rest position and normalizes relative to its center.
     // @return {Void} - nothing
-    [Test] public void Calibration_WheelAndCombinedAxis_UseCentre()
+    [Test] public void Calibration_WheelAndCombinedAxis_UseCenter()
     {
         var wheelCalibration = new AxisCalibration(); wheelCalibration.ApplyCapture(-1f, 1f, 0.02f, true); Assert.IsFalse(wheelCalibration.hasRest); Assert.AreEqual(0f, wheelCalibration.Normalize(0.02f, true), 1e-5); Assert.AreEqual(1f, wheelCalibration.Normalize(1f, true), 1e-5);
         var halfCalibration = new AxisCalibration { half = AxisHalf.Positive }; halfCalibration.ApplyCapture(-1f, 1f, 0f, false); Assert.IsFalse(halfCalibration.hasRest); Assert.AreEqual(0.5f, halfCalibration.Normalize(0.5f, false), 1e-5);

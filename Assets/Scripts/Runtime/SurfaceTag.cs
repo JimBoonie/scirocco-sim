@@ -1,7 +1,7 @@
 using UnityEngine;
 // Surface class of a track collider (from Blender Bot's COL_* / Walls_* object names). Tag only: the tire model does NOT use it yet.
 // Future work: per-surface grip / rolling drag / bump spectrum, from sourced data. No friction values are invented here.
-public enum SurfaceType { Unknown, Asphalt, Kerb, RunoffPaved, Gravel, Grass, Terrain, Wall }
+public enum SurfaceType { Unknown, Asphalt, Curb, RunoffPaved, Gravel, Grass, Terrain, Wall }
 public class SurfaceTag : MonoBehaviour
 {
     public SurfaceType type;
@@ -11,7 +11,7 @@ public class SurfaceTag : MonoBehaviour
     public static SurfaceType FromName(string objectName)
     {
         if (objectName.StartsWith("COL_Road") || objectName.StartsWith("COL_PitLane")) return SurfaceType.Asphalt;
-        if (objectName.StartsWith("COL_Kerb")) return SurfaceType.Kerb;
+        if (objectName.StartsWith("COL_Kerb")) return SurfaceType.Curb;
         if (objectName.StartsWith("COL_Runoff")) return SurfaceType.RunoffPaved;
         if (objectName.StartsWith("COL_Gravel")) return SurfaceType.Gravel;
         if (objectName.StartsWith("COL_Grass")) return SurfaceType.Grass;

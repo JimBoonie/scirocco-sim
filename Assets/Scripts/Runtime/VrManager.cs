@@ -1,5 +1,5 @@
 // VR (OpenXR; SteamVR as the OpenXR runtime for the Valve Index) with flat-screen fallback.
-// XR is NOT initialised on startup (XR settings: InitManagerOnStart = false); this component starts it when wanted:
+// XR is NOT initialized on startup (XR settings: InitManagerOnStart = false); this component starts it when wanted:
 //   -vr forces on, -novr forces off, otherwise the saved profile setting (menu). -smoketest always off.
 // No HMD / no runtime / XR not configured -> stays flat, status says why. HMD lost while running -> back to flat.
 // Physics is unaffected (fixed 500 Hz step, interpolated body); the HMD only sets the render rate.
@@ -44,7 +44,7 @@ public class VrManager : MonoBehaviour
     // @param {bool} enabled - true to start VR, false to stop it
     // @return {Void} - nothing
     public void SetEnabled(bool enabled) { if (busy) return; if (enabled && !Active) StartCoroutine(StartVR()); else if (!enabled && Active) StopVR("VR off (settings)"); }
-    // @description - Coroutine that initialises OpenXR and starts the HMD display. On every failure (XR not configured, no runtime or HMD, display did not start) it stays on the flat screen and writes the reason to the status text. On success it keeps simulating when unfocused, disables vsync (the compositor paces frames), switches to the cockpit camera and recentres.
+    // @description - Coroutine that initializes OpenXR and starts the HMD display. On every failure (XR not configured, no runtime or HMD, display did not start) it stays on the flat screen and writes the reason to the status text. On success it keeps simulating when unfocused, disables vsync (the compositor paces frames), switches to the cockpit camera and recenters.
     // @return {IEnumerator} - coroutine enumerator
     IEnumerator StartVR()
     {
@@ -124,7 +124,7 @@ public class VrManager : MonoBehaviour
     // @description - Switches between chase and cockpit camera on the flat screen and stores the choice in the profile. Ignored in VR, where the cockpit camera is always used.
     // @return {Void} - nothing
     public void ToggleCamera() { if (Active) return; var profile = router?.map?.profile; SetMode(mode == CamMode.Chase ? CamMode.Cockpit : CamMode.Chase); if (profile != null) profile.cockpitView = mode == CamMode.Cockpit; }
-    // @description - Selects the camera mode. Cockpit parents the camera to the cockpit recentre anchor with a near plane of 0.02 m and disables the chase camera; chase restores the original parent, 0.3 m near plane and the chase camera.
+    // @description - Selects the camera mode. Cockpit parents the camera to the cockpit recenter anchor with a near plane of 0.02 m and disables the chase camera; chase restores the original parent, 0.3 m near plane and the chase camera.
     // @param {CamMode} newMode - camera mode to use
     // @return {Void} - nothing
     public void SetMode(CamMode newMode)
@@ -160,7 +160,7 @@ public class VrManager : MonoBehaviour
         if (tpd) tpd.enabled = trackingEnabled;
         if (!trackingEnabled && cam && cockpit && cam.transform.parent == cockpit.recenter) { cam.transform.localPosition = Vector3.zero; cam.transform.localRotation = Quaternion.identity; }
     }
-    // @description - Recentres the cockpit view on the current head position so the driver looks straight ahead.
+    // @description - Recenters the cockpit view on the current head position so the driver looks straight ahead.
     // @return {Void} - nothing
     public void Recenter() { if (cockpit && cam) cockpit.Recenter(cam.transform); }
     // @description - Subscribes to the car teleport event so the flat cockpit view can be reset after a respawn.

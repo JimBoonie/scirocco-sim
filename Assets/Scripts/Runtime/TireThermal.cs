@@ -30,7 +30,7 @@ public class TireThermal
     public const double RubberConductivity = 0.282, RubberSpecificHeat = 1741.0;     // W/mK, J/kgK tire rubber, Hot Disk at 28 C (S, PMC9182718)
     public const double RubberDensity = 1125.0;                 // kg/m3 tread compound, midpoint of 1094-1157 measured (S range)
     public const double CompoundMassFraction = 0.78, SteelMassFraction = 0.165, TextileMassFraction = 0.055;   // passenger tire mass fractions (S WRAP 2006; steel SD 14-16.5%)
-    public const double SteelSpecificHeat = 490.0, TextileSpecificHeat = 1700.0, AluminiumSpecificHeat = 900.0;      // J/kgK (S handbook; textile = nylon 6)
+    public const double SteelSpecificHeat = 490.0, TextileSpecificHeat = 1700.0, AluminumSpecificHeat = 900.0;      // J/kgK (S handbook; textile = nylon 6)
     public const double AsphaltConductivity = 1.6, AsphaltDensity = 2290.0, AsphaltSpecificHeat = 884.0;        // asphalt (SD: k 0.74-2.88; Aston DBM 1.33-1.91 -> 1.6)
     public const double ContactRatio = 0.63;  // real/nominal tire-asphalt contact area (SD: 61-66% pressure film, MDPI Materials 2023; 5-10% older)
     public const double InnerConvectionCoefficient = 25.0;        // W/m2K internal convection liner/rim <-> gas (E, 10-100 plausible; checked vs measured pressure rise)
@@ -45,7 +45,7 @@ public class TireThermal
     // 0.211 %/C of road temperature on average (S; per tire 0.102-0.356 %/C, SD), referenced to 25 C (S, Balocco yearly mean road temp).
     // d = v^2/(2 mu g) -> d(mu)/mu = -d(d)/d (D). Road-tested tires run with the tread near road temperature (Linkoping diva2:1568991:
     // 11-36 C on the road, S), so the road temperature is taken as the bulk temperature (E). Below RoadReferenceTemperature: full grip held (S: Pokorski
-    // 2019 summer 185/65R14, no deterioration down to ~7 C; ADAC/TUV/Tyre Reviews dry stops give mu 0.96-1.11 at road temperature).
+    // 2019 summer 185/65R14, no deterioration down to ~7 C; ADAC/TUV/Tire Reviews dry stops give mu 0.96-1.11 at road temperature).
     public const double RoadGripLossPerDegree = 0.00211;      // 1/degC relative mu loss per degC above RoadReferenceTemperature (S mean, SD spread)
     public const double RoadReferenceTemperature = 25.0;      // degC (S)
     // crossover where the rising bench curve meets the road relation (D, solved once by bisection): ~66 C
@@ -66,7 +66,7 @@ public class TireThermal
     public static readonly double BulkHeatCapacity = (TreadMass - 3.0 * RubberDensity * ZoneArea * SkinThickness) * RubberSpecificHeat;
     static readonly double CarcassCompoundMass = CompoundMassFraction * TireMass - TreadMass;
     public static readonly double CarcassHeatCapacity = CarcassCompoundMass * RubberSpecificHeat + SteelMassFraction * TireMass * SteelSpecificHeat + TextileMassFraction * TireMass * TextileSpecificHeat;
-    public static readonly double RimHeatCapacity = RimMass * AluminiumSpecificHeat;
+    public static readonly double RimHeatCapacity = RimMass * AluminumSpecificHeat;
     static readonly double CavityHeight = UnloadedRadius - TreadDepth - CarcassThickness - RimRadius;                        // cavity height
     public static readonly double GasVolume = 0.85 * (SectionWidth - 0.015) * CavityHeight * 2.0 * System.Math.PI * (RimRadius + 0.5 * CavityHeight);  // m3 (D, 0.85 = rounded section, E)
     static readonly double SidewallArea = 2.0 * System.Math.PI * (UnloadedRadius * UnloadedRadius - RimRadius * RimRadius);      // both sidewalls, outer
@@ -92,7 +92,7 @@ public class TireThermal
     // energy bookkeeping (J): in = heat into the tire system, out = convection + road conduction; residual should stay ~0
     public double energyIn, energyOut, energyFrictionToRoad, initialStoredEnergy; readonly double[] surfaceTemperatureSteps = new double[3];
 
-    // @description - creates the tyre thermal model at ambient (or warm) temperature and computes the inflation-gas mass for the cold pressure
+    // @description - creates the tire thermal model at ambient (or warm) temperature and computes the inflation-gas mass for the cold pressure
     // @param {double} coldGauge - cold inflation pressure in Pa gauge
     // @param {bool} warm - true = start at the optimal grip temperature
     // @param {double} warmCarcass - carcass / gas / rim start temperature in degC when warm
@@ -124,7 +124,7 @@ public class TireThermal
 
     // outer convection: Churchill-Bernstein forced crossflow on a cylinder D = 2 R0, combined with Churchill-Chu natural convection (S)
     // @description - outer convection coefficient: Nu_forced (Churchill-Bernstein, cylinder in crossflow) and Nu_natural (Churchill-Chu) combined as (Nu_f^3 + Nu_n^3)^(1/3)
-    // @param {double} speed - air speed over the tyre in m/s
+    // @param {double} speed - air speed over the tire in m/s
     // @param {double} temperatureDifference - surface minus ambient temperature in K (sign ignored; floor 0.1 K)
     // @return {double} - heat transfer coefficient in W/(m^2 K)
     public static double OuterConvectionCoefficient(double speed, double temperatureDifference)
@@ -142,18 +142,18 @@ public class TireThermal
     // @return {double} - heat transfer coefficient in W/(m^2 K)
     public static double RoadConductionCoefficient(double speed, double contactLength) => 2.0 * EffectiveEffusivity / System.Math.Sqrt(System.Math.PI * System.Math.Max(contactLength, 1e-3) / System.Math.Max(speed, 0.5));   // transient conduction into the road for a contact time L/v: 2 e / sqrt(pi t), W/(m^2 K) (S: semi-infinite solid)
 
-    // @description - splits the load over the three tread zones with an elastic foundation: deflection d0 + y tan(camber), y outward (D); normalised so the shares sum to 1
+    // @description - splits the load over the three tread zones with an elastic foundation: deflection d0 + y tan(camber), y outward (D); normalized so the shares sum to 1
     // @param {double} verticalLoad - wheel load in N
     // @param {double} camberRad - static camber in rad (+ = top out, loads the outer shoulder)
-    // @param {double} verticalRate - tyre vertical stiffness in N/m
+    // @param {double} verticalRate - tire vertical stiffness in N/m
     // @param {bool} onGround - false = no load, all shares 0
     // @return {Void} - updates zoneLoadShare
     void ComputeZoneLoadShares(double verticalLoad, double camberRad, double verticalRate, bool onGround)
     {
         double sum = 0; if (onGround && verticalLoad > 0)
         {
-            double centreDeflection = verticalLoad / verticalRate;
-            for (int i = 0; i < 3; i++) { double offset = (i - 1) * TreadWidth / 3.0; zoneLoadShare[i] = System.Math.Max(0.0, centreDeflection + offset * System.Math.Tan(camberRad)); sum += zoneLoadShare[i]; }
+            double centerDeflection = verticalLoad / verticalRate;
+            for (int i = 0; i < 3; i++) { double offset = (i - 1) * TreadWidth / 3.0; zoneLoadShare[i] = System.Math.Max(0.0, centerDeflection + offset * System.Math.Tan(camberRad)); sum += zoneLoadShare[i]; }
         }
         if (sum > 0) for (int i = 0; i < 3; i++) zoneLoadShare[i] /= sum; else for (int i = 0; i < 3; i++) zoneLoadShare[i] = 0;
     }
@@ -166,8 +166,8 @@ public class TireThermal
     // @param {double} speed - rolling speed in m/s
     // @param {double} verticalLoad - wheel load in N
     // @param {double} camberRad - standard camber in rad (+ = top out, loads the outer shoulder)
-    // @param {double} verticalRate - tyre vertical rate in N/m
-    // @param {bool} onGround - true while the tyre touches the road
+    // @param {double} verticalRate - tire vertical rate in N/m
+    // @param {bool} onGround - true while the tire touches the road
     // @return {Void}
     public void Step(double dt, double frictionPower, double rollingPower, double speed, double verticalLoad, double camberRad, double verticalRate, bool onGround)
     {

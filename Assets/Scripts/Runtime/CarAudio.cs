@@ -6,7 +6,7 @@ using UnityEngine;
 public class CarAudio : MonoBehaviour
 {
     public CarController car; public static float Volume = 0.8f, TireVolume = 1f; public static bool Mute;   // Volume = master (engine + tires), TireVolume = extra tire-only gain
-    // @description - Creates the two procedural audio sources on the car: the engine synthesiser over the front axle (half a wheelbase plus 0.15 m ahead of the centre) and the tire synthesiser under the car. Does nothing in -smoketest runs.
+    // @description - Creates the two procedural audio sources on the car: the engine synthesizer over the front axle (half a wheelbase plus 0.15 m ahead of the center) and the tire synthesizer under the car. Does nothing in -smoketest runs.
     // @return {Void} - nothing
     void Start()
     {
@@ -15,10 +15,10 @@ public class CarAudio : MonoBehaviour
         Make<EngineSynth>("EngineAudio", new Vector3(0f, 0.1f, carParams.wheelbase * 0.5f + 0.15f)).Init(car);   // transverse engine over the front axle
         Make<TireSynth>("TireAudio", new Vector3(0f, -0.4f, 0f)).Init(car);
     }
-    // @description - Creates a child object with an AudioSource that loops a constant carrier clip (all ones), adds the synthesiser component as an audio filter and starts playing. The synth output multiplies the carrier, so Unity still applies 3D distance attenuation and panning.
+    // @description - Creates a child object with an AudioSource that loops a constant carrier clip (all ones), adds the synthesizer component as an audio filter and starts playing. The synth output multiplies the carrier, so Unity still applies 3D distance attenuation and panning.
     // @param {string} objectName - name of the new game object
-    // @param {Vector3} local - position of the object relative to the car, in metres
-    // @return {T} - the synthesiser component that was added
+    // @param {Vector3} local - position of the object relative to the car, in meters
+    // @return {T} - the synthesizer component that was added
     T Make<T>(string objectName, Vector3 local) where T : SynthBase
     {
         var audioObject = new GameObject(objectName); audioObject.transform.SetParent(car.transform, false); audioObject.transform.localPosition = local;
@@ -58,7 +58,7 @@ public class AudioPauseGate
 public abstract class SynthBase : MonoBehaviour
 {
     protected CarController car; protected float sampleRateHz; protected System.Random rng = new System.Random(1984);
-    // @description - Connects the synthesiser to the car and sets the sample rate (the audio output rate unless one is given, which tests and offline renders use).
+    // @description - Connects the synthesizer to the car and sets the sample rate (the audio output rate unless one is given, which tests and offline renders use).
     // @param {CarController} carController - car whose state drives the sound
     // @param {float} sampleRate - sample rate in hertz, or 0 to use the audio output rate
     // @return {Void} - nothing
@@ -79,12 +79,12 @@ public class EngineSynth : SynthBase
     volatile int clicks; bool wasComb, wasIgn; float sputterT;
     double phase; float jitter = 1f, jitS = 1f, ampS = -1f, lp, lp2, hp, clickEnv, starterPhase, motorPhase;
     const int Harm = 10;   // harmonics of the firing frequency
-    // @description - Connects the engine synthesiser to the car and remembers the current ignition and combustion state so the first frame does not trigger a click or a sputter.
+    // @description - Connects the engine synthesizer to the car and remembers the current ignition and combustion state so the first frame does not trigger a click or a sputter.
     // @param {CarController} car - car whose engine drives the sound
     // @param {float} sampleRate - sample rate in hertz, or 0 to use the audio output rate
     // @return {Void} - nothing
     public override void Init(CarController car, float sampleRate = 0f) { base.Init(car, sampleRate); if (car.engine != null) { wasIgn = car.engine.ignition; wasComb = car.engine.combusting; } }
-    // @description - Copies the engine state to the synthesiser every frame.
+    // @description - Copies the engine state to the synthesizer every frame.
     // @return {Void} - nothing
     void Update() { Sample(Time.deltaTime); }
     // @description - Copies engine state (rpm, throttle area, combustion, starter, limiter, ignition, manifold pressure) into the fields read by the audio thread. Derives engine load from manifold pressure above the zero-torque level, the starter armature speed (crank speed times the ring-to-pinion ratio) and a 1.2 s sputter after a stall, and counts ignition clicks.
@@ -133,7 +133,7 @@ public class EngineSynth : SynthBase
     //               a closed-throttle overrun still pops/burbles loudly at rpm). The reverse pulse radiates weaker than a blowdown of the
     //               same size (it is a rarefaction of cool gas filling through the valve curtain, and is partly absorbed by the cat/muffler
     //               before it reaches the tailpipe): weighted BackflowWeight (estimate, set so overrun sits mid of the 6-10 dB band).
-    // plus the exhaust-stroke displacement pulse (piston pushes the cylinder volume out every cycle whatever the charge), modelled as an
+    // plus the exhaust-stroke displacement pulse (piston pushes the cylinder volume out every cycle whatever the charge), modeled as an
     // equivalent PDisp atm added to the step so cruise (p_EVO ~= p_back) never nulls. Radiated level ~ source^LevelExp (muffler compression).
     // Result at 3000-5000 rpm overrun: ~7-9 dB under WOT after the load lowpass + tanh stage (target 6-10 dB). Fuel cut: similar (motoring).
     // v3 (2026-10-13 PT, after Engine v2 closed-plate leakage + residual floor raised overrun MAP to ~0.09-0.15 bar): the source is the gas VOLUME
@@ -148,7 +148,7 @@ public class EngineSynth : SynthBase
     // @param {float} evolvedPressure - cylinder pressure when the exhaust valve opens, in atmospheres
     // @return {float} - pulse size in atmosphere-equivalent units (always zero or positive)
     static float PulseVolume(float evolvedPressure) { float pulseSize = PBack * (Mathf.Pow(Mathf.Max(0f, evolvedPressure) / PBack, 1f / GasGamma) - 1f); return pulseSize >= 0f ? pulseSize : -BackflowWeight * pulseSize; }
-    // @description - Exhaust loudness from manifold pressure: the exhaust-valve-open pressure is manifold pressure times the motoring ratio (plus the combustion ratio when fired). The pulse size plus the exhaust-stroke displacement pulse is normalised to wide-open throttle and raised to LevelExp (muffler compression), then scaled by AmpWot.
+    // @description - Exhaust loudness from manifold pressure: the exhaust-valve-open pressure is manifold pressure times the motoring ratio (plus the combustion ratio when fired). The pulse size plus the exhaust-stroke displacement pulse is normalized to wide-open throttle and raised to LevelExp (muffler compression), then scaled by AmpWot.
     // @param {float} map - manifold pressure ratio (dimensionless, 1 = ambient)
     // @param {bool} fired - true if the cylinders are firing, false when motoring (overrun or fuel cut)
     // @return {float} - amplitude in full-scale units (AmpWot at wide-open throttle)
@@ -161,7 +161,7 @@ public class EngineSynth : SynthBase
     // @param {float} sample - input sample (full-scale units)
     // @return {float} - limited sample between -1 and 1
     static float SoftClip(float sample) => (float)System.Math.Tanh(sample);   // tanh instead of hard clamp
-    // @description - Synthesises mono engine sound: a pulse train at the firing frequency (rpm / 60 x 2 for a four-cylinder four-stroke) built from ten harmonics plus a half-order imbalance term, with cycle-to-cycle jitter, overrun burble, starter whine and ignition click, followed by a two-pole lowpass and a soft clip. Also used offline by the -audiowav test.
+    // @description - Synthesizes mono engine sound: a pulse train at the firing frequency (rpm / 60 x 2 for a four-cylinder four-stroke) built from ten harmonics plus a half-order imbalance term, with cycle-to-cycle jitter, overrun burble, starter whine and ignition click, followed by a two-pole lowpass and a soft clip. Also used offline by the -audiowav test.
     // @param {float[]} buf - output buffer for mono samples (full-scale units)
     // @param {int} sampleCount - number of samples to write
     // @return {Void} - nothing
@@ -204,7 +204,7 @@ public class TireSynth : SynthBase
     // tire sound v3 (TireScrub.cs: low slip tone, +2.5 semitones max, constants in TireSoundTuning). 2D stereo source, x Tires slider, then capped under the engine RMS.
     TireSoundDsp dsp; readonly float[] rat = new float[4], fzs = new float[4];
     public float[] lastRatio = new float[4];
-    // @description - Connects the tire synthesiser to the car and sets it up as a 2D stereo source (no 3D panning), creating the tire DSP.
+    // @description - Connects the tire synthesizer to the car and sets it up as a 2D stereo source (no 3D panning), creating the tire DSP.
     // @param {CarController} car - car whose wheels drive the sound
     // @param {float} sampleRate - sample rate in hertz, or 0 to use the audio output rate
     // @return {Void} - nothing
@@ -213,7 +213,7 @@ public class TireSynth : SynthBase
         base.Init(car, sampleRate); dsp = new TireSoundDsp(sampleRateHz);
         var audioSource = GetComponent<AudioSource>(); if (audioSource) { audioSource.spatialBlend = 0f; audioSource.panStereo = 0f; }
     }
-    // @description - Feeds the tire synthesiser with the latest wheel state every frame.
+    // @description - Feeds the tire synthesizer with the latest wheel state every frame.
     // @return {Void} - nothing
     void Update() { Feed(); }
     // @description - Computes each wheel's scrub ratio (combined slip over its peak-grip slip at the current load) and hands ratios, vertical loads and car speed to the audio thread. Everything is zero while paused, in the menu or with no engine.

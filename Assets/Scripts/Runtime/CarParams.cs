@@ -14,7 +14,7 @@ public class CarParams : ScriptableObject
     // @description - Single handling baseline (2026-10-13). The former 'ProposedUndersteer' profile is now the only set of inputs; there is no profile switch. Its values are ESTIMATES (E) inside the estimated uncertainty, chosen by Taylor for the understeer balance; not sourced data.
     // @return {CarParams} - the runtime copy
     public CarParams RuntimeCopy() => Instantiate(this).ApplyTirePreset();   // runtime copy (tire preset applied); asset untouched                            // baked kinematic tables (kinematics/solve_kinematics.py)
-    public float hubDropDesign = 0.30f;                     // corner transform -> wheel centre at design ride height (layout only)
+    public float hubDropDesign = 0.30f;                     // corner transform -> wheel center at design ride height (layout only)
     public float frontWheelRate = 15500f, rearWheelRate = 11900f;   // N/m (D from SD/E spring rates x MR^2)
     public float frontBumpTravel = 0.08f, frontReboundTravel = 0.09f, rearBumpTravel = 0.085f, rearReboundTravel = 0.09f; // m (E)
     public float bumpStopGap = 0.06f;                       // m of bump travel before contact (E)
@@ -31,7 +31,7 @@ public class CarParams : ScriptableObject
     public bool useJacking = true;
     public enum RearModel { SimpleTable, FullTwistBeam }
     public enum FrontModel { KinematicTable, CompliantMultibody }
-    public RearModel rearModel = RearModel.FullTwistBeam;    // FullTwistBeam: beam torsion/shear centre, bush compliance & roll steer, solved RC, anti-lift
+    public RearModel rearModel = RearModel.FullTwistBeam;    // FullTwistBeam: beam torsion/shear center, bush compliance & roll steer, solved RC, anti-lift
     public FrontModel frontModel = FrontModel.CompliantMultibody; // CompliantMultibody: tables + bush compliance toe/camber (Fx, Fy) + geometric anti-dive/anti-squat; KinematicTable = fallback
     [Header("Unsprung masses (suspension_params.json, E)")]
     public bool useUnsprungMass = true;                      // separate vertical wheel DOF + tire spring; false = massless wheels (fallback)
@@ -47,7 +47,7 @@ public class CarParams : ScriptableObject
     public float frontColdPressure = 170000f, rearColdPressure = 170000f;   // Pa gauge, set cold at 18.9 C: VW 1.7 bar for 185/60R14 (SD: 1.7 x3 sources, 1.8 x1)
     public float rollingResistanceSpeedSquaredCoefficient = 4e-8f;   // per (km/h)^2: radial passenger tire f = f0 + 0.4e-7 v^2 (Wong, Theory of Ground Vehicles; E). Added for top-speed check
     public enum TireCompound { Default, ExperimentalViscoelastic }
-    public TireCompound tireCompound = TireCompound.Default;   // Quick menu "Tyre compound"; Default = sourced Pacejka/thermal model, untouched
+    public TireCompound tireCompound = TireCompound.Default;   // Quick menu "Tire compound"; Default = sourced Pacejka/thermal model, untouched
     // Experimental (viscoelastic) compound physics switches (ViscoTire.cs). All on in the game; the smoke harness turns single ones off
     // (-overrides carParams.<flagName>=false) for ablation tests. Ignored by the Default compound.
     public bool viscoHysteresisEnabled = true, viscoAdhesionEnabled = true, viscoWilliamsLandelFerryEnabled = true, viscoFlashTemperatureEnabled = true, viscoPayneEffectEnabled = true;
@@ -118,23 +118,23 @@ public class CarParams : ScriptableObject
     public float MeanLockDeg => SteeringLinkage.MeanAngle(this, handwheelLockDeg);
     // Steering-system compliance: the kingpin moments of both front tires (SteeringTorque: full vector model, geometry from hardpoints)
     // twists column/rack/tie rods against the driver-held handwheel and reduces road-wheel angle. 0 stiffness = off.
-    public float steeringStiffness = 12000f;   // Nm/rad at the road wheels, both sides combined (E: low end, within the estimated range, chosen by Taylor for the understeer balance; was 20000 E. C/D 1982 'slightly rubbery'. Estimate basis: column ~150 Nm/rad x on-centre linkage ratio ~19.3^2 ~ 56k in series with rack/tie-rod mounts)
+    public float steeringStiffness = 12000f;   // Nm/rad at the road wheels, both sides combined (E: low end, within the estimated range, chosen by Taylor for the understeer balance; was 20000 E. C/D 1982 'slightly rubbery'. Estimate basis: column ~150 Nm/rad x on-center linkage ratio ~19.3^2 ~ 56k in series with rack/tie-rod mounts)
     public float pneumaticTrailAtZeroSlip = 0.035f;     // m at zero slip (E: period-tire-typical, within the estimated range, chosen by Taylor for the understeer balance; was 0.025 E = ~1/6 of a ~0.14 m contact patch), falls linearly to 0 at peakSlipTrail
     public float peakSlipTrail = 0.15f;        // rad (E)
     // Steering system at the column (E, manual rack; used for force feedback only): Coulomb friction and viscous damping
     public float columnFriction = 0.6f;       // N m at the handwheel (E: column bearings + rack/pinion + tie-rod joints)
-    public float columnFrictionRegularisationSpeed = 0.05f;   // rad/s: numerical regularisation of Coulomb friction (flagged, not physical)
+    public float columnFrictionRegularizationSpeed = 0.05f;   // rad/s: numerical regularization of Coulomb friction (flagged, not physical)
     public float columnDamping = 0.03f;       // N m s/rad at the handwheel (E)
     public float steeringRateDegPerSecond = 90f, handbrakeTorque = 1500f;   // road-wheel deg/s (E)
     [Header("Driver / cockpit (VR eye point; ALL estimates, no Scirocco II package drawing found)")]
     public float hipPointBehindFrontAxle = 1.20f;  // m (E: A1-platform coupe, driver hip roughly mid-wheelbase on a 2.40 m wheelbase)
     public float hipPointHeight = 0.30f;           // m above ground (E: low coupe, overall height 1.28 m S)
-    public float driverLateral = 0.36f;          // m left of centreline, LHD (E: ~1.35 m interior width, seat centred in left half)
+    public float driverLateral = 0.36f;          // m left of centerline, LHD (E: ~1.35 m interior width, seat centered in left half)
     public float driverStature = 1.75f;          // m (E: 50th-percentile adult male)
     public float sittingEyeRatio = 0.45f;        // sitting eye height / stature (E: anthropometric tables, ~0.79 m for 1.75 m)
     public float hipPointAboveSeat = 0.09f;        // m, H-point above compressed seat surface (E: SAE J826 manikin)
     public float seatBackAngle = 25f;            // deg from vertical (E: typical 1980s sports seat)
-    public float wheelCentreAheadOfHipPoint = 0.45f, wheelCentreAboveHipPoint = 0.33f, wheelDiameter = 0.37f, wheelTiltDeg = 25f;   // m, m, m, deg from vertical (E: 370 mm sports wheel)
+    public float wheelCenterAheadOfHipPoint = 0.45f, wheelCenterAboveHipPoint = 0.33f, wheelDiameter = 0.37f, wheelTiltDeg = 25f;   // m, m, m, deg from vertical (E: 370 mm sports wheel)
     public float seatTravelFore = 0.10f, seatTravelAft = 0.10f, seatTravelUp = 0.04f, seatTravelDown = 0.04f;  // m adjuster range (E; up/down is a VR viewing offset)
     [Header("Aero")] public float dragCoefficient = 0.38f, frontalArea = 1.75f; // (S Cd; C/D lists 0.38-0.39; E area)
     public float airDensity = 1.2f;   // kg/m^3 (E, ~20 C sea level; ISA 1.225)

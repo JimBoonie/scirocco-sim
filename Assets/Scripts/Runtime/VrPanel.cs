@@ -35,14 +35,14 @@ public class VrPanel : MonoBehaviour
         var quadObject = GameObject.CreatePrimitive(PrimitiveType.Quad); quadObject.name = objectName; Destroy(quadObject.GetComponent<Collider>()); quadObject.layer = 2;
         material = new Material(Shader.Find("Unlit/Texture")) { mainTexture = renderTexture }; quadObject.GetComponent<MeshRenderer>().sharedMaterial = material; return quadObject.transform;
     }
-    // @description - Creates the HUD and menu textures and quads once the cockpit eye anchor exists. The HUD sits right of the wheel over the centre console, the menu straight ahead at eye height (offsets in metres relative to the eye anchor).
+    // @description - Creates the HUD and menu textures and quads once the cockpit eye anchor exists. The HUD sits right of the wheel over the center console, the menu straight ahead at eye height (offsets in meters relative to the eye anchor).
     // @return {Void} - nothing
     void Ensure()
     {
         if (hudRT || !cockpit || !cockpit.eyeAnchor) return;
         hudRT = new RenderTexture(TexW, TexH, 0, RenderTextureFormat.ARGB32) { name = "HudRT" }; menuRT = new RenderTexture(TexW, TexH, 0, RenderTextureFormat.ARGB32) { name = "MenuRT" };
         hudQuad = Quad("HudPanel", out hudMat, hudRT); menuQuad = Quad("MenuPanel", out menuMat, menuRT);
-        // HUD: right of the steering wheel over the centre console, angled to the driver; menu: straight ahead at eye height
+        // HUD: right of the steering wheel over the center console, angled to the driver; menu: straight ahead at eye height
         hudQuad.SetParent(cockpit.eyeAnchor, false); hudQuad.localPosition = new Vector3(0.36f, -0.16f, 0.6f); hudQuad.localRotation = Quaternion.Euler(10f, 30f, 0f); hudQuad.localScale = new Vector3(0.48f, 0.27f, 1f);
         menuQuad.SetParent(cockpit.eyeAnchor, false); menuQuad.localPosition = new Vector3(0.05f, 0.04f, 0.6f); menuQuad.localRotation = Quaternion.identity; menuQuad.localScale = new Vector3(0.8f, 0.45f, 1f);
     }
