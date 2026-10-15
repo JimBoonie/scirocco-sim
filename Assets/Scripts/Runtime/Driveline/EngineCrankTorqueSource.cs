@@ -14,6 +14,7 @@ public class EngineCrankTorqueSource : ICrankshaftTorqueSource
     // @param {Engine} engine - mean-value engine model
     // @param {CarParams} carParams - car parameters
     // @param {ShuffleDrivelineParameters} parameters - model parameters
+    // @return {Void}
     public EngineCrankTorqueSource(Engine engine, CarParams carParams, ShuffleDrivelineParameters parameters)
     {
         this.engine = engine; this.carParams = carParams; firingPulsesEnabled = parameters.firingPulsesEnabled; firingPulseModel = new FiringPulseModel(parameters, carParams);
@@ -23,6 +24,7 @@ public class EngineCrankTorqueSource : ICrankshaftTorqueSource
     // @description - advances the engine's manifold and combustion state and sets the firing-pulse operating point
     // @param {double} throttleFraction - accelerator pedal 0..1
     // @param {double} intervalSeconds - interval in s
+    // @return {Void}
     public void BeginInterval(double throttleFraction, double intervalSeconds)
     {
         float netTorque = engine.BeginExternalCrankInterval((float)throttleFraction, (float)intervalSeconds, out float indicated, out float starterTorque, out float starterInertia);

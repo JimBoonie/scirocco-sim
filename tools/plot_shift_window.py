@@ -15,11 +15,11 @@ import matplotlib.pyplot as plt
 # @return {tuple} - (pedals, mismatches, grid[row mismatch][column pedal] = 1 success / 0 failure, throttle)
 def read_window(path):
     rows = list(csv.DictReader(open(path)))
-    pedals = sorted({float(r['clutch_pedal']) for r in rows})
-    mismatches = sorted({float(r['rev_mismatch_percent']) for r in rows})
+    pedals = sorted({float(row['clutch_pedal']) for row in rows})
+    mismatches = sorted({float(row['rev_mismatch_percent']) for row in rows})
     grid = [[0] * len(pedals) for _ in mismatches]
-    for r in rows:
-        grid[mismatches.index(float(r['rev_mismatch_percent']))][pedals.index(float(r['clutch_pedal']))] = int(r['success'])
+    for row in rows:
+        grid[mismatches.index(float(row['rev_mismatch_percent']))][pedals.index(float(row['clutch_pedal']))] = int(row['success'])
     return pedals, mismatches, grid, float(rows[0]['throttle'])
 
 

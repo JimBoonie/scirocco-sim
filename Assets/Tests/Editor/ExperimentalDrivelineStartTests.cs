@@ -51,6 +51,7 @@ public class ExperimentalDrivelineStartTests
 
     // @description - cranks the stopped engine for 2 s, releases the starter and lets it idle for 4 s
     // @param {Rig} rig - rig (engine stopped)
+    // @param {float} clutchPedal - clutch pedal 0..1
     // @return {Void}
     static void CrankAndRelease(Rig rig, float clutchPedal) { RunHeld(rig, 2f, clutchPedal, true); RunHeld(rig, 4f, clutchPedal, false); }
 

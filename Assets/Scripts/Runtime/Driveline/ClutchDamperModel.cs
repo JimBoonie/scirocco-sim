@@ -15,6 +15,7 @@ public class ClutchDamperModel
 
     // @description - converts the parameter arrays to SI
     // @param {ShuffleDrivelineParameters} parameters - model parameters
+    // @return {Void}
     public ClutchDamperModel(ShuffleDrivelineParameters parameters)
     {
         const double degreesToRadians = System.Math.PI / 180.0;

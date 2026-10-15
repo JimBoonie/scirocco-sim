@@ -11,6 +11,7 @@ public class ClutchFrictionModel
     // @description - derives the full clamp force and the rubbing-mass heat capacity
     // @param {ShuffleDrivelineParameters} parameters - model parameters
     // @param {CarParams} carParams - clutchMaxTorque (cold static capacity at full clamp) and ambient temperature
+    // @return {Void}
     public ClutchFrictionModel(ShuffleDrivelineParameters parameters, CarParams carParams)
     {
         this.parameters = parameters; effectiveRadius = parameters.ClutchEffectiveRadiusMeters();

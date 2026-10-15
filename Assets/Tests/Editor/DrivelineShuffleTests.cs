@@ -77,7 +77,7 @@ public class DrivelineShuffleTests
     }
 
     // @description - dominant frequency of a sampled signal: Hann-windowed discrete Fourier scan (0.02 Hz steps) after removing the linear trend
-    // @param {System.Collections.Generic.List<float>} samples - samples at substep spacing
+    // @param {System.Collections.Generic.List<float>} input - samples at substep spacing
     // @param {int} startIndex - first sample used
     // @param {float} minimumFrequency - Hz
     // @param {float} maximumFrequency - Hz
@@ -106,7 +106,7 @@ public class DrivelineShuffleTests
             drivetrain.SelectGear(gear); drivetrain.Tick(1f);
             float wheelSpeed = 1500f * Mathf.PI / 30f / drivetrain.TotalRatio; left.angularVelocity = right.angularVelocity = wheelSpeed; rigVehicleSpeed = wheelSpeed * carParams.wheelRadius; engine.SetRunning(true); engine.EndExternalCrankInterval(wheelSpeed * drivetrain.TotalRatio);
             var samples = new System.Collections.Generic.List<float>();
-            Run(model, engine, drivetrain, left, right, 3.0f, 1f, 0f, _ => samples.Add((float)model.Chain.CarrierAngularVelocity));
+            Run(model, engine, drivetrain, left, right, 3.0f, 1f, 0f, unusedStep => samples.Add((float)model.Chain.CarrierAngularVelocity));
             float frequency = DominantFrequency(samples, samples.Count / 10, 1f, 25f);
             report.AppendLine($"shuffle gear {gear}: {frequency:0.00} Hz (band {lower[gear - 1]:0.0}..{upper[gear - 1]:0.0})");
             Assert.Greater(frequency, previousFrequency, "shuffle frequency must rise with gear"); previousFrequency = frequency;
@@ -122,8 +122,8 @@ public class DrivelineShuffleTests
         var model = Build(out var carParams, out var parameters, out var engine, out var drivetrain, out var left, out var right);
         drivetrain.SelectGear(1); drivetrain.Tick(1f); engine.SetRunning(true);
         var torque = new System.Collections.Generic.List<float>();
-        Run(model, engine, drivetrain, left, right, 1.0f, 0.5f, 1f, _ => torque.Add(left.driveTorque));
-        int released = torque.Count; Run(model, engine, drivetrain, left, right, 1.0f, 0.5f, 0f, _ => torque.Add(left.driveTorque));
+        Run(model, engine, drivetrain, left, right, 1.0f, 0.5f, 1f, unusedStep => torque.Add(left.driveTorque));
+        int released = torque.Count; Run(model, engine, drivetrain, left, right, 1.0f, 0.5f, 0f, unusedStep => torque.Add(left.driveTorque));
         float peak = 0f, steady = 0f; int steadyCount = (int)(0.2f / substep);
         for (int i = released; i < torque.Count; i++) peak = Mathf.Max(peak, torque[i]);
         for (int i = torque.Count - steadyCount; i < torque.Count; i++) steady += torque[i]; steady /= steadyCount;
@@ -143,8 +143,8 @@ public class DrivelineShuffleTests
         drivetrain.SelectGear(3); drivetrain.Tick(1f);
         float wheelSpeed = 3000f * Mathf.PI / 30f / drivetrain.TotalRatio; left.angularVelocity = right.angularVelocity = wheelSpeed; rigVehicleSpeed = wheelSpeed * carParams.wheelRadius; engine.SetRunning(true); engine.EndExternalCrankInterval(wheelSpeed * drivetrain.TotalRatio);
         float minimumDeflection = float.MaxValue, maximumDeflection = float.MinValue; bool sawPositive = false, sawNegative = false;
-        Run(model, engine, drivetrain, left, right, 0.6f, 1f, 0f, _ => { float deflection = (float)model.Chain.ShaftDeflectionRadians; minimumDeflection = Mathf.Min(minimumDeflection, deflection); maximumDeflection = Mathf.Max(maximumDeflection, deflection); sawPositive |= left.driveTorque > 5f; sawNegative |= sawPositive && left.driveTorque < -5f; });
-        Run(model, engine, drivetrain, left, right, 0.6f, 0f, 0f, _ => { float deflection = (float)model.Chain.ShaftDeflectionRadians; minimumDeflection = Mathf.Min(minimumDeflection, deflection); maximumDeflection = Mathf.Max(maximumDeflection, deflection); sawPositive |= left.driveTorque > 5f; sawNegative |= sawPositive && left.driveTorque < -5f; });
+        Run(model, engine, drivetrain, left, right, 0.6f, 1f, 0f, unusedStep => { float deflection = (float)model.Chain.ShaftDeflectionRadians; minimumDeflection = Mathf.Min(minimumDeflection, deflection); maximumDeflection = Mathf.Max(maximumDeflection, deflection); sawPositive |= left.driveTorque > 5f; sawNegative |= sawPositive && left.driveTorque < -5f; });
+        Run(model, engine, drivetrain, left, right, 0.6f, 0f, 0f, unusedStep => { float deflection = (float)model.Chain.ShaftDeflectionRadians; minimumDeflection = Mathf.Min(minimumDeflection, deflection); maximumDeflection = Mathf.Max(maximumDeflection, deflection); sawPositive |= left.driveTorque > 5f; sawNegative |= sawPositive && left.driveTorque < -5f; });
         float lash = parameters.shaftAndJointLashAtWheelDegrees * Mathf.Deg2Rad;
         report.AppendLine($"tip-in/out: shaft deflection {minimumDeflection * Mathf.Rad2Deg:0.00}..{maximumDeflection * Mathf.Rad2Deg:0.00} deg, lash {parameters.shaftAndJointLashAtWheelDegrees:0.00} deg, torque reversed {sawNegative}");
         Assert.Greater(maximumDeflection - minimumDeflection, lash, "the shaft deflection must cross more than the lash");
@@ -157,7 +157,7 @@ public class DrivelineShuffleTests
     {
         var model = Build(out var carParams, out var parameters, out var engine, out var drivetrain, out var left, out var right);
         drivetrain.SelectGear(1); drivetrain.Tick(1f); engine.SetRunning(true); left.brakeTorque = right.brakeTorque = 1e6f;
-        Run(model, engine, drivetrain, left, right, 3f, 1f, 0f, _ => { left.angularVelocity = 0f; right.angularVelocity = 0f; });
+        Run(model, engine, drivetrain, left, right, 3f, 1f, 0f, unusedStep => { left.angularVelocity = 0f; right.angularVelocity = 0f; });
         report.AppendLine($"stall: {engine.rpm:0.0} rpm, combusting {engine.combusting}");
         Assert.Less(engine.rpm, 1f, "a stalled crank must stop"); Assert.IsFalse(engine.combusting, "combustion must stop at the stall");
     }
@@ -294,12 +294,12 @@ public class DrivelineShuffleTests
         {
             double off = 0.0; for (int row = 0; row < size; row++) for (int column = row + 1; column < size; column++) off += matrix[row, column] * matrix[row, column];
             if (off < 1e-18) break;
-            for (int p = 0; p < size; p++) for (int q = p + 1; q < size; q++)
+            for (int rowIndex = 0; rowIndex < size; rowIndex++) for (int columnIndex = rowIndex + 1; columnIndex < size; columnIndex++)
             {
-                if (System.Math.Abs(matrix[p, q]) < 1e-300) continue;
-                double theta = (matrix[q, q] - matrix[p, p]) / (2.0 * matrix[p, q]), t = System.Math.Sign(theta == 0 ? 1 : theta) / (System.Math.Abs(theta) + System.Math.Sqrt(theta * theta + 1.0)), c = 1.0 / System.Math.Sqrt(t * t + 1.0), sn = t * c;
-                for (int k = 0; k < size; k++) { double kp = matrix[k, p], kq = matrix[k, q]; matrix[k, p] = c * kp - sn * kq; matrix[k, q] = sn * kp + c * kq; }
-                for (int k = 0; k < size; k++) { double pk = matrix[p, k], qk = matrix[q, k]; matrix[p, k] = c * pk - sn * qk; matrix[q, k] = sn * pk + c * qk; }
+                if (System.Math.Abs(matrix[rowIndex, columnIndex]) < 1e-300) continue;
+                double theta = (matrix[columnIndex, columnIndex] - matrix[rowIndex, rowIndex]) / (2.0 * matrix[rowIndex, columnIndex]), t = System.Math.Sign(theta == 0 ? 1 : theta) / (System.Math.Abs(theta) + System.Math.Sqrt(theta * theta + 1.0)), c = 1.0 / System.Math.Sqrt(t * t + 1.0), sn = t * c;
+                for (int k = 0; k < size; k++) { double kp = matrix[k, rowIndex], kq = matrix[k, columnIndex]; matrix[k, rowIndex] = c * kp - sn * kq; matrix[k, columnIndex] = sn * kp + c * kq; }
+                for (int k = 0; k < size; k++) { double pk = matrix[rowIndex, k], qk = matrix[columnIndex, k]; matrix[rowIndex, k] = c * pk - sn * qk; matrix[columnIndex, k] = sn * pk + c * qk; }
             }
         }
         var values = new double[size]; for (int i = 0; i < size; i++) values[i] = matrix[i, i]; System.Array.Sort(values); return values;
@@ -318,12 +318,19 @@ public class DrivelineShuffleTests
         double tireStiffness = 2.0 * carParams.longitudinalStiffnessCoefficient * carParams.mass * 9.81 * rigFrontWeightFraction * 0.5 / carParams.relaxationLength, radius = carParams.wheelRadius;
         // coordinates: theta_e, theta_in, theta_d, theta_w, x ; springs as vectors of coefficients
         var stiffness = new double[5, 5];
-        void AddSpring(double k, double a, int i, double b, int j) { double[] coefficient = new double[5]; coefficient[i] += a; coefficient[j] += b; for (int r = 0; r < 5; r++) for (int c = 0; c < 5; c++) stiffness[r, c] += k * coefficient[r] * coefficient[c]; }
+        // @description - adds one spring k (a x_i + b x_j)^2 / 2 to the stiffness matrix
+        // @param {double} springStiffness - spring rate k in the units of the coordinate pair
+        // @param {double} firstWeight - weight a of the first coordinate
+        // @param {int} firstIndex - index i of the first coordinate
+        // @param {double} secondWeight - weight b of the second coordinate
+        // @param {int} secondIndex - index j of the second coordinate
+        // @return {Void}
+        void AddSpring(double springStiffness, double firstWeight, int firstIndex, double secondWeight, int secondIndex) { double[] coefficient = new double[5]; coefficient[firstIndex] += firstWeight; coefficient[secondIndex] += secondWeight; for (int row = 0; row < 5; row++) for (int column = 0; column < 5; column++) stiffness[row, column] += springStiffness * coefficient[row] * coefficient[column]; }
         AddSpring(damperStiffness, 1, 0, -1, 1);
         AddSpring(meshStiffness, 1.0 / ratio, 1, -1, 2);
         AddSpring(shaftStiffness, 1, 2, -1, 3);
         AddSpring(tireStiffness, radius, 3, -1, 4);
-        var scaled = new double[5, 5]; for (int r = 0; r < 5; r++) for (int c = 0; c < 5; c++) scaled[r, c] = stiffness[r, c] / System.Math.Sqrt(inertia[r] * inertia[c]);
+        var scaled = new double[5, 5]; for (int row = 0; row < 5; row++) for (int column = 0; column < 5; column++) scaled[row, column] = stiffness[row, column] / System.Math.Sqrt(inertia[row] * inertia[column]);
         double[] eigenvalues = JacobiEigenvalues(scaled); double lowest = 0.0; foreach (double value in eigenvalues) if (value > 1e-3) { lowest = value; break; }
         return System.Math.Sqrt(lowest) / (2.0 * System.Math.PI);
     }
@@ -333,8 +340,15 @@ public class DrivelineShuffleTests
     {
         public double torque, holdSpeed, holdGain; double crankSpeedAtEnd;   // holdGain > 0: torque = torque + holdGain (holdSpeed - crank speed), a speed governor for steady transmitted-torque tests
         public double AuxiliaryInertiaKilogramMetersSquared => 0.0;
+        // @description - no engine state to advance for a constant torque
+        // @param {double} throttleFraction - accelerator pedal 0..1 (unused)
+        // @param {double} intervalSeconds - interval in s (unused)
+        // @return {Void}
         public void BeginInterval(double throttleFraction, double intervalSeconds) { }
         public double TorqueAt(double crankAngleRadians, double crankAngularVelocity) => torque + holdGain * (holdSpeed - crankAngularVelocity);
+        // @description - remembers the crank speed at the end of the interval
+        // @param {double} crankAngularVelocity - crank speed in rad/s
+        // @return {Void}
         public void EndInterval(double crankAngularVelocity) { crankSpeedAtEnd = crankAngularVelocity; }
     }
 

@@ -11,7 +11,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - Merged branch `transmission-synchro` (`5657264`, `704b8f5`) into main on top of the camera fix (`af03997`), the experimental driveline start fix (`c47ac10`) and the overrun fix (`c4dae08`). The only textual conflict was this file; both sides are kept below.
 - Partial-clutch shift behavior is unchanged (the synchronizer cone friction was deliberately not lowered).
-- With every experimental toggle off the default path is unchanged: the 15 diagnostic scenarios were compared with main before the merge (see the readability and verification entries from this date).
+- Verification on the merged tree (PT 2026-10-15): all 171 EditMode tests pass with no `error CS`; the 15 diagnostic scenarios with every experimental toggle off are row-identical to main `c47ac10` (all CSV, TQ and SMOKE rows exact) and the per-step float-bit hash of the drivetrain, wheels and body is identical for all 15; the Off -> On -> Off isolation tests in `TransmissionIntegrationTests` pass.
+- Readability audit: added the missing `@return` headers and a few parameter docs in `Driveline/*.cs`, and replaced single-letter names (`_`, `p`, `q`, `a`, `b`, `r`, `c`) in `DrivelineShuffleTests.cs`, `ExperimentalDrivelineStartTests.cs` and `tools/plot_shift_window.py`. Comment and name changes only; the audit now reports 0 violations (spelling check clean).
 
 ### Fixed (engine would not start with the Experimental driveline ON, PT 2026-10-15 11:00)
 

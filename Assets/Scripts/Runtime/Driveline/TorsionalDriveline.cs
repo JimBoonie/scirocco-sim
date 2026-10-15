@@ -32,6 +32,7 @@ public class TorsionalDriveline : ITorsionalDriveline
     // @description - builds the chain from the parameter asset and the car parameters
     // @param {ShuffleDrivelineParameters} parameters - model parameters
     // @param {CarParams} carParams - engine inertia and clutch capacity
+    // @return {Void}
     public TorsionalDriveline(ShuffleDrivelineParameters parameters, CarParams carParams)
     {
         this.parameters = parameters; this.carParams = carParams;
@@ -50,6 +51,7 @@ public class TorsionalDriveline : ITorsionalDriveline
     // @description - restarts the chain unloaded from measured speeds
     // @param {double} crankAngularVelocity - rad/s
     // @param {double} meanWheelAngularVelocity - rad/s
+    // @return {Void}
     public void Initialize(double crankAngularVelocity, double meanWheelAngularVelocity)
     {
         crankSpeed = discSpeed = inputSpeed = crankAngularVelocity; carrierSpeed = leftSpeed = rightSpeed = meanWheelAngularVelocity; blockSpeed = 0.0;

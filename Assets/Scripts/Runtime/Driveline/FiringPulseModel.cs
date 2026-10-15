@@ -24,6 +24,7 @@ public class FiringPulseModel
     // @description - builds the lookup tables from the engine geometry and the combustion parameters
     // @param {ShuffleDrivelineParameters} parameters - model parameters
     // @param {CarParams} carParams - engine parameters (displacement, compression ratio, cylinder count)
+    // @return {Void}
     public FiringPulseModel(ShuffleDrivelineParameters parameters, CarParams carParams)
     {
         cylinderCount = carParams.cylinders;
@@ -121,6 +122,7 @@ public class FiringPulseModel
     // @param {double} heated - g at that angle in Pa/J
     // @param {double} motoredRate - (out) dm/dtheta
     // @param {double} heatedRate - (out) dg/dtheta
+    // @return {Void}
     void PressureDerivatives(double crankAngleRadians, double motored, double heated, out double motoredRate, out double heatedRate)
     {
         double volume = CylinderVolume(crankAngleRadians), volumeRate = pistonArea * PistonSpeedPerRadian(crankAngleRadians);
@@ -132,6 +134,7 @@ public class FiringPulseModel
     // @param {int} cycleSamples - table length over 720 deg
     // @param {double[]} unitPressure - (out) m at each table phase (compression/expansion strokes only valid)
     // @param {double[]} heatPressure - (out) g at each table phase
+    // @return {Void}
     void IntegrateUnitPressures(int cycleSamples, double[] unitPressure, double[] heatPressure)
     {
         double stepRadians = fineStepDegrees * Mathf.Deg2Rad, angle = -Mathf.PI, motored = 1.0, heated = 0.0;
