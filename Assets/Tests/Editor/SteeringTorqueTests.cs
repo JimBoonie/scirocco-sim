@@ -2,21 +2,21 @@
 using NUnit.Framework; using UnityEngine;
 public class SteeringTorqueTests
 {
-    [System.Serializable] class KingpinGeometry { public float[] u, r_cp, r_wc; }
-    [System.Serializable] class ReferenceCase { public bool left, braking, lever_case; public float steer, fx, fy, fz, tp, expected, d, leverL, leverR; }
-    [System.Serializable] class ReferenceData { public KingpinGeometry geom; public ReferenceCase[] cases; }
+    [System.Serializable] class KingpinGeometry { public float[] kingpinAxis, contactPatchOffset, wheelCentreOffset; }
+    [System.Serializable] class ReferenceCase { public bool isLeft, isBraking, isLeverCase; public float steerDeg, longitudinalForce, lateralForce, verticalForce, pneumaticTrail, expectedTorque, leftLever, rightLever; }
+    [System.Serializable] class ReferenceData { public KingpinGeometry geometry; public ReferenceCase[] cases; }
     // @description - Verifies that the C# steering torque equals the independent Python reference for every case in steer_ref.json (tolerance 1e-3 N m plus 0.01 %), skipping the removed linear-lever cases, and that more than 30 cases were checked.
     // @return {Void} - nothing
     [Test] public void Matches_Python_Reference()
     {
         var reference = JsonUtility.FromJson<ReferenceData>(System.IO.File.ReadAllText(System.IO.Path.Combine(Application.dataPath, "Tests/Editor/steer_ref.json")));
-        var suspensionTables = ScriptableObject.CreateInstance<SuspensionTables>(); suspensionTables.kingpinAxis = reference.geom.u; suspensionTables.kingpinContactPatchOffset = reference.geom.r_cp; suspensionTables.kingpinWheelCentreOffset = reference.geom.r_wc;
+        var suspensionTables = ScriptableObject.CreateInstance<SuspensionTables>(); suspensionTables.kingpinAxis = reference.geometry.kingpinAxis; suspensionTables.kingpinContactPatchOffset = reference.geometry.contactPatchOffset; suspensionTables.kingpinWheelCentreOffset = reference.geometry.wheelCentreOffset;
         var geometry = SteeringTorque.FromTables(suspensionTables); int caseCount = 0;
         foreach (var testCase in reference.cases)
         {
-            if (testCase.lever_case) continue;   // reference lever cases describe the removed linear-ratio + Ackermann-fit model; the kinematic lever is tested in SteeringLinkageTests
-            float roadTorque = SteeringTorque.RoadTorque(geometry, testCase.left, testCase.steer, testCase.fx, testCase.braking, testCase.fy, testCase.fz, testCase.tp);
-            Assert.AreEqual(testCase.expected, roadTorque, 1e-3 + 1e-4 * Mathf.Abs(testCase.expected), $"case {caseCount}"); caseCount++;
+            if (testCase.isLeverCase) continue;   // reference lever cases describe the removed linear-ratio + Ackermann-fit model; the kinematic lever is tested in SteeringLinkageTests
+            float roadTorque = SteeringTorque.RoadTorque(geometry, testCase.isLeft, testCase.steerDeg, testCase.longitudinalForce, testCase.isBraking, testCase.lateralForce, testCase.verticalForce, testCase.pneumaticTrail);
+            Assert.AreEqual(testCase.expectedTorque, roadTorque, 1e-3 + 1e-4 * Mathf.Abs(testCase.expectedTorque), $"case {caseCount}"); caseCount++;
         }
         Assert.Greater(caseCount, 30);
     }
@@ -25,7 +25,7 @@ public class SteeringTorqueTests
     [Test] public void Physical_Sanity()
     {
         var reference = JsonUtility.FromJson<ReferenceData>(System.IO.File.ReadAllText(System.IO.Path.Combine(Application.dataPath, "Tests/Editor/steer_ref.json")));
-        var suspensionTables = ScriptableObject.CreateInstance<SuspensionTables>(); suspensionTables.kingpinAxis = reference.geom.u; suspensionTables.kingpinContactPatchOffset = reference.geom.r_cp; suspensionTables.kingpinWheelCentreOffset = reference.geom.r_wc; var geometry = SteeringTorque.FromTables(suspensionTables);
+        var suspensionTables = ScriptableObject.CreateInstance<SuspensionTables>(); suspensionTables.kingpinAxis = reference.geometry.kingpinAxis; suspensionTables.kingpinContactPatchOffset = reference.geometry.contactPatchOffset; suspensionTables.kingpinWheelCentreOffset = reference.geometry.wheelCentreOffset; var geometry = SteeringTorque.FromTables(suspensionTables);
         // right turn: lateral force to the right acting behind the patch (pneumatic trail) -> aligning torque steers left (negative)
         Assert.Less(SteeringTorque.RoadTorque(geometry, true, 2f, 0f, false, 3000f, 3500f, 0.025f) + SteeringTorque.RoadTorque(geometry, false, 2f, 0f, false, 3000f, 3500f, 0.025f), 0f);
         // weight jacking only (KPI 12.8 deg, scrub -10 mm, trail ~0 from the ESTIMATED hardpoints): small at the column (< 0.5 N m at 20 deg)

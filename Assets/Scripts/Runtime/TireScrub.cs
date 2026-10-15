@@ -225,6 +225,7 @@ public static class TireScrubLaw
     // @return {float} - slip ratio of peak longitudinal force (dimensionless)
     public static float PeakKappa(CarParams carParams, float verticalLoad) => Peak(slipRatio => UnityEngine.Mathf.Abs(PacejkaTire.PureLong(carParams, slipRatio, UnityEngine.Mathf.Max(verticalLoad, 1f))), 0.002f, 1.0f);
     // @description - Finds the argument of the maximum of a single-peak function: a coarse 60-step scan, then a golden-section refinement (40 iterations) around the best step.
+    // @param {System.Func<float, float>} function - single-peak function to maximise
     // @param {float} lowerBound - lower search bound
     // @param {float} upperBound - upper search bound
     // @return {float} - argument of the maximum (same unit as the bounds)

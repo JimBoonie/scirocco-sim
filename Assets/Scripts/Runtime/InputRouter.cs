@@ -382,7 +382,7 @@ public class InputRouter : MonoBehaviour
             case 3: profile.seatForwardOffset = Mathf.Clamp(profile.seatForwardOffset + direction * seatStep, -carParams.seatTravelAft, carParams.seatTravelFore); if (cockpit) cockpit.ApplySeat(profile.seatForwardOffset, profile.seatUpOffset); break;
             case 4: profile.seatUpOffset = Mathf.Clamp(profile.seatUpOffset + direction * seatStep, -carParams.seatTravelDown, carParams.seatTravelUp); if (cockpit) cockpit.ApplySeat(profile.seatForwardOffset, profile.seatUpOffset); break;
             case 5: profile.forceFeedbackEnabled = isSelect ? !profile.forceFeedbackEnabled : direction > 0; break;
-            case 6: { int i = System.Array.IndexOf(TorquePresets, profile.wheelbaseMaxTorqueNm); if (i < 0) i = 0; i = Mathf.Clamp(i + (isSelect ? 1 : direction), 0, TorquePresets.Length - 1); profile.wheelbaseMaxTorqueNm = TorquePresets[i]; break; }
+            case 6: { int presetIndex = System.Array.IndexOf(TorquePresets, profile.wheelbaseMaxTorqueNm); if (presetIndex < 0) presetIndex = 0; presetIndex = Mathf.Clamp(presetIndex + (isSelect ? 1 : direction), 0, TorquePresets.Length - 1); profile.wheelbaseMaxTorqueNm = TorquePresets[presetIndex]; break; }
             case 7: profile.forceFeedbackStrengthPercent = Mathf.Clamp(profile.forceFeedbackStrengthPercent + direction * pctStep, 0f, 100f); break;
             case 8: profile.forceFeedbackMaxOutputPercent = Mathf.Clamp(profile.forceFeedbackMaxOutputPercent + direction * pctStep, 0f, 100f); break;
             case 9: profile.forceFeedbackInvert = isSelect ? !profile.forceFeedbackInvert : direction > 0; break;
@@ -471,6 +471,10 @@ public class InputRouter : MonoBehaviour
         var settings = profile.gamepadSteer; var defaults = GamepadSteerSettings.Default; var highlightStyle = new GUIStyle(labelStyle) { fontStyle = FontStyle.Bold }; highlightStyle.normal.textColor = new Color(1f, 0.85f, 0.3f);
         GUILayout.Label("GAMEPAD / KEYBOARD STEERING  (input preferences, not physics; a wheel bound as 'Wheel' is never affected)", labelStyle);
         GUILayout.Label("Up/Down select, Left/Right change, Select/A = reset that item to default", labelStyle);
+        // @description - Draws one menu row: a selection marker button followed by the row body, remembers the selected row's rectangle for scrolling, and resets the selection when it is out of range on the steering tab.
+        // @param {int} itemIndex - index of this row in the keyboard/gamepad navigation order
+        // @param {System.Action} body - draws the row's controls
+        // @return {Void} - nothing
         void Row(int itemIndex, System.Action body)
         {
             if (navIndex >= GpItemCount && tab == 5) navIndex = 0;

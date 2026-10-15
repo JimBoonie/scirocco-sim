@@ -90,7 +90,7 @@ Problem: below the bench curve's measured range grip was held at 0.70/1.10 = 64 
 | Tyre Reviews / Test World, 0–15 °C indoor (2019) and TCS dry 10 °C vs 20–25 °C | summer tyre shortest dry stop at every temperature 0–8 °C; no cliff at 7 °C in the dry | S (qualitative) |
 | Linköping thesis diva2:1568991 | tread temperature in road driving 11–36 °C (52–97 °F), i.e. road tests run with the tread near road temperature | S |
 
-**New relation** (code: `MuRoad`, `MuBench`, `MuOfT`, `TCross` in TireThermal.cs)
+**New relation** (code: `RoadFriction`, `BenchFriction`, `FrictionAtTemperature`, `CrossoverTemperature` in TireThermal.cs)
 | Item | Value | Tag |
 |---|---|---|
 | Road relation | μ_road(T) = μmax·(1 − s·max(T − T_ref, 0)), s = 0.00211 /°C (0.117 %/°F), T_ref = 25 °C (77 °F) | S (s, T_ref), D (form) |

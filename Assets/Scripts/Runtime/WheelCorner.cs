@@ -190,7 +190,7 @@ public class WheelCorner : MonoBehaviour
     // @param {TireScale} scale - Pacejka scale factors, scaled in place
     // @param {float} rollingResistanceScale - rolling-resistance multiplier, set here
     // @return {Void} - nothing
-    void ViscoUpdate(float longitudinalSpeed, float lateralSpeed, ref float relaxationLength, ref TireScale scale, ref float rrScale)
+    void ViscoUpdate(float longitudinalSpeed, float lateralSpeed, ref float relaxationLength, ref TireScale scale, ref float rollingResistanceScale)
     {
         viscoFlags = ViscoTire.FromParams(carParams); if (viscoReferenceSlipSpeed < 0) viscoReferenceSlipSpeed = ViscoTire.VsRef(carParams);
         double gripTemperature = thermal != null ? thermal.GripTemp() : TireThermal.OptimalTemperature;              // base coefficients = tyre at its optimum (D, as TireThermal)
@@ -214,9 +214,9 @@ public class WheelCorner : MonoBehaviour
         if (viscoFlags.rollingResistance)
         {
             double rollingLossTemperature = thermal != null ? TireThermal.RollingLossTreadShare * thermal.bulkTemperature + (1 - TireThermal.RollingLossTreadShare) * thermal.carcassTemperature : ViscoTire.RollingResistanceReferenceTemperature;
-            rrScale = (float)ViscoTire.RollingFactor(longitudinalSpeed, carParams.wheelRadius, rollingLossTemperature);
+            rollingResistanceScale = (float)ViscoTire.RollingFactor(longitudinalSpeed, carParams.wheelRadius, rollingLossTemperature);
         }
-        viscoRollingResistanceScale = rrScale;
+        viscoRollingResistanceScale = rollingResistanceScale;
     }
     /// tread deformation hysteresis (brush model, Pacejka ch. 3): tread elements renew every L/V, each storing F^2 L share / (4 C) in the patch
     /// (C_F = 2 c_p a^2, a = L/2), of which ~pi tan d is lost per load-unload pass (E: half-cycle loss). Power = pi tan d V share sum F^2/(4 C);

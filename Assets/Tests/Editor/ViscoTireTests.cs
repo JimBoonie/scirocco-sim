@@ -74,6 +74,9 @@ public class ViscoTireTests
     [Test] public void WlfShiftsPeakToHigherSpeedWhenHot()
     {
         var flags = AllPhysicsEnabled; flags.flashTemperature = false;
+        // @description - Scans log10 sliding speed from -8 to 3 (step 0.02) for the speed at which the friction coefficient peaks.
+        // @param {double} temperature - tread temperature (degC)
+        // @return {double} - log10 of the sliding speed (m/s) of maximum friction
         double PeakLogSpeed(double temperature) { double bestFriction = 0, bestLogSpeed = 0; for (double logSpeed = -8; logSpeed <= 3; logSpeed += 0.02) { double friction = ViscoTire.Mu(System.Math.Pow(10, logSpeed), temperature, flags); if (friction > bestFriction) { bestFriction = friction; bestLogSpeed = logSpeed; } } return bestLogSpeed; }
         Assert.Less(ViscoTire.LogTimeTemperatureShift(60), ViscoTire.LogTimeTemperatureShift(20));
         Assert.Greater(PeakLogSpeed(80), PeakLogSpeed(20)); Assert.Greater(PeakLogSpeed(20), PeakLogSpeed(-10));
@@ -129,7 +132,7 @@ public class ViscoTireTests
     {   // CSVs for tools/visco_plots.py when VISCO_DUMP is set
         var directory = System.Environment.GetEnvironmentVariable("VISCO_DUMP"); if (string.IsNullOrEmpty(directory)) { Assert.Pass("VISCO_DUMP not set"); return; }
         System.IO.Directory.CreateDirectory(directory); var flags = AllPhysicsEnabled; var flagsWithoutFlash = flags; flagsWithoutFlash.flashTemperature = false;
-        var frictionCsv = new System.Text.StringBuilder("T,v,mu_flash,mu_noflash,mu_hys,mu_adh,dT\n");
+        var frictionCsv = new System.Text.StringBuilder("temperature_c,sliding_speed_mps,friction_with_flash,friction_isothermal,friction_hysteretic,friction_adhesive,flash_temperature_rise_k\n");
         foreach (double temperature in new[] { 0.0, 20.0, 40.0, 66.0, 88.0, 110.0 })
             for (double logSpeed = -4; logSpeed <= 2.001; logSpeed += 0.05)
             {
@@ -138,7 +141,7 @@ public class ViscoTireTests
                 frictionCsv.AppendLine(JoinInvariant(temperature, slidingSpeed, muWithFlash, muWithoutFlash, ViscoTire.Mu(slidingSpeed, temperature, flagsHysteresisOnly), ViscoTire.Mu(slidingSpeed, temperature, flagsAdhesionOnly), flashRise));
             }
         System.IO.File.WriteAllText(System.IO.Path.Combine(directory, "mu_vs_slipspeed.csv"), frictionCsv.ToString());
-        var carParams = CreateCarParams(); double referenceSlipSpeed = ViscoTire.VsRef(carParams); var forceCsv = new System.Text.StringBuilder("V,T,alpha,Fy_default,Fy_exp\n");
+        var carParams = CreateCarParams(); double referenceSlipSpeed = ViscoTire.VsRef(carParams); var forceCsv = new System.Text.StringBuilder("speed_mps,temperature_c,slip_angle_rad,lateral_force_default_n,lateral_force_experimental_n\n");
         foreach (double speed in new[] { 10.0, ViscoTire.ReferenceSpeed, 35.0 }) foreach (double temperature in new[] { 40.0, 88.0 })
             for (float slipAngle = 0f; slipAngle < 0.35f; slipAngle += 0.0025f)
             {
@@ -147,7 +150,7 @@ public class ViscoTireTests
                 forceCsv.AppendLine(JoinInvariant(speed, temperature, slipAngle, PacejkaTire.PureLat(carParams, slipAngle, carParams.nominalVerticalLoad, 0f, baseScale), PacejkaTire.PureLat(carParams, slipAngle, carParams.nominalVerticalLoad, 0f, scale)));
             }
         System.IO.File.WriteAllText(System.IO.Path.Combine(directory, "force_curves.csv"), forceCsv.ToString());
-        var modulusCsv = new System.Text.StringBuilder("T,f,tand,absE\n");
+        var modulusCsv = new System.Text.StringBuilder("temperature_c,frequency_hz,loss_tangent,modulus_magnitude_pa\n");
         foreach (double temperature in new[] { -60.0, -40.0, -20.0, 0.0, 20.0, 40.0, 60.0, 80.0, 100.0 }) for (double logFrequency = -1; logFrequency <= 6.001; logFrequency += 0.1) { double frequency = System.Math.Pow(10, logFrequency); modulusCsv.AppendLine(JoinInvariant(temperature, frequency, ViscoTire.TanDelta(frequency, temperature), ViscoTire.ModulusAbs(frequency, temperature))); }
         System.IO.File.WriteAllText(System.IO.Path.Combine(directory, "modulus.csv"), modulusCsv.ToString());
     }

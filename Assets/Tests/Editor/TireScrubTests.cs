@@ -110,6 +110,9 @@ public class TireScrubTests
     // @return {Void} - nothing
     [Test] public void Engine_Has_No_Throttle_Hiss()
     {
+        // @description - Renders 9600 samples of the engine synthesiser at 4000 rpm, 0.8 load and a given throttle.
+        // @param {float} throttle - throttle fraction 0..1
+        // @return {float[]} - mono samples
         float[] RenderThrottle(float throttle) { var gameObject = new GameObject("e"); var synth = gameObject.AddComponent<EngineSynth>(); synth.SetOfflineState(SampleRateHz, 4000f, 0.8f, throttle); var buffer = new float[9600]; synth.Render(buffer, buffer.Length); Object.DestroyImmediate(gameObject); return buffer; }
         var zeroThrottle = RenderThrottle(0f); var fullThrottle = RenderThrottle(1f); for (int i = 0; i < zeroThrottle.Length; i++) Assert.AreEqual(zeroThrottle[i], fullThrottle[i], 1e-7, "throttle area must not add noise");
     }

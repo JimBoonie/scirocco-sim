@@ -76,12 +76,12 @@ public static class TrackSetup
         foreach (var meshFilter in col.GetComponentsInChildren<MeshFilter>())
         {
             meshFilter.gameObject.AddComponent<MeshCollider>().sharedMesh = meshFilter.sharedMesh; var meshRenderer = meshFilter.GetComponent<MeshRenderer>(); if (meshRenderer) meshRenderer.enabled = false; colliderObjectCount++;
-            var surfaceType = SurfaceTag.FromName(meshFilter.name); meshFilter.gameObject.AddComponent<SurfaceTag>().type = surfaceType; counts[surfaceType] = counts.TryGetValue(surfaceType, out var k) ? k + 1 : 1;
+            var surfaceType = SurfaceTag.FromName(meshFilter.name); meshFilter.gameObject.AddComponent<SurfaceTag>().type = surfaceType; counts[surfaceType] = counts.TryGetValue(surfaceType, out var existingCount) ? existingCount + 1 : 1;
         }
         // barriers: MeshColliders on the visual wall meshes (cooked at build time)
         // v1.3.1: Blender Bot ships COL_Barriers_* (closed vertical boxes, identical vertices); only fall back to visual wall meshes when absent
         foreach (var meshFilter in vis.GetComponentsInChildren<MeshFilter>().Where(meshFilter => meshFilter.name.StartsWith("Walls_Barriers")))
-        { meshFilter.gameObject.AddComponent<MeshCollider>().sharedMesh = meshFilter.sharedMesh; meshFilter.gameObject.AddComponent<SurfaceTag>().type = SurfaceType.Wall; counts[SurfaceType.Wall] = counts.TryGetValue(SurfaceType.Wall, out var k) ? k + 1 : 1; }
+        { meshFilter.gameObject.AddComponent<MeshCollider>().sharedMesh = meshFilter.sharedMesh; meshFilter.gameObject.AddComponent<SurfaceTag>().type = SurfaceType.Wall; counts[SurfaceType.Wall] = counts.TryGetValue(SurfaceType.Wall, out var existingWallCount) ? existingWallCount + 1 : 1; }
         Debug.Log("TRACKCHECK collider objects by surface: " + string.Join(", ", counts.Select(surfaceCount => $"{surfaceCount.Key} {surfaceCount.Value}")));
         // Terrain collider (option B): Unity TerrainCollider from the v1.1 RAW513, which is the same surface as the Terrain_* meshes (carved by Blender Bot).
         // Kept as the ground beyond the ~16 m surface colliders and as a safety layer under them. MeshColliders on the 524k-tri terrain would add ~10 MB to the build.
@@ -114,8 +114,8 @@ public static class TrackSetup
     public const int InnerColumnStart = 560, InnerRowStart = 332;
     // @description - Reads a 16-bit little-endian square heightmap file into an array of raw values (0..65535, row 0 = south), and throws if the file size does not match.
     // @param {string} fileName - file name inside the track folder
-    // @param {int} n - number of nodes per side
-    // @return {ushort[]} - raw height values, row-major, n x n entries
+    // @param {int} sideLength - number of nodes per side
+    // @return {ushort[]} - raw height values, row-major, sideLength x sideLength entries
     static ushort[] Raw(string fileName, int sideLength) { var bytes = System.IO.File.ReadAllBytes(Dir + "/" + fileName); if (bytes.Length != sideLength * sideLength * 2) throw new System.Exception("TRACKCHECK heightmap size " + fileName); var heights = new ushort[sideLength * sideLength]; for (int i = 0; i < heights.Length; i++) heights[i] = (ushort)(bytes[2 * i] | bytes[2 * i + 1] << 8); return heights; }
     // Explicit terrain material asset: with materialTemplate = null the Terrain falls back to the built-in default terrain material, whose
     // shader (Nature/Terrain/Standard) is not pulled into player builds -> the Terrain components draw nothing (only the road/kerb meshes show).
@@ -148,12 +148,20 @@ public static class TrackSetup
         foreach (var oldAssetGuid in AssetDatabase.FindAssets("LagunaSeca_Terrain", new[] { Dir })) { var assetPath = AssetDatabase.GUIDToAssetPath(oldAssetGuid); if (assetPath.EndsWith(".asset") || assetPath.EndsWith(".terrainlayer")) AssetDatabase.DeleteAsset(assetPath); }
         AssetDatabase.DeleteAsset(Dir + "/LagunaSeca_TerrainData.asset"); AssetDatabase.DeleteAsset(Dir + "/LagunaSeca_Aerial.terrainlayer");
         int tileCount = 0;
-        void Tile(string name, int resolution, float spacing, Vector3 tileOrigin, System.Func<int, int, float> h01, int order)
+        // @description - Creates one terrain tile: heightmap data, the shared aerial terrain layer, a terrain collider tagged as Terrain surface and a renderable Terrain component, and counts it.
+        // @param {string} name - tile name used in asset and object names
+        // @param {int} resolution - heightmap nodes per side (power of two plus one)
+        // @param {float} spacing - node spacing (m)
+        // @param {Vector3} tileOrigin - world position of the tile's south-west corner (m)
+        // @param {System.Func<int, int, float>} normalisedHeight - height fraction 0..1 of the heightmap node at (row, column)
+        // @param {int} order - terrain grouping id (neighbour connection group)
+        // @return {Void} - nothing; creates assets and scene objects
+        void Tile(string name, int resolution, float spacing, Vector3 tileOrigin, System.Func<int, int, float> normalisedHeight, int order)
         {
-            var heights = new float[resolution, resolution]; for (int row = 0; row < resolution; row++) for (int column = 0; column < resolution; column++) heights[row, column] = h01(row, column);
+            var heights = new float[resolution, resolution]; for (int row = 0; row < resolution; row++) for (int column = 0; column < resolution; column++) heights[row, column] = normalisedHeight(row, column);
             var tileData = new TerrainData { heightmapResolution = resolution }; tileData.size = new Vector3((resolution - 1) * spacing, heightRangeMetres, (resolution - 1) * spacing); tileData.SetHeights(0, 0, heights);
-            var off = new Vector2(tileOrigin.x - terrainOrigin.x, tileOrigin.z - terrainOrigin.z);   // splat uv = (local + tileOffset) / tileSize -> the one aerial spans the full extent on every tile
-            var layer = new TerrainLayer { diffuseTexture = aerialTexture, tileSize = new Vector2(extentMetres, extentMetres), tileOffset = off, smoothness = 0f, metallic = 0f };
+            var splatOffset = new Vector2(tileOrigin.x - terrainOrigin.x, tileOrigin.z - terrainOrigin.z);   // splat uv = (local + tileOffset) / tileSize -> the one aerial spans the full extent on every tile
+            var layer = new TerrainLayer { diffuseTexture = aerialTexture, tileSize = new Vector2(extentMetres, extentMetres), tileOffset = splatOffset, smoothness = 0f, metallic = 0f };
             AssetDatabase.CreateAsset(layer, $"{Dir}/LagunaSeca_Terrain_{name}.terrainlayer");
             tileData.alphamapResolution = 16; tileData.baseMapResolution = 16; tileData.terrainLayers = new[] { layer };
             AssetDatabase.CreateAsset(tileData, $"{Dir}/LagunaSeca_Terrain_{name}.asset");
@@ -231,6 +239,10 @@ public static class TrackSetup
                 AddReportLine($"{surfacePair.Item1} vs visual {surfacePair.Item2} ({visualMeshes.Count} meshes): {sampleCount} vertices, mean |dy| {sumAbsoluteError / Mathf.Max(1, sampleCount):0.000} m, max {maxAbsoluteError:0.000} m, no visual within 1.5 m: {missCount}; min height above terrain collider {minClearance:0.00} m");
             }
         }
+        // @description - Union of the renderer bounds of all renderers under a root whose names start with a prefix.
+        // @param {GameObject} root - object whose child renderers are searched
+        // @param {string} prefix - renderer name prefix, for example "Terrain_"
+        // @return {Bounds} - combined world-space bounds (an empty Bounds when none match)
         Bounds BoundsOf(GameObject root, string prefix) { var renderers = root.GetComponentsInChildren<Renderer>(true).Where(renderer => renderer.name.StartsWith(prefix)).ToArray(); var bounds = renderers.Length > 0 ? renderers[0].bounds : new Bounds(); foreach (var renderer in renderers) bounds.Encapsulate(renderer.bounds); return bounds; }
         var terrainBounds = BoundsOf(vis, "Terrain_"); var roadBounds = BoundsOf(col, "COL_Road");
         AddReportLine($"terrain bounds min {terrainBounds.min.ToString("F1")} max {terrainBounds.max.ToString("F1")} (heightmap meta SW corner x=-675.0 z=-1090.2, size 1902.5, zmin -92.1)");

@@ -491,7 +491,18 @@ public class InputMapper
     public static BindingProfile Defaults()
     {
         var profile = new BindingProfile();
+        // @description - Adds a keyboard binding with default calibration to an action of the default profile.
+        // @param {InAction} action - action that receives the binding
+        // @param {string} keyName - Input System key control name
+        // @param {bool} isNegative - true when the key drives the negative direction of an axis action
+        // @return {Void} - nothing
         void AddKeyboardBinding(InAction action, string keyName, bool isNegative = false) => profile.Get(action).Add(new Binding { layout = "Keyboard", control = keyName, negative = isNegative, calibration = new AxisCalibration() });
+        // @description - Adds a gamepad binding to an action of the default profile; sticks get a 0.1 dead zone against drift.
+        // @param {InAction} action - action that receives the binding
+        // @param {string} controlPath - gamepad control path, for example leftStick/x
+        // @param {bool} isStick - true for a stick axis (calibrated -1..1 with dead zone)
+        // @param {bool} isNegative - true when the control drives the negative direction of an axis action
+        // @return {Void} - nothing
         void AddGamepadBinding(InAction action, string controlPath, bool isStick = false, bool isNegative = false) => profile.Get(action).Add(new Binding { layout = "Gamepad", control = controlPath, negative = isNegative, steerSource = SteerSource.Stick,
             calibration = isStick ? new AxisCalibration { min = -1f, max = 1f, center = 0f, deadzone = 0.1f } : new AxisCalibration() });   // stick deadzone (user-editable) against stick drift
         AddKeyboardBinding(InAction.Steer, "a", true); AddKeyboardBinding(InAction.Steer, "leftArrow", true); AddKeyboardBinding(InAction.Steer, "d"); AddKeyboardBinding(InAction.Steer, "rightArrow");
@@ -510,7 +521,18 @@ public class InputMapper
     // @return {Void} - nothing
     static void AddVrAndMenuDefaults(BindingProfile profile)   // defaults for actions added in profile version 2 (VR / menu navigation); wheel buttons can be bound to them in the menu
     {
+        // @description - Adds a keyboard binding with default calibration to an action of the default profile.
+        // @param {InAction} action - action that receives the binding
+        // @param {string} keyName - Input System key control name
+        // @param {bool} isNegative - true when the key drives the negative direction of an axis action
+        // @return {Void} - nothing
         void AddKeyboardBinding(InAction action, string keyName) => profile.Get(action).Add(new Binding { layout = "Keyboard", control = keyName, calibration = new AxisCalibration() });
+        // @description - Adds a gamepad binding to an action of the default profile; sticks get a 0.1 dead zone against drift.
+        // @param {InAction} action - action that receives the binding
+        // @param {string} controlPath - gamepad control path, for example leftStick/x
+        // @param {bool} isStick - true for a stick axis (calibrated -1..1 with dead zone)
+        // @param {bool} isNegative - true when the control drives the negative direction of an axis action
+        // @return {Void} - nothing
         void AddGamepadBinding(InAction action, string controlPath) => profile.Get(action).Add(new Binding { layout = "Gamepad", control = controlPath, steerSource = SteerSource.Stick, calibration = new AxisCalibration() });
         AddKeyboardBinding(InAction.Recenter, "f12"); AddKeyboardBinding(InAction.Recenter, "home"); AddGamepadBinding(InAction.Recenter, "rightStickPress"); AddKeyboardBinding(InAction.CameraToggle, "c"); AddKeyboardBinding(InAction.HudToggle, "h");
         AddKeyboardBinding(InAction.MenuUp, "upArrow"); AddKeyboardBinding(InAction.MenuDown, "downArrow"); AddKeyboardBinding(InAction.MenuLeft, "leftArrow"); AddKeyboardBinding(InAction.MenuRight, "rightArrow"); AddKeyboardBinding(InAction.MenuSelect, "enter"); AddKeyboardBinding(InAction.MenuSelect, "numpadEnter");
@@ -522,6 +544,11 @@ public class InputMapper
     // @return {Void} - nothing
     static void AddMenuTabDefaults(BindingProfile profile)   // v4: dedicated menu tab navigation (was ShiftUp/ShiftDown -> gear paddles flipped tabs). Keys not used by gameplay.
     {
+        // @description - Adds a keyboard binding with default calibration to an action of the default profile.
+        // @param {InAction} action - action that receives the binding
+        // @param {string} keyName - Input System key control name
+        // @param {bool} isNegative - true when the key drives the negative direction of an axis action
+        // @return {Void} - nothing
         void AddKeyboardBinding(InAction action, string keyName) => profile.Get(action).Add(new Binding { layout = "Keyboard", control = keyName, calibration = new AxisCalibration() });
         AddKeyboardBinding(InAction.MenuTabNext, "pageDown"); AddKeyboardBinding(InAction.MenuTabNext, "tab"); AddKeyboardBinding(InAction.MenuTabPrev, "pageUp");
     }

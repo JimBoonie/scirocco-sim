@@ -125,3 +125,114 @@ Reflection and CLI strings reference member names (`SmokeTest -overrides carPara
 - TireScrub (TireSoundDsp): `fs` -> `sampleRateHz`, `cR/cV/cFz` -> `currentRatio/currentSpeed/currentLoad`, `sR/sG` -> `smoothedRatio/smoothedGain`, `tR/tV/tFz` -> `targetRatio/targetSpeed/targetLoad`, filter states `x1..dzB` -> `mainInputHistory1..broadOutputHistory2`, `ph` -> `noisePhase`; `TireScrubLaw.ScrubRatio` parameters spelled out.
 - SmokeTest: `OffSpots.s` -> `distanceAlong`, `kN` -> `kerbSampleCounts`, `gT` -> `grassPhaseStartTime`, `oT` -> `offPhaseStartTime`.
 - Tests: helper names `Db` -> `MeanPowerDecibels`, `Pitch` -> `MeasurePitchHz`, `Render` -> `RenderEngineSynth`/`RenderTireSound`, `Rms` -> `RootMeanSquare`, `Goertzel` -> `GoertzelAmplitude`, `P()` -> `CreateCarParams()`, `Ctx` -> `CreateSteerContext`, `NM` -> `CreateMapperWithoutDebounce`, `A` -> `GetAxis`, `Chattery` -> `CreateChatteryMapper`, `Json` -> `BuildDescriptorJson`, `Log` -> `LogSteer`/`LogThermal`, `FormattableString` -> `JoinInvariant`.
+
+## Tools and scripts (2026-10-14, part 5)
+
+Dev-box scripts (`/workspace/scirocco_sim`) and `tools/` now share the same names. Data-file keys, old -> new:
+
+### `tables.json` (written by `solve_kinematics.py`)
+| Old | New |
+|---|---|
+| `front_rc_height` | `front_roll_centre_height` |
+| `rear_rc_height` | `rear_roll_centre_height` |
+| `front_rc` | `front_roll_centre_height` |
+
+### `compliance.json` (written by `multibody_compliance.py`, read by `export_unity.py` and `ffb/steering_torque_ref.py`)
+| Old | New |
+|---|---|
+| `Fx_brake` | `brake_force` |
+| `Fx_drive` | `drive_force` |
+| `Fy` | `lateral_force` |
+| `Fx` | `longitudinal_force` |
+| `Fz` | `vertical_force` |
+| `steer_geom` | `kingpin_geometry` |
+| `u` | `kingpin_axis` |
+| `r_cp` | `contact_patch_offset` |
+| `r_wc` | `wheel_centre_offset` |
+| `Kkin` | `kinematic_coefficients` |
+| `comp` | `compliance` |
+| `toeL` | `toe_own` |
+| `toeR` | `toe_other` |
+| `camL` | `camber_own` |
+| `camR` | `camber_other` |
+| `latL` | `lateral_displacement_own` |
+| `link_z` | `link_vertical_force` |
+| `rc` | `roll_centre_height` |
+| `anti_lift` | `anti_lift_coefficient` |
+| `steer_both_Fy` | `axle_lateral_force_steer` |
+| `rear_geom` | `rear_geometry` |
+| `k_twist` | `torsion_stiffness` |
+| `arm` | `arm_length` |
+| `jack_front_per_Fy` | `front_jacking_per_lateral_force` |
+| `rear_rc_solved` | `rear_roll_centre_solved` |
+| `rear_rc_json` | `rear_roll_centre_target` |
+| `wc` | `wheel_centre` |
+| `pivot_bush_L` | `pivot_bush_left` |
+| `pivot_bush_R` | `pivot_bush_right` |
+| `spring_damper_L` | `spring_damper_left` |
+| `spring_damper_R` | `spring_damper_right` |
+| `front_camber_gain_mb` | `front_camber_gain_multibody` |
+| `front_bumpsteer_mb` | `front_bumpsteer_multibody` |
+| `front_rc_from_jacking` | `front_roll_centre_from_jacking` |
+| `front_rc_table` | `front_roll_centre_table` |
+
+### `steer_ref.json` (written by `ffb/steering_torque_ref.py`, read by `SteeringTorqueTests`)
+| Old | New |
+|---|---|
+| `geom` | `geometry` |
+| `u` | `kingpinAxis` |
+| `r_cp` | `contactPatchOffset` |
+| `r_wc` | `wheelCentreOffset` |
+| `scrub` | `scrubRadius` |
+| `trail (geometry)` | `mechanicalTrail` |
+| `kpi_deg` | `kingpinInclinationDeg` |
+| `caster_deg` | `casterDeg` |
+| `left` | `isLeft` |
+| `braking` | `isBraking` |
+| `lever_case` | `isLeverCase` |
+| `steer` | `steerDeg` |
+| `fx` | `longitudinalForce` |
+| `fy` | `lateralForce` |
+| `fz` | `verticalForce` |
+| `tp` | `pneumaticTrail` |
+| `expected` | `expectedTorque` |
+| `leverL / leverR` | `leftLever / rightLever` |
+
+### Smoke-test CSV columns (`builds/csv_header.sh`, `tools/visco_smoke.py`, `sensitivity.py`; the player's `CSV,` log line itself is unchanged)
+| Old | New |
+|---|---|
+| `sc` | `scenario` |
+| `t` | `time_s` |
+| `x` | `x_m` |
+| `z` | `z_m` |
+| `v` | `speed_kph` |
+| `ax` | `longitudinal_g` |
+| `ay` | `lateral_g` |
+| `r` | `yaw_rate_dps` |
+| `beta` | `sideslip_deg` |
+| `steer` | `steer_deg` |
+| `thr` | `throttle` |
+| `brk` | `brake` |
+| `gear` | `gear` |
+| `rpm` | `engine_rpm` |
+| `FzFL` | `load_front_left_n` |
+| `FzFR` | `load_front_right_n` |
+| `FzRL` | `load_rear_left_n` |
+| `FzRR` | `load_rear_right_n` |
+| `wFL` | `wheel_speed_front_left_rad_s` |
+| `wFR` | `wheel_speed_front_right_rad_s` |
+| `wRL` | `wheel_speed_rear_left_rad_s` |
+| `wRR` | `wheel_speed_rear_right_rad_s` |
+| `pitch` | `pitch_deg` |
+| `roll` | `roll_deg` |
+| `phase` | `phase` |
+
+### `ViscoTireTests.DumpCurves` CSV headers (read by `tools/visco_plots.py`)
+| File | Old | New |
+|---|---|---|
+| `mu_vs_slipspeed.csv` | `T,v,mu_flash,mu_noflash,mu_hys,mu_adh,dT` | `temperature_c,sliding_speed_mps,friction_with_flash,friction_isothermal,friction_hysteretic,friction_adhesive,flash_temperature_rise_k` |
+| `force_curves.csv` | `V,T,alpha,Fy_default,Fy_exp` | `speed_mps,temperature_c,slip_angle_rad,lateral_force_default_n,lateral_force_experimental_n` |
+| `modulus.csv` | `T,f,tand,absE` | `temperature_c,frequency_hz,loss_tangent,modulus_magnitude_pa` |
+
+### Python functions (dev-box and `tools/`)
+`sensitivity.us_grad` -> `understeer_gradient`; `export_unity.fmt` -> `format_value`; `solve_kinematics` module constants (`STRUT_AXIS`, `SPIN_AXIS`, `WHEEL_CENTRE`, `LOADED_RADIUS`, ...) replace the single-letter globals; `multibody_compliance.Model` methods and `diagnostics/throttle_model/model.py` `idle_bypass_area(idle_rpm, upper_bound)` (shared by `percurve`, `plot`, `plot_v2`) are new/renamed. Environment variables `SENSITIVITY_ROOT` and `SIMULATION_PLAYER_DIRECTORY` replace hard-coded paths in `sensitivity.py`.

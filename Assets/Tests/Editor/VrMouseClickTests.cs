@@ -52,6 +52,8 @@ public class VrMouseClickTests
     [Test] public void Click_Fires_Layout_Button_Through_Queue()
     {
         var queue = new VrPointerQueue(); int clicks = 0; Rect button = default;
+        // @description - Draws the settings area: a header label and a Settings button whose rectangle is recorded; a click increments the click counter.
+        // @return {Void} - nothing
         void Draw()
         {
             GUILayout.BeginArea(new Rect(30, 24, 500, 300));
@@ -75,6 +77,8 @@ public class VrMouseClickTests
     {
         var queue = new VrPointerQueue(); float sliderValue = 0f; var sliderRect = new Rect(50, 50, 200, 20);
         var scrollPosition = Vector2.zero;
+        // @description - Draws a nested group and scroll view containing a horizontal slider (0..1), as in the menu layout.
+        // @return {Void} - nothing
         void Draw() { GUI.BeginGroup(new Rect(20, 16, 600, 400)); scrollPosition = GUI.BeginScrollView(new Rect(0, 0, 600, 400), scrollPosition, new Rect(0, 0, 580, 800)); sliderValue = GUI.HorizontalSlider(sliderRect, sliderValue, 0f, 1f); GUI.EndScrollView(); GUI.EndGroup(); }   // menu-like nesting
         var dragStart = new Vector2(20 + sliderRect.x + 4f, 16 + sliderRect.center.y); var dragEnd = new Vector2(20 + sliderRect.xMax - 4f, 16 + sliderRect.center.y);
         queue.Sample(true, dragStart, 0f); Frame(queue, dragStart, Draw);

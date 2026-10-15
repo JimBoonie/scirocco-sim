@@ -14,6 +14,10 @@ public class SmokeTest : MonoBehaviour
     void Awake()
     {
         var arguments = System.Environment.GetCommandLineArgs();
+        // @description - Reads the number following a command-line flag.
+        // @param {string} flagName - flag, for example "-radius"
+        // @param {float} defaultValue - value when the flag is missing or not a number
+        // @return {float} - parsed value (invariant culture) or the default
         float FloatArgument(string flagName, float defaultValue) { int flagIndex = System.Array.IndexOf(arguments, flagName); return flagIndex >= 0 && flagIndex + 1 < arguments.Length && float.TryParse(arguments[flagIndex + 1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var parsedValue) ? parsedValue : defaultValue; }
         psR = FloatArgument("-radius", 40f); psThr = FloatArgument("-thr", -1f); psAy = FloatArgument("-ay", 0.5f); psGear = (int)FloatArgument("-gear", 0f);
         if (System.Array.IndexOf(arguments, "-smoketest") < 0) { enabled = false; return; }
@@ -330,6 +334,9 @@ public class SmokeTest : MonoBehaviour
     // @return {Void} - nothing
     void KerbReport()
     {
+        // @description - Text summary of the kerb-test wheel samples on one surface: sample count, vertical load mean and standard deviation (N), mean load rate (kN/s) and suspension travel range (mm).
+        // @param {int} surfaceIndex - 0 = kerb, 1 = asphalt
+        // @return {string} - one-line report
         string Describe(int surfaceIndex) { float sampleCount = Mathf.Max(1f, kerbSampleCounts[surfaceIndex]), meanLoad = kFz[surfaceIndex] / sampleCount, loadDeviation = Mathf.Sqrt(Mathf.Max(0f, kFz2[surfaceIndex] / sampleCount - meanLoad * meanLoad)); return $"{kerbSampleCounts[surfaceIndex]:0} wheel-samples, Fz mean {meanLoad:0} N sd {loadDeviation:0} N, mean |dFz/dt| {kdFz[surfaceIndex] / sampleCount / 1000f:0.0} kN/s, travel {kTrMin[surfaceIndex] * 1000f:0}..{kTrMax[surfaceIndex] * 1000f:0} mm"; }
         float kerbSamples = Mathf.Max(1f, kerbSampleCounts[0]), asphaltSamples = Mathf.Max(1f, kerbSampleCounts[1]); float kerbRate = kdFz[0] / kerbSamples, asphaltRate = kdFz[1] / asphaltSamples;
         bool ok = kerbSampleCounts[0] >= 200 && kerbRate > 1.5f * asphaltRate && TrackManager.Instance.FallResets == 0;
@@ -347,6 +354,13 @@ public class SmokeTest : MonoBehaviour
     Vector3 GrassPoint(int pointIndex, out string name)
     {
         var trackInfo = TrackManager.Instance.info; var centreline = trackInfo.Centreline; int pointCount = centreline.Count;
+        // @description - World point beside the track centreline at a distance along it: the road edge on the chosen side plus an extra offset, at 200 m height for a downward ray; also builds the spot description.
+        // @param {float} distanceAlong - distance along the centreline (m)
+        // @param {float} side - +1 right edge, -1 left edge
+        // @param {float} extra - additional offset beyond the road edge (m)
+        // @param {string} description - output text naming the spot and its offset
+        // @param {string} label - spot name used in the description
+        // @return {Vector3} - the world point (m)
         Vector3 OffsetFromCentreline(float distanceAlong, float side, float extra, out string description, string label)
         {
             int index = Mathf.RoundToInt(distanceAlong / 2f) % pointCount; var forward = centreline[(index + 1) % pointCount] - centreline[index]; forward.y = 0f; forward.Normalize(); var right = new Vector3(forward.z, 0f, -forward.x);

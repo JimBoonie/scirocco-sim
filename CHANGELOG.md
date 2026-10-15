@@ -9,6 +9,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [2026-10-14] (PT)
 
+### Changed (second pass part 5: tools, scripts and data-file keys, PT 2026-10-14 22:45)
+
+- `tools/kinematics/solve_kinematics.py`, `export_unity.py` and the new `params_io.py` (its helper) are now byte-identical to the dev-box copies. They have the `#!/usr/bin/python3` shebang, a `# @description` / `@param` / `@return` header on every function, full-word names, and physics comments with units and S/SD/D/E tags. `export_unity.py` writes the renamed `SuspensionTables` field names (output byte-identical to `Assets/Scripts/Editor/SuspensionTablesData.cs`). `solve_kinematics.py` can now be imported without running the sweep.
+- Data-file keys renamed end to end (old -> new in `docs/RENAMES.md`): `tables.json` (roll-centre keys), `compliance.json` (load cases, joints, kingpin geometry, coefficients), `steer_ref.json` (`geometry`/`cases` with full-word keys). `SteeringTorqueTests` reads the new `steer_ref.json` keys; the values are bit-identical to the old file.
+- `tools/visco_fit.py`, `visco_metrics.py`, `visco_plots.py`, `visco_smoke.py`: full-word names, per-function headers, shebang. Smoke CSV columns are now `time_s`, `speed_kph`, `lateral_g`, ... (full list in `docs/RENAMES.md`); the `ViscoTireTests.DumpCurves` CSV headers (`mu_vs_slipspeed.csv`, `force_curves.csv`, `modulus.csv`) were renamed to full words (header strings only) and `visco_plots.py` reads them.
+- `tools/sync_tools.sh` rewritten so it can safely sync again: dry run by default; `--apply` copies `suspension_params.json`, the kinematics scripts, `visco_*.py` and the research notes, but refuses any file that still contains an old identifier or lacks the python shebang/header. Exit code 2 when something was refused.
+- `tools/tire_thermal_research.md`: code names updated (`MuRoad`/`MuBench`/`MuOfT`/`TCross` -> `RoadFriction`/`BenchFriction`/`FrictionAtTemperature`/`CrossoverTemperature`).
+- No behaviour change: all 113 tests pass; skidpad understeer 1.834 deg/g and peak lateral acceleration 0.785 g; the 15 scenarios are row-identical.
+
 ### Changed (second pass part 4: editor scripts, tests, runtime leftovers, physics comments, PT 2026-10-14 21:35)
 
 - Editor scripts (LfsPointerCheck, XrSetup, SciroccoSetup, TrackSetup, SuspensionTablesData) and the `export_unity.py` template: hand-written headers, full-word locals, lambda parameters and loop variables (`MultiTC` -> `MultiTerrainRaycaster`, `C0/R0` -> `InnerColumnStart/InnerRowStart`).
