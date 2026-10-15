@@ -8,6 +8,7 @@ public class CarController : MonoBehaviour
     public WheelCorner rearLeftWheel;
     public WheelCorner rearRightWheel;
     ExperimentalTransmission experimentalTransmission;   // created on first use of the experimental transmission toggle; null while it was never on
+    public ExperimentalTransmission ExperimentalTransmissionModel => experimentalTransmission;   // read-only view for the HUD
     ExperimentalDriveline experimentalDriveline;   // created on first use of the experimental driveline toggle; null while it was never on
     [Tooltip("Tire/drivetrain substeps per FixedUpdate (FixedUpdate itself runs at 500 Hz)")] public int substeps = 2;
     public Engine engine; public Drivetrain drivetrain; Rigidbody body;

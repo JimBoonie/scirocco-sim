@@ -7,6 +7,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added (experimental transmission and synchronizer model, PT 2026-10-15 08:20)
+- New setting `experimentalTransmissionEnabled` (Experimental tab row 5, default off) replaces the "coming soon" placeholder. Independent of `experimentalDrivelineEnabled`; all four combinations run. With both off the default path is untouched (dispatch branch added, default branch text unchanged).
+- New `Assets/Scripts/Runtime/Transmission/`: 5-speed (VW 020) gearbox with per-gear single-cone synchronizers and blocking rings (Schaeffler cone and blocking torque, speed-dependent friction, Karnopp stick), dog-tooth crossing with capture angle and double bump, unsynchronized reverse clash (impact energy), gear release only when the assumed driver pull exceeds the dog retention force, loose-gear inertias from geometry, neutral rattle of the loose 1st/2nd gears (lash, impacts, drag; needs both toggles for firing pulses), per-gear oil drag and mesh efficiency (power: x eta, overrun: / eta, counted once), lumped oil temperature. Two-port interface (`ITransmission`: input-shaft node and carrier). No sounds, state and events only.
+- Keyboard auto-clutch assist for shifts (only with the transmission on): pedal opens in 0.08 s and closes in 0.35 s, estimates, so the synchronizer can finish.
+- `DrivelineStepInput` has four additive fields (external torques on both ports, lash override), zero defaults, inert for every existing path. HUD shows an "[Experimental transmission ...]" tag.
+- Parameters: `TransmissionParameters` asset, every value tagged S/SD/D/E with bounds, documented in `docs/TransmissionSources.md` (including limits and what to measure).
+- Tests: `TransmissionTests` (sync time 0.689 s vs formula 0.688 s vs measured 0.69 s, blocking threshold, crunch, clutch drag, reverse clash, release vs lift-off, neutral drag, rattle onset, step convergence) and `TransmissionIntegrationTests` (four combinations, Off-On-Off isolation, auto-clutch shift, shift window with plot `tools/plot_shift_window.py`, energy balance both directions, lash counted once).
+
 ### Added (experimental driveline efficiency consistency, PT 2026-10-15 08:00)
 - Checked the experimental driveline against the new overrun efficiency convention (`Drivetrain.TorqueScaleFromCrankSide`): its gear mesh already applies eta on power and 1/eta on overrun, so no model change was needed. New test `EfficiencyMatchesTheStandardPathOnPowerAndOverrun` compares the transmitted torque with `Drivetrain.WheelTorqueEach` in both directions (within 1 %). Added a read-only `TorsionalDriveline.ShaftTorque` for it. Default path untouched.
 

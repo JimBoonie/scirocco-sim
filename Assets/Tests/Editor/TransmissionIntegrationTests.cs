@@ -17,6 +17,7 @@ public class TransmissionIntegrationTests
         // @description - builds a rig with the given toggles
         // @param {bool} transmissionOn - experimentalTransmissionEnabled
         // @param {bool} drivelineOn - experimentalDrivelineEnabled
+        // @return {void} - constructor
         public Rig(bool transmissionOn, bool drivelineOn)
         {
             carParams = ScriptableObject.CreateInstance<CarParams>(); engine = new Engine(carParams); drivetrain = new Drivetrain(carParams);

@@ -9,6 +9,7 @@ public class ShiftLinkage
 
     // @description - builds the linkage
     // @param {TransmissionParameters} parameters - linkage and driver estimates
+    // @return {void} - constructor
     public ShiftLinkage(TransmissionParameters parameters) { this.parameters = parameters; }
 
     // @description - axial sleeve force while the driver pushes into gear, F_sleeve = MA eta F_hand

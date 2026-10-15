@@ -54,15 +54,15 @@ public static class SynchronizerPhysics
     }
 
     // @description - piecewise-linear interpolation of a table with ascending abscissae, held constant outside the table
-    // @param {float[]} abscissae - ascending x values
+    // @param {float[]} abscissae - ascending abscissa values
     // @param {float[]} values - y values
-    // @param {double} x - query
+    // @param {double} queryAbscissa - query
     // @return {double} - interpolated y
-    public static double Interpolate(float[] abscissae, float[] values, double x)
+    public static double Interpolate(float[] abscissae, float[] values, double queryAbscissa)
     {
-        if (x <= abscissae[0]) return values[0];
+        if (queryAbscissa <= abscissae[0]) return values[0];
         for (int index = 1; index < abscissae.Length; index++)
-            if (x <= abscissae[index]) return values[index - 1] + (values[index] - values[index - 1]) * (x - abscissae[index - 1]) / (abscissae[index] - abscissae[index - 1]);
+            if (queryAbscissa <= abscissae[index]) return values[index - 1] + (values[index] - values[index - 1]) * (queryAbscissa - abscissae[index - 1]) / (abscissae[index] - abscissae[index - 1]);
         return values[values.Length - 1];
     }
 

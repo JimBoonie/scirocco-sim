@@ -19,6 +19,7 @@ public class TransmissionDriveAdapterA
     // @param {CarParams} carParams - car parameters
     // @param {TransmissionModel} model - transmission model
     // @param {double} nodeInertiaKilogramMetersSquared - disc plus input shaft assembly in kg m^2
+    // @return {void} - constructor
     public TransmissionDriveAdapterA(Engine engine, CarParams carParams, TransmissionModel model, double nodeInertiaKilogramMetersSquared)
     { this.engine = engine; this.carParams = carParams; this.model = model; nodeInertia = nodeInertiaKilogramMetersSquared; }
 
@@ -80,7 +81,7 @@ public class TransmissionDriveAdapterA
         gearTrainTorque = intoGearTrain; nodeSpeed = ratio * wheelSpeed; drivetrain.clutchSlip = slip;
     }
 
-    // @description - free node (neutral, travelling, synchronizing): the clutch accelerates the node together with the engine; the cone, drag and rattle act on the node, and the cone reaction reaches the wheels
+    // @description - free node (neutral, traveling, synchronizing): the clutch accelerates the node together with the engine; the cone, drag and rattle act on the node, and the cone reaction reaches the wheels
     // @param {float} substep - s
     // @param {float} throttle - 0..1
     // @param {float} clutchClampFraction - 0..1

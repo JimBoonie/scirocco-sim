@@ -14,6 +14,7 @@ public class GearSetGeometry
     // @description - computes the ratios and gear inertias
     // @param {TransmissionParameters} parameters - tooth counts and geometry estimates
     // @param {float} finalDriveRatio - final drive ratio ring : pinion (car parameter)
+    // @return {void} - constructor
     public GearSetGeometry(TransmissionParameters parameters, float finalDriveRatio)
     {
         this.parameters = parameters; this.finalDriveRatio = finalDriveRatio;

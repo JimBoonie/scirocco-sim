@@ -33,6 +33,7 @@ public class TransmissionModel : ITransmission
     // @param {TransmissionParameters} parameters - parameter set
     // @param {float} finalDriveRatio - car final drive ratio
     // @param {float} initialOilTemperatureKelvin - starting oil temperature in K (ambient)
+    // @return {void} - constructor
     public TransmissionModel(TransmissionParameters parameters, float finalDriveRatio, float initialOilTemperatureKelvin)
     {
         this.parameters = parameters; geometry = new GearSetGeometry(parameters, finalDriveRatio); linkage = new ShiftLinkage(parameters);

@@ -20,6 +20,7 @@ public class GearboxDragLoads
     // @param {TransmissionParameters} parameters - drag and lash parameters
     // @param {GearSetGeometry} geometry - gear set
     // @param {GearboxOilModel} oil - oil model
+    // @return {void} - constructor
     public GearboxDragLoads(TransmissionParameters parameters, GearSetGeometry geometry, GearboxOilModel oil)
     {
         this.parameters = parameters; this.geometry = geometry; this.oil = oil;

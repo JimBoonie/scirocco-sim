@@ -15,6 +15,7 @@ public class TransmissionDriveAdapterB
     // @param {CarParams} carParams - car parameters
     // @param {TransmissionModel} model - transmission model
     // @param {TransmissionParameters} transmissionParameters - supplies the input-shaft assembly inertia
+    // @return {void} - constructor
     public TransmissionDriveAdapterB(Engine engine, CarParams carParams, TransmissionModel model, TransmissionParameters transmissionParameters)
     {
         this.engine = engine; this.carParams = carParams; this.model = model;

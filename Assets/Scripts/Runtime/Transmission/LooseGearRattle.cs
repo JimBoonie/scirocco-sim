@@ -16,6 +16,7 @@ public class LooseGearRattle
     // @param {double} gearRatio - input turns per gear turn (the gearbox ratio of the pair)
     // @param {double} halfLashAtGear - half of the mesh lash in rad at the gear
     // @param {double} restitution - coefficient of restitution of the tooth impact
+    // @return {void} - constructor
     public LooseGearRattle(double gearInertia, double gearRatio, double halfLashAtGear, double restitution)
     { this.gearInertia = gearInertia; this.gearRatio = gearRatio; halfLash = halfLashAtGear; this.restitution = restitution; }
 

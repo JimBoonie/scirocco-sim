@@ -14,6 +14,7 @@ public class GearboxOilModel
     // @description - fits the viscosity law and the spin-loss exponents from the parameter anchors
     // @param {TransmissionParameters} parameters - oil and loss parameters
     // @param {double} initialTemperatureKelvin - starting oil temperature in K (ambient)
+    // @return {void} - constructor
     public GearboxOilModel(TransmissionParameters parameters, double initialTemperatureKelvin)
     {
         this.parameters = parameters; TemperatureKelvin = initialTemperatureKelvin;
