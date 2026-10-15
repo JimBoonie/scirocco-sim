@@ -195,7 +195,9 @@ public class Engine
     float ThrottleMassFlow(float area, float manifoldPressureNow) => carParams.throttleDischargeCoeff * area * carParams.ambientPressure / Mathf.Sqrt(carParams.airGasConstant * carParams.ambientTemperature) * OrificeFlowFunction(manifoldPressureNow / carParams.ambientPressure);
 
     /// @description - fresh-charge fraction (see header): ideal-cycle residual expansion (r_c - (p_e/p_i)^(1/n)) / (r_c - 1) minus the volume
-    ///   of exhaust gas blown back through the valve-overlap curtain, both at manifold pressure
+    ///   of exhaust gas blown back through the valve-overlap curtain, both at manifold pressure. The backflow term is isentropic orifice flow through
+    ///   the triangular-lift mean curtain area pi d lift / 2 over the overlap duration. (Kept as ONE expression on purpose: Unity's Mono evaluates
+    ///   float expressions in double precision, so splitting it into separate float-returning functions would change the last bits.)
     // @param {float} engineRpm - engine speed in rpm
     // @param {float} manifoldPressureNow - manifold absolute pressure in Pa
     // @return {float} - fraction of the swept volume filled with fresh charge (never below 0)
@@ -203,21 +205,14 @@ public class Engine
     {
         manifoldPressureNow = Mathf.Max(manifoldPressureNow, 1f); float compressionRatio = carParams.compressionRatio;
         float fraction = (compressionRatio - Mathf.Pow(carParams.exhaustBackPressure / manifoldPressureNow, 1f / carParams.residualExpansionExponent)) / (compressionRatio - 1f);
-        if (engineRpm > 0f) fraction -= OverlapBackflowFraction(engineRpm, manifoldPressureNow);
+        if (engineRpm > 0f)
+        {
+            float overlapTime = carParams.valveOverlapDeg * Mathf.Deg2Rad / (engineRpm * Mathf.PI / 30f), curtainArea = Mathf.PI * carParams.exhaustValveDia * carParams.valveLiftAtTdc / 2f;   // triangular lift -> mean curtain
+            float gasConstantTimesTemperature = carParams.airGasConstant * carParams.overlapGasTemperature;
+            float backflowMass = carParams.throttleDischargeCoeff * curtainArea * carParams.exhaustBackPressure / Mathf.Sqrt(gasConstantTimesTemperature) * OrificeFlowFunction(Mathf.Min(1f, manifoldPressureNow / carParams.exhaustBackPressure)) * overlapTime;
+            fraction -= backflowMass * gasConstantTimesTemperature / manifoldPressureNow / (carParams.displacement / carParams.cylinders);
+        }
         return Mathf.Max(0f, fraction);
-    }
-
-    // @description - volume fraction (at manifold pressure) of exhaust gas blown back into the intake during valve overlap:
-    //   isentropic orifice with the triangular-lift mean curtain area pi d lift / 2 over the overlap duration
-    // @param {float} engineRpm - engine speed in rpm (must be > 0)
-    // @param {float} manifoldPressureNow - manifold absolute pressure in Pa
-    // @return {float} - backflow volume as a fraction of one cylinder's displacement
-    float OverlapBackflowFraction(float engineRpm, float manifoldPressureNow)
-    {
-        float overlapTime = carParams.valveOverlapDeg * Mathf.Deg2Rad / (engineRpm * Mathf.PI / 30f), curtainArea = Mathf.PI * carParams.exhaustValveDia * carParams.valveLiftAtTdc / 2f;   // triangular lift -> mean curtain
-        float gasConstantTimesTemperature = carParams.airGasConstant * carParams.overlapGasTemperature;
-        float backflowMass = carParams.throttleDischargeCoeff * curtainArea * carParams.exhaustBackPressure / Mathf.Sqrt(gasConstantTimesTemperature) * OrificeFlowFunction(Mathf.Min(1f, manifoldPressureNow / carParams.exhaustBackPressure)) * overlapTime;
-        return backflowMass * gasConstantTimesTemperature / manifoldPressureNow / (carParams.displacement / carParams.cylinders);
     }
 
     // @description - air mass flow drawn by the cylinders: VE x fresh fraction x rho_man x Vd x rpm/120 (four-stroke: one intake per two revolutions)

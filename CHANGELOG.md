@@ -9,6 +9,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [2026-10-14] (PT)
 
+### Fixed (readability pass 1/6 follow-up: bit-exactness, PT 21:35)
+
+- `Engine.FreshFraction` was split into two functions in the first readability commit; Unity's Mono evaluates float expressions in double precision and rounds only on store, so the split changed results in the last bits (vehicle runs diverged by 1 N / up to 2 % on some rows after several seconds). Re-inlined as one expression with an explanatory comment. Verified against the pre-readability baseline: 117/117 tests, all 15 diagnostic scenarios **bit-identical row for row** (accel, brake, skidpad, step/ramp steer, lane change, lift-off, top speed, rev sweep, stall restart, power step, gamepad x2), all battery metrics identical (skidpad 0.785 g, understeer 1.834 deg/g).
+
 ### Changed (readability pass 1/6: engine / drivetrain, 19:30 PT)
 
 - `Engine.cs`, `Drivetrain.cs`: full-word identifiers, `// @description / @param / @return` header on every function, physics comments (equations, units, S/SD/D/E tags kept), and the constructor / `FreshFraction` / `Step` split into small single-purpose functions with identical arithmetic. **No behaviour change**: 117/117 edit-mode tests pass, and the 15 diagnostic scenarios match the pre-change baseline: skidpad 0.785 g, understeer gradient 1.834 deg/g, step-steer yaw 13.834 deg/s / overshoot 10.52 %, brake 100-0 47.85 m, 0-100 km/h 9.87 s, gamepad results identical; all 8 battery metrics identical to 3 decimals, and the engine-only scenarios (rev sweep, stall restart) are bit-identical row by row. (Vehicle scenarios jitter by +-1 N / <=2 % on a few rows between any two runs of the same build because the player is not frame-deterministic; see docs/RENAMES.md notes.) Old -> new names in `docs/RENAMES.md`.
