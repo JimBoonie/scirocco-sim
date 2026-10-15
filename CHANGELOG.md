@@ -9,6 +9,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [2026-10-14] (PT)
 
+### Changed (second pass part 3: input, VR, audio, HUD, track, SmokeTest headers and locals, PT 2026-10-14 21:50)
+
+- Hand-written headers (what, units, why) and full-word locals/parameters/loop variables for InputBindings, InputRouter, CarAudio, VrManager, VrPanel, DebugHUD, TrackManager and SmokeTest.
+- Renames: `GamepadSteering.s` -> `settings` (tests and SmokeTest updated), `VrManager.I` -> `Instance`, `UiSurface.W/H` -> `LogicalWidth/LogicalHeight`, `InputMapper.E()` -> `GetEdgeState()`, `DebugHUD.F()` -> `ToFahrenheit()`, `DebugHUD.FJ/RJ` -> `FrontJointNames/RearJointNames`, SmokeTest `sc/rb/t/R/U/K1` -> `scenario/body/elapsedTime/skidpadRadius/FrictionUsage/curvatureAtOneSecond`, `tm_FallResets` -> `FallResetCount`, `TrackManager.cs` `cs` -> `creditStyle`.
+- Multi-function one-liners split (`VrManager.OnEnable/OnDisable`, `SmokeTest.ContactDiag`).
+- No behaviour change: 113/113 tests, 15 scenarios row-identical, understeer 1.834 deg/g, peak 0.785 g.
+
 ### Changed (second pass part 2: TireScrub hand-written headers, PT 2026-10-14)
 
 - TireScrub.cs: every function now has a real description with units for each parameter and return value; locals, parameters and loop variables renamed to full words (`frameIndex`, `tireIndex`, `centerHz`, `qualityFactor`, ...). No behaviour change: 113/113 tests, 15 scenarios row-identical, 0.785 g.

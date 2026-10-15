@@ -109,3 +109,10 @@ Reflection and CLI strings reference member names (`SmokeTest -overrides carPara
 - `InAction.RetiredProfileToggle` removed; `BindingProfile.CurrentVersion` 10 (older files discarded, no migration).
 - `tools/sync_tools.sh`: dry run by default, `--apply` copies only `suspension_params.json`.
 - FfbController: `clipHist`->`clipHistory`, `clipIdx`->`clipHistoryIndex`, `clipPct`->`clippingPercent`, `noffbFlag`->`forceFeedbackDisabledByFlag`, `haveLast`->`haveLastWheelAngle`.
+
+## Second pass (part 3)
+
+- `GamepadSteering.s` -> `settings`; `VrManager.I` -> `Instance`; `UiSurface.W`/`H` -> `LogicalWidth`/`LogicalHeight`.
+- `InputMapper.E()` -> `GetEdgeState()`; `DebugHUD.F()` -> `ToFahrenheit()`; `DebugHUD.FJ`/`RJ` -> `FrontJointNames`/`RearJointNames`.
+- SmokeTest fields: `sc` -> `scenario`, `rb` -> `body`, `t` -> `elapsedTime`, `R` -> `skidpadRadius`, `K1` -> `curvatureAtOneSecond`; `U()` -> `FrictionUsage()`; `tm_FallResets()` -> `FallResetCount()`.
+- TrackManager `cs` -> `creditStyle`.

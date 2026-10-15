@@ -32,7 +32,7 @@ public struct GamepadSteerContext
 }
 public class GamepadSteering
 {
-    public GamepadSteerSettings s;
+    public GamepadSteerSettings settings;
     public float roadDeg, filtered, lastTarget; public bool countersteering;
     // speed band over which the grip limit fades in (m/s): below ~2 m/s the travel angle is undefined (slip-regularisation floor); by 6 m/s
     // the kinematic angle at full lock already exceeds the peak slip angle, so the blend is invisible at parking speed and complete before it matters
@@ -40,7 +40,7 @@ public class GamepadSteering
     // @description - Creates the steering assist with a set of user preferences (deadzone, response curve, speed sensitivity, countersteer factor, ...).
     // @param {GamepadSteerSettings} settings - user preferences saved in the bindings file; the object is kept by reference, so menu edits take effect immediately
     // @return {Void} - the new instance
-    public GamepadSteering(GamepadSteerSettings settings) { s = settings; }
+    public GamepadSteering(GamepadSteerSettings settings) { this.settings = settings; }
     // @description - Turns raw stick deflection into a shaped steering demand: removes the deadzone, rescales the rest to 0..1 and applies the response exponent |s|^gamma (gamma > 1 gives fine control near centre).
     // @param {float} stick - raw stick deflection, -1..1 (+ = right)
     // @param {float} deadzone - fraction of deflection ignored around centre, 0..1
@@ -59,8 +59,8 @@ public class GamepadSteering
     public float Target(float shaped, in GamepadSteerContext context)
     {
         float speedBlend = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(BlendLo, BlendHi, context.speed));
-        float range = Mathf.Lerp(context.lockRoadDeg, Mathf.Min(context.lockRoadDeg, s.gripLimit * context.peakSlipDeg), speedBlend * Mathf.Clamp01(s.speedSensitivity));
-        float targetAngleDeg = shaped * range + speedBlend * Mathf.Clamp01(s.casterFollow) * context.frontTravelDeg;
+        float range = Mathf.Lerp(context.lockRoadDeg, Mathf.Min(context.lockRoadDeg, settings.gripLimit * context.peakSlipDeg), speedBlend * Mathf.Clamp01(settings.speedSensitivity));
+        float targetAngleDeg = shaped * range + speedBlend * Mathf.Clamp01(settings.casterFollow) * context.frontTravelDeg;
         return Mathf.Clamp(targetAngleDeg, -context.lockRoadDeg, context.lockRoadDeg);
     }
     // @description - Advances the assist by one frame: low-pass filters the stick, finds the target angle and moves the commanded angle towards it at the steering speed (faster when unwinding or catching a rear slide).
@@ -70,14 +70,14 @@ public class GamepadSteering
     // @return {float} - commanded mean road-wheel angle in deg (+ = points right)
     public float Step(float deltaTime, float stick, in GamepadSteerContext context)
     {
-        float shapedDemand = Shape(stick, s.deadzone, s.gamma);
-        filtered = s.smoothing > 0f ? filtered + (shapedDemand - filtered) * (1f - Mathf.Exp(-deltaTime / s.smoothing)) : shapedDemand;
+        float shapedDemand = Shape(stick, settings.deadzone, settings.gamma);
+        filtered = settings.smoothing > 0f ? filtered + (shapedDemand - filtered) * (1f - Mathf.Exp(-deltaTime / settings.smoothing)) : shapedDemand;
         float target = lastTarget = Target(filtered, context);
         float angleError = target - roadDeg;
         bool unwinding = Mathf.Abs(target) < Mathf.Abs(roadDeg) || target * roadDeg < 0f;
         bool intoSlide = Mathf.Abs(context.rearTravelDeg) > context.peakSlipDeg && angleError * context.rearTravelDeg > 0f && context.speed > BlendHi;
         countersteering = unwinding || intoSlide;
-        float rate = s.steerSpeed * (countersteering ? Mathf.Max(1f, s.countersteer) : 1f);
+        float rate = settings.steerSpeed * (countersteering ? Mathf.Max(1f, settings.countersteer) : 1f);
         roadDeg = Mathf.Clamp(Mathf.MoveTowards(roadDeg, target, rate * deltaTime), -context.lockRoadDeg, context.lockRoadDeg);
         return roadDeg;
     }

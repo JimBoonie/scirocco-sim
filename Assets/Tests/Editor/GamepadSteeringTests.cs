@@ -39,7 +39,7 @@ public class GamepadSteeringTests
         var g = new GamepadSteering(new GamepadSteerSettings());
         Assert.AreEqual(36f, g.Target(1f, Ctx(0f)), 1e-4);                  // parking: full lock
         Assert.AreEqual(6f, g.Target(1f, Ctx(30f)), 1e-4);                  // at speed: full stick = peak slip angle (gripLimit 1)
-        g.s.speedSensitivity = 0f; Assert.AreEqual(36f, g.Target(1f, Ctx(30f)), 1e-4);   // off: full lock at any speed
+        g.settings.speedSensitivity = 0f; Assert.AreEqual(36f, g.Target(1f, Ctx(30f)), 1e-4);   // off: full lock at any speed
     }
     // @description - Caster follow released stick tracks travel direction.
     // @return {Void} - nothing
