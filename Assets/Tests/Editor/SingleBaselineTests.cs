@@ -6,13 +6,13 @@ public class SingleBaselineTests
     [Test] public void Defaults_Are_The_Former_Proposed_Inputs()
     {
         var p = ScriptableObject.CreateInstance<CarParams>();
-        Assert.AreEqual(7200f, p.arbFront); Assert.AreEqual(8520f, p.twistBeamRoll);
-        Assert.AreEqual(12000f, p.steeringStiffness); Assert.AreEqual(0.035f, p.pneumaticTrail0, 1e-6f);
-        Assert.AreEqual(15500f, p.wheelRateFront); Assert.AreEqual(11900f, p.wheelRateRear);   // spring/wheel rates unchanged
+        Assert.AreEqual(7200f, p.frontAntiRollBarRate); Assert.AreEqual(8520f, p.twistBeamRollRate);
+        Assert.AreEqual(12000f, p.steeringStiffness); Assert.AreEqual(0.035f, p.pneumaticTrailAtZeroSlip, 1e-6f);
+        Assert.AreEqual(15500f, p.frontWheelRate); Assert.AreEqual(11900f, p.rearWheelRate);   // spring/wheel rates unchanged
         Assert.IsNull(typeof(CarParams).GetNestedType("HandlingProfile"), "no HandlingProfile enum");
         Assert.IsNull(typeof(CarParams).GetField("kinProposed"), "no second table set"); Assert.IsNull(typeof(CarParams).GetField("profile"));
         Assert.IsNull(typeof(CarController).GetMethod("ToggleProfile"), "no profile switch");
-        var r = p.RuntimeCopy(); Assert.AreNotSame(p, r); Assert.AreEqual(p.arbFront, r.arbFront);
+        var r = p.RuntimeCopy(); Assert.AreNotSame(p, r); Assert.AreEqual(p.frontAntiRollBarRate, r.frontAntiRollBarRate);
     }
     [Test] public void Tables_Are_Resolved_With_The_Single_Baseline_Hardpoints()
     {
@@ -23,8 +23,8 @@ public class SingleBaselineTests
         int lo = System.Array.FindIndex(k.travel, t => t >= -BumpWindowM - 1e-4f), hi = System.Array.FindLastIndex(k.travel, t => t <= BumpWindowM + 1e-4f);
         float slope = (k.frontBumpSteer[hi] - k.frontBumpSteer[lo]) / (k.travel[hi] - k.travel[lo]);
         Assert.AreEqual(0f, slope, MaxBumpSteerDegPerM, "front bump steer near zero with the sourced tie rod");
-        Assert.AreEqual(0.055f, k.rbRcHeight, 0.002f, "rear RC with pivot -30 mm / shear centre -2.06 m (re-solve: -2.00 dropped)");
-        Assert.AreEqual(0.596f, k.rbAntiLift, 0.01f);
+        Assert.AreEqual(0.055f, k.rearBeamRollCentreHeight, 0.002f, "rear RC with pivot -30 mm / shear centre -2.06 m (re-solve: -2.00 dropped)");
+        Assert.AreEqual(0.596f, k.rearBeamAntiLiftCoefficient, 0.01f);
         Assert.Greater(k.rackGrid.Length, 10, "steering grid present"); Assert.AreEqual(k.rackGrid.Length * k.travel.Length, k.frontToeTravelRack.Length);
     }
     [Test] public void Old_Saved_Profile_Toggle_Binding_Is_Dropped_On_Load()

@@ -19,92 +19,92 @@ MonoBehaviour:
   wheelbase: 2.4
   trackFront: 1.404
   trackRear: 1.372
-  kin: {fileID: 11400000, guid: 8ecb74d074ed8f64eb54130b3c385d7e, type: 2}
+  suspensionTables: {fileID: 11400000, guid: 8ecb74d074ed8f64eb54130b3c385d7e, type: 2}
   hubDropDesign: 0.3
-  wheelRateFront: 15500
-  wheelRateRear: 11900
-  bumpTravelF: 0.08
-  reboundTravelF: 0.09
-  bumpTravelR: 0.085
-  reboundTravelR: 0.09
+  frontWheelRate: 15500
+  rearWheelRate: 11900
+  frontBumpTravel: 0.08
+  frontReboundTravel: 0.09
+  rearBumpTravel: 0.085
+  rearReboundTravel: 0.09
   bumpStopGap: 0.06
-  bumpStopX:
+  bumpStopCompressionPoints:
   - 0
   - 0.01
   - 0.025
   - 0.035
-  bumpStopRate:
+  bumpStopRatePoints:
   - 0
   - 30000
   - 150000
   - 600000
-  damperV:
+  damperVelocityPoints:
   - 0
   - 0.05
   - 0.1
   - 0.3
   - 1
-  damperBumpF:
+  frontDamperBumpForces:
   - 0
   - 90
   - 170
   - 330
   - 700
-  damperReboundF:
+  frontDamperReboundForces:
   - 0
   - 200
   - 380
   - 700
   - 1300
-  damperBumpR:
+  rearDamperBumpForces:
   - 0
   - 70
   - 130
   - 260
   - 560
-  damperReboundR:
+  rearDamperReboundForces:
   - 0
   - 160
   - 300
   - 560
   - 1050
-  arbFront: 7200
-  twistBeamRoll: 8520
-  staticCamberF: 0.333
-  staticCamberR: -1.25
-  toeTotalF: -0.25
-  toeTotalR: 0.333
+  frontAntiRollBarRate: 7200
+  twistBeamRollRate: 8520
+  frontStaticCamberDeg: 0.333
+  rearStaticCamberDeg: -1.25
+  frontTotalToeDeg: -0.25
+  rearTotalToeDeg: 0.333
   useJacking: 1
   rearModel: 1
   frontModel: 1
   useUnsprungMass: 1
-  unsprungFront: 34
-  unsprungRear: 27
-  tireRate: 180000
-  tireDamping: 150
+  frontUnsprungMass: 34
+  rearUnsprungMass: 27
+  tireVerticalStiffness: 180000
+  tireVerticalDamping: 150
   wheelRadius: 0.289
   wheelInertia: 0.9
-  Fz0: 3000
-  pCy1: 1.3
-  pDy1: 1.1
-  pDy2: -0.1
-  pEy1: -0.8
-  pKy1: 16
-  pKy2: 1.8
-  pCx1: 1.6
-  pDx1: 1.15
-  pDx2: -0.08
-  pEx1: 0.2
-  pKx1: 20
-  rBx1: 12
-  rBy1: 9
-  relaxLength: 0.45
-  camberThrust: 0.9
-  rollingRes: 0.012
+  nominalVerticalLoad: 3000
+  lateralShapeCoefficient: 1.3
+  lateralPeakFrictionCoefficient: 1.1
+  lateralPeakFrictionLoadSlope: -0.1
+  lateralCurvatureCoefficient: -0.8
+  lateralStiffnessCoefficient: 16
+  lateralStiffnessLoadCoefficient: 1.8
+  longitudinalShapeCoefficient: 1.6
+  longitudinalPeakFrictionCoefficient: 1.15
+  longitudinalPeakFrictionLoadSlope: -0.08
+  longitudinalCurvatureCoefficient: 0.2
+  longitudinalStiffnessCoefficient: 20
+  combinedSlipLongitudinalCoefficient: 12
+  combinedSlipLateralCoefficient: 9
+  relaxationLength: 0.45
+  camberThrustCoefficient: 0.9
+  rollingResistanceCoefficient: 0.012
   tireThermal: 0
-  coldPressureFront: 170000
-  coldPressureRear: 170000
-  rollingResV2: 0.00000004
+  frontColdPressure: 170000
+  rearColdPressure: 170000
+  rollingResistanceSpeedSquaredCoefficient: 0.00000004
   tirePreset: 0
   rpmPoints:
   - 800
@@ -147,7 +147,7 @@ MonoBehaviour:
   - 0.894
   reverseRatio: 3.17
   finalDrive: 3.667
-  drivetrainEff: 0.9
+  drivetrainEfficiency: 0.9
   clutchMaxTorque: 260
   shiftTime: 0.25
   brakeTorqueFront: 1400
@@ -155,28 +155,28 @@ MonoBehaviour:
   handwheelLockDeg: 634.7
   rackPerHandwheelDeg: 0.0001081
   steeringStiffness: 12000
-  pneumaticTrail0: 0.035
+  pneumaticTrailAtZeroSlip: 0.035
   peakSlipTrail: 0.15
   columnFriction: 0.6
-  columnFrictionVel: 0.05
+  columnFrictionRegularisationSpeed: 0.05
   columnDamping: 0.03
-  steerRate: 90
+  steeringRateDegPerSecond: 90
   handbrakeTorque: 1500
-  hPointBehindFrontAxle: 1.2
-  hPointHeight: 0.3
+  hipPointBehindFrontAxle: 1.2
+  hipPointHeight: 0.3
   driverLateral: 0.36
   driverStature: 1.75
   sittingEyeRatio: 0.45
-  hPointAboveSeat: 0.09
+  hipPointAboveSeat: 0.09
   seatBackAngle: 25
-  wheelCentreAheadOfH: 0.45
-  wheelCentreAboveH: 0.33
+  wheelCentreAheadOfHipPoint: 0.45
+  wheelCentreAboveHipPoint: 0.33
   wheelDiameter: 0.37
   wheelTiltDeg: 25
   seatTravelFore: 0.1
   seatTravelAft: 0.1
   seatTravelUp: 0.04
   seatTravelDown: 0.04
-  cd: 0.38
+  dragCoefficient: 0.38
   frontalArea: 1.75
   airDensity: 1.2

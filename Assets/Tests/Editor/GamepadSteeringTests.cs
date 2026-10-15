@@ -2,7 +2,7 @@
 using NUnit.Framework; using UnityEngine;
 public class GamepadSteeringTests
 {
-    static CarParams P() { var p = ScriptableObject.CreateInstance<CarParams>(); p.kin = ScriptableObject.CreateInstance<SuspensionTables>(); SuspensionTablesData.Fill(p.kin); return p; }
+    static CarParams P() { var p = ScriptableObject.CreateInstance<CarParams>(); p.suspensionTables = ScriptableObject.CreateInstance<SuspensionTables>(); SuspensionTablesData.Fill(p.suspensionTables); return p; }
     static GamepadSteerContext Ctx(float v, float lockDeg = 36f, float peak = 6f, float ft = 0f, float rt = 0f) => new GamepadSteerContext { speed = v, lockRoadDeg = lockDeg, peakSlipDeg = peak, frontTravelDeg = ft, rearTravelDeg = rt };
 
     [Test] public void Deadzone_Rescales_And_Gamma()
@@ -57,9 +57,9 @@ public class GamepadSteeringTests
     }
     [Test] public void PeakSlip_FromTireModel_IsPlausible()
     {
-        var p = P(); float a = GamepadSteering.PeakSlipDeg(p, p.Fz0);
+        var p = P(); float a = GamepadSteering.PeakSlipDeg(p, p.nominalVerticalLoad);
         Assert.Greater(a, 3f); Assert.Less(a, 15f);
-        float fPk = PacejkaTire.PureLat(p, a * Mathf.Deg2Rad, p.Fz0, 0f), fMore = PacejkaTire.PureLat(p, (a + 2f) * Mathf.Deg2Rad, p.Fz0, 0f);
+        float fPk = PacejkaTire.PureLat(p, a * Mathf.Deg2Rad, p.nominalVerticalLoad, 0f), fMore = PacejkaTire.PureLat(p, (a + 2f) * Mathf.Deg2Rad, p.nominalVerticalLoad, 0f);
         Assert.GreaterOrEqual(Mathf.Abs(fPk), Mathf.Abs(fMore));
     }
     [Test] public void Settings_V6Migration_KeepsOldSettings_AddsDefaults()

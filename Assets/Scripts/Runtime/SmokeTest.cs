@@ -28,7 +28,7 @@ public class SmokeTest : MonoBehaviour
         {
             var line = raw.Trim(); if (line.Length == 0 || line.StartsWith("#")) continue;
             int eq = line.IndexOf('='); string lhs = line.Substring(0, eq).Trim(), val = line.Substring(eq + 1).Trim();
-            object target = lhs.StartsWith("kin.") ? (object)car.carParams.kin : car.carParams; string fname = lhs.Substring(lhs.IndexOf('.') + 1);
+            object target = lhs.StartsWith("kin.") ? (object)car.carParams.suspensionTables : car.carParams; string fname = lhs.Substring(lhs.IndexOf('.') + 1);
             var f = target.GetType().GetField(fname); if (f == null) { Debug.LogError("override: no field " + lhs); continue; }
             object v;
             if (f.FieldType == typeof(float)) v = float.Parse(val, inv);
@@ -172,7 +172,7 @@ public class SmokeTest : MonoBehaviour
         float beta = Mathf.Atan2(vy, Mathf.Max(0.1f, vx)) * Mathf.Rad2Deg; float aF = 0.5f * (car.frontLeftWheel.relaxedSlipAngle + car.frontRightWheel.relaxedSlipAngle) * Mathf.Rad2Deg, aR = 0.5f * (car.rearLeftWheel.relaxedSlipAngle + car.rearRightWheel.relaxedSlipAngle) * Mathf.Rad2Deg;
         return new[] { v * 3.6f, yr, yr * Mathf.Deg2Rad / Mathf.Max(0.1f, v), beta, ayF, axF, aF, aR, U(car.frontLeftWheel), U(car.frontRightWheel), U(car.rearLeftWheel), U(car.rearRightWheel), car.frontLeftWheel.verticalLoad + car.frontRightWheel.verticalLoad, car.rearLeftWheel.verticalLoad + car.rearRightWheel.verticalLoad };
     }
-    float U(WheelCorner w) { var p = car.carParams; float dfz = (w.verticalLoad - p.Fz0) / p.Fz0; float D = Mathf.Max(1f, (p.pDy1 + p.pDy2 * dfz) * w.verticalLoad); return w.force.magnitude / D; }   // friction usage ~ |F| / (mu_y(Fz) Fz)
+    float U(WheelCorner w) { var p = car.carParams; float dfz = (w.verticalLoad - p.nominalVerticalLoad) / p.nominalVerticalLoad; float D = Mathf.Max(1f, (p.lateralPeakFrictionCoefficient + p.lateralPeakFrictionLoadSlope * dfz) * w.verticalLoad); return w.force.magnitude / D; }   // friction usage ~ |F| / (mu_y(Fz) Fz)
     string PsFmt(string tag, float[] s) => string.Format(System.Globalization.CultureInfo.InvariantCulture, "PSTEP {0}: v {1:0.0} km/h, yaw {2:0.00} deg/s, curvature {3:0.00000} 1/m (R {4:0.0} m), beta {5:+0.00;-0.00} deg, ay {6:0.000} g, ax {7:+0.000;-0.000} g, alphaF {8:0.00} alphaR {9:0.00} deg (aF-aR {10:+0.00;-0.00}), usage FL {11:0.00} FR {12:0.00} RL {13:0.00} RR {14:0.00}, FzF {15:0} FzR {16:0} N",
         tag, s[0], s[1], s[2], 1f / Mathf.Max(1e-5f, Mathf.Abs(s[2])), s[3], s[4], s[5], s[6], s[7], s[6] - s[7], s[8], s[9], s[10], s[11], s[12], s[13]);
     float PsBeta() { var vel = rb.velocity; return Mathf.Atan2(Vector3.Dot(vel, car.transform.right), Mathf.Max(0.1f, Vector3.Dot(vel, car.transform.forward))); }
@@ -211,7 +211,7 @@ public class SmokeTest : MonoBehaviour
         foreach (var w in new[] { car.frontLeftWheel, car.frontRightWheel, car.rearLeftWheel, car.rearRightWheel })
         {
             var th = w.thermal; if (th == null) continue;
-            o += $" | {w.name} {TireThermal.CelsiusToFahrenheit(th.surfaceTemperatures[0]):0}/{TireThermal.CelsiusToFahrenheit(th.surfaceTemperatures[1]):0}/{TireThermal.CelsiusToFahrenheit(th.surfaceTemperatures[2]):0}F bulk {TireThermal.CelsiusToFahrenheit(th.bulkTemperature):0} carc {TireThermal.CelsiusToFahrenheit(th.carcassTemperature):0} gas {TireThermal.CelsiusToFahrenheit(th.gasTemperature):0} {th.gaugePressure / TireThermal.PaPerPsi:0.0}psi grip {w.thermalScale.muy * 100f:0}% res {th.Residual / System.Math.Max(th.energyIn, 1):E1}";
+            o += $" | {w.name} {TireThermal.CelsiusToFahrenheit(th.surfaceTemperatures[0]):0}/{TireThermal.CelsiusToFahrenheit(th.surfaceTemperatures[1]):0}/{TireThermal.CelsiusToFahrenheit(th.surfaceTemperatures[2]):0}F bulk {TireThermal.CelsiusToFahrenheit(th.bulkTemperature):0} carc {TireThermal.CelsiusToFahrenheit(th.carcassTemperature):0} gas {TireThermal.CelsiusToFahrenheit(th.gasTemperature):0} {th.gaugePressure / TireThermal.PaPerPsi:0.0}psi grip {w.thermalScale.lateralFriction * 100f:0}% res {th.Residual / System.Math.Max(th.energyIn, 1):E1}";
         }
         Debug.Log(o);
     }
@@ -399,7 +399,7 @@ public class SmokeTest : MonoBehaviour
             "LAGUNA RESULT {0} drove {1:0} m in {2:0.0} s (track s reached {3} m, laps {4}), vmax {5:0} km/h, all-4-wheels-grounded {6:0.0}% (longest gap {7:0} ms), max beyond edge {8:0.00} m, min body-origin clearance {9:0.00} m, min (car y - centreline z) {10:0.00} m {11}",
             lagFail ? "FAIL" : "PASS", lagDist, t - 4f, lagIdx * 2, lagLaps, lagMaxV * 3.6f, 100f * (lagSamples - lagUngrounded) / Mathf.Max(1, lagSamples), lagMaxUngroundedRun * Time.fixedDeltaTime * 1000f, lagMaxOff, lagMinClear, lagWorstY, lagWhy));
     }
-    // ---- gamepad steering assist comparison (-gpassist 0 = direct: stick = lock fraction at CarParams.steerRate, 1 = GamepadSteering defaults) ----
+    // ---- gamepad steering assist comparison (-gpassist 0 = direct: stick = lock fraction at CarParams.steeringRateDegPerSecond, 1 = GamepadSteering defaults) ----
     // Scripted "loose" gamepad driver: a path/heading controller whose output is exaggerated x3 and saturated (players push the stick
     // too far), plus seeded sample-and-hold noise (+-0.25 at 8 Hz). The same driver and seed for both modes.
     //   gplane: 80 km/h, 3.5 m lane change at phase t 1 s, back at 5 s.   gpoversteer: 90 km/h, gentle turn-in + handbrake pull (-gphb ms, default 300), then recover the original heading.
@@ -427,7 +427,7 @@ public class SmokeTest : MonoBehaviour
         float stick = Mathf.Clamp(3f * u + gpNoise, -1f, 1f);
         var ctx = GamepadSteering.Context(car); float lockDeg = car.carParams.MeanLockDeg;
         if (GpAssistOn()) car.steer = gpA.Step(dt, stick, ctx);
-        else car.steer = Mathf.MoveTowards(car.steer, stick * lockDeg, car.carParams.steerRate * dt);
+        else car.steer = Mathf.MoveTowards(car.steer, stick * lockDeg, car.carParams.steeringRateDegPerSecond * dt);
         // metrics
         Vector3 vel = rb.velocity; float beta = Mathf.Atan2(Vector3.Dot(vel, car.transform.right), Vector3.Dot(vel, car.transform.forward)) * Mathf.Rad2Deg;
         gpMaxBeta = Mathf.Max(gpMaxBeta, Mathf.Abs(beta)); gpMaxR = Mathf.Max(gpMaxR, Mathf.Abs(r)); if (Mathf.Abs(beta) > 30f) gpSpin = true;

@@ -7,7 +7,7 @@ usage: visco_smoke.py <out_dir> <base_build_dir> <new_build_dir>   (Linux player
 import os, sys, subprocess, itertools
 OUT, BASE, NEW = sys.argv[1:4]
 SCEN = ['skidpad', 'stepsteer', 'brakethr', 'liftoff', 'lagunatherm']
-FLAGS = ['veHysteresis', 'veAdhesion', 'veWlf', 'veFlash', 'vePayne', 'veRateStiffness', 'veLoadRelax', 'veRollingRes', 'veBulkHeat']
+FLAGS = ['viscoHysteresisEnabled', 'viscoAdhesionEnabled', 'viscoWilliamsLandelFerryEnabled', 'viscoFlashTemperatureEnabled', 'viscoPayneEffectEnabled', 'viscoRateStiffnessEnabled', 'viscoLoadRelaxationEnabled', 'viscoRollingResistanceEnabled', 'viscoBulkHeatEnabled']
 EXP = ['p.tireCompound=ExperimentalViscoelastic']
 CFG = {'base_off': (BASE, []), 'base_th': (BASE, ['p.tireThermal=true']), 'new_off': (NEW, []), 'new_th': (NEW, ['p.tireThermal=true']),
        'exp_off': (NEW, EXP), 'exp_th': (NEW, EXP + ['p.tireThermal=true'])}

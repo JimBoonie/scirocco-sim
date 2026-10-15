@@ -51,10 +51,10 @@ public class Drivetrain
         if (gear == 0 || shiftTimer > 0f) { clutchSlip = 0f; return 0f; }
         clutchSlip = engineAngularVelocity - wheelAngularVelocityAverage * totalRatio;
         float clutchCapacity = carParams.clutchMaxTorque * Mathf.Clamp01(1f - clutchPedal);
-        float inverseReflectedInertia = 1f / carParams.engineInertia + totalRatio * totalRatio * carParams.drivetrainEff / (2f * wheelInertiaEach);
+        float inverseReflectedInertia = 1f / carParams.engineInertia + totalRatio * totalRatio * carParams.drivetrainEfficiency / (2f * wheelInertiaEach);
         float couplingGain = 0.5f / (dt * inverseReflectedInertia);                         // critically sized coupling gain
         float clutchTorque = Mathf.Clamp(clutchSlip * couplingGain, -clutchCapacity, clutchCapacity);
-        wheelTorqueEach = clutchTorque * totalRatio * carParams.drivetrainEff * 0.5f;       // open diff: equal split
+        wheelTorqueEach = clutchTorque * totalRatio * carParams.drivetrainEfficiency * 0.5f;       // open diff: equal split
         return clutchTorque;
     }
 

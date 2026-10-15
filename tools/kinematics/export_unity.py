@@ -8,14 +8,14 @@ import json, os
 def fields(t, c):
     K = c['rear']['Kkin']; rc_ = c['rear']['comp']; fr = c['front']
     f = dict(travel=t['travel'], frontCamberBody=t['front_camber_body'], frontBumpSteer=t['front_bumpsteer_toe'], frontTrackChange=t['front_track_change'],
-        frontRcHeight=t['front_rc_height'], frontMotionRatio=t['front_motion_ratio'], rearMotionRatio=t['rear_motion_ratio'], steerGrid=t['front_steer_vs_rack'],
-        frontCamberTravelSteer=[x for row in t['front_camber_travel_rack'] for x in row], rearCamberRollFraction=t['rear_camber_roll_fraction'], rearRcHeight=t['rear_rc_height'],
-        rbCamOwn=K[0][0], rbCamOther=K[0][1], rbToeOwn=K[2][0], rbToeOther=K[2][1],
-        rbToeFyOwn=rc_['Fy']['toeL'], rbToeFyOther=rc_['Fy']['toeR'], rbCamFyOwn=rc_['Fy']['camL'], rbCamFyOther=rc_['Fy']['camR'],
-        rbToeFxOwn=rc_['Fx']['toeL'], rbToeFxOther=rc_['Fx']['toeR'], rbRcHeight=c['rear']['rc'], rbAntiLift=c['rear']['anti_lift'],
-        fcToeFy=fr['Fy']['toe'], fcCamFy=fr['Fy']['camber'], fcToeFx=fr['Fx_brake']['toe'], fcCamFx=fr['Fx_brake']['camber'],
-        fcToeFxD=fr['Fx_drive']['toe'], fcCamFxD=fr['Fx_drive']['camber'], fcToeFz=fr['Fz']['toe'], fcCamFz=fr['Fz']['camber'],
-        fcAntiBrake=c['anti_brake_front'], fcAntiDrive=c['anti_drive_front'], fcJackPerFy=c['jack_front_per_Fy'])
+        frontRollCentreHeight=t['front_rc_height'], frontMotionRatio=t['front_motion_ratio'], rearMotionRatio=t['rear_motion_ratio'], steerGrid=t['front_steer_vs_rack'],
+        frontCamberTravelSteer=[x for row in t['front_camber_travel_rack'] for x in row], rearCamberRollFraction=t['rear_camber_roll_fraction'], rearRollCentreHeight=t['rear_rc_height'],
+        rearBeamCamberPerOwnTravel=K[0][0], rearBeamCamberPerOtherTravel=K[0][1], rearBeamToePerOwnTravel=K[2][0], rearBeamToePerOtherTravel=K[2][1],
+        rearBeamToePerOwnLateralForce=rc_['Fy']['toeL'], rearBeamToePerOtherLateralForce=rc_['Fy']['toeR'], rearBeamCamberPerOwnLateralForce=rc_['Fy']['camL'], rearBeamCamberPerOtherLateralForce=rc_['Fy']['camR'],
+        rearBeamToePerOwnLongitudinalForce=rc_['Fx']['toeL'], rearBeamToePerOtherLongitudinalForce=rc_['Fx']['toeR'], rearBeamRollCentreHeight=c['rear']['rc'], rearBeamAntiLiftCoefficient=c['rear']['anti_lift'],
+        frontToePerLateralForce=fr['Fy']['toe'], frontCamberPerLateralForce=fr['Fy']['camber'], frontToePerBrakeForce=fr['Fx_brake']['toe'], frontCamberPerBrakeForce=fr['Fx_brake']['camber'],
+        frontToePerDriveForce=fr['Fx_drive']['toe'], frontCamberPerDriveForce=fr['Fx_drive']['camber'], frontToePerVerticalForce=fr['Fz']['toe'], frontCamberPerVerticalForce=fr['Fz']['camber'],
+        frontAntiDiveCoefficient=c['anti_brake_front'], frontAntiSquatCoefficient=c['anti_drive_front'], frontJackingPerLateralForce=c['jack_front_per_Fy'])
     # joint reaction maps: force ON THE CAR BODY (left-corner frame x fwd, y left, z up) per unit tire load
     fj = []
     for ld in ('Fx_brake', 'Fx_drive', 'Fy', 'Fz'):
@@ -24,9 +24,9 @@ def fields(t, c):
     rj = []
     for ld in ('Fx', 'Fy', 'Fz'):
         for j in ('pivot_bush_L', 'pivot_bush_R', 'spring_damper_L', 'spring_damper_R'): rj += rc_[ld]['body'][j]
-    f['fcJoint'] = fj; f['rbJoint'] = rj
+    f['frontJointReactions'] = fj; f['rearBeamJointReactions'] = rj
     if 'front_toe_travel_rack' in t: f['rackGrid'] = t['rack']; f['frontToeTravelRack'] = [x for row in t['front_toe_travel_rack'] for x in row]
-    sg = c['steer_geom']; f['kpU'] = sg['u']; f['kpRcp'] = sg['r_cp']; f['kpRwc'] = sg['r_wc']
+    sg = c['steer_geom']; f['kingpinAxis'] = sg['u']; f['kingpinContactPatchOffset'] = sg['r_cp']; f['kingpinWheelCentreOffset'] = sg['r_wc']
     return f
 def fmt(v): return "new float[]{" + ",".join(f"{x:.6g}f" for x in v) + "}" if isinstance(v, list) else f"{v:.6g}f"
 def write_cs(t, c, cls, path):

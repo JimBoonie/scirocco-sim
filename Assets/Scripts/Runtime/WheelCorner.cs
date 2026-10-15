@@ -1,26 +1,25 @@
 using UnityEngine;
-using UnityEngine.Serialization;
 // One corner. Raycast wheel position -> wheel travel t (m, +bump, 0 = design ride height).
 // Vertical: spring (wheel rate, preloaded to carry static load at t=0) + piecewise damper through the kinematic motion ratio
 // + progressive bump stop + ARB/beam (from controller) + jacking force from the roll-centre height.
 // Tire: Pacejka combined slip with relaxation length; lateral force applied at roll-centre height (geometric load transfer).
 public class WheelCorner : MonoBehaviour
 {
-    [FormerlySerializedAs("p")] public CarParams carParams;
+    public CarParams carParams;
     public bool front, left; public Transform visual;
     [HideInInspector] public float travel;
-    [HideInInspector] [FormerlySerializedAs("Fz")] public float verticalLoad;
-    [HideInInspector] [FormerlySerializedAs("Fspring")] public float springForce;
-    [HideInInspector] [FormerlySerializedAs("Fdamper")] public float damperForce;
-    [HideInInspector] [FormerlySerializedAs("Fbump")] public float bumpStopTotalForce;
-    [HideInInspector] [FormerlySerializedAs("Farb")] public float antiRollBarForce;
-    [HideInInspector] [FormerlySerializedAs("Fjack")] public float jackingForce;
-    [HideInInspector] [FormerlySerializedAs("Fanti")] public float antiPitchForce;
+    [HideInInspector] public float verticalLoad;
+    [HideInInspector] public float springForce;
+    [HideInInspector] public float damperForce;
+    [HideInInspector] public float bumpStopTotalForce;
+    [HideInInspector] public float antiRollBarForce;
+    [HideInInspector] public float jackingForce;
+    [HideInInspector] public float antiPitchForce;
     [HideInInspector] public float steerDeg, driveTorque, brakeTorque, camberDeg;
-    [HideInInspector] [FormerlySerializedAs("rcHeight")] public float rollCentreHeight;
-    [HideInInspector] [FormerlySerializedAs("omega")] public float angularVelocity;
+    [HideInInspector] public float rollCentreHeight;
+    [HideInInspector] public float angularVelocity;
     [HideInInspector] public float slipRatio, slipAngle;
-    [HideInInspector] [FormerlySerializedAs("alphaRelaxed")] public float relaxedSlipAngle;
+    [HideInInspector] public float relaxedSlipAngle;
     [HideInInspector] public float staticSag, halfTrack;
     [HideInInspector] public Vector2 force; [HideInInspector] public bool grounded;
     [HideInInspector] public Vector3 bodyForce;             // total force this corner puts into the body (world)
@@ -30,23 +29,23 @@ public class WheelCorner : MonoBehaviour
     // @description - Caches the parent Rigidbody (the car body) that every corner pushes its forces into.
     // @return {Void} - nothing
     void Awake() { body = GetComponentInParent<Rigidbody>(); }
-    float BumpTravel => front ? carParams.bumpTravelF : carParams.bumpTravelR;
-    float ReboundTravel => front ? carParams.reboundTravelF : carParams.reboundTravelR;
+    float BumpTravel => front ? carParams.frontBumpTravel : carParams.rearBumpTravel;
+    float ReboundTravel => front ? carParams.frontReboundTravel : carParams.rearReboundTravel;
     // @description - Spring/damper motion ratio at a wheel travel: wheel-centre velocity times this equals damper velocity (table from SuspensionTables).
     // @param {float} wheelTravel - wheel travel in m (+ = bump)
     // @return {float} - motion ratio, dimensionless (1 when no kinematics tables are assigned)
-    float MotionRatio(float wheelTravel) { var tables = carParams.kin; if (!tables) return 1f; return SuspensionTables.Interpolate1D(tables.travel, front ? tables.frontMotionRatio : tables.rearMotionRatio, wheelTravel); }
+    float MotionRatio(float wheelTravel) { var tables = carParams.suspensionTables; if (!tables) return 1f; return SuspensionTables.Interpolate1D(tables.travel, front ? tables.frontMotionRatio : tables.rearMotionRatio, wheelTravel); }
     // @description - Roll-centre height above ground for this axle at a wheel travel (front: table; rear: twist-beam value or table).
     // @param {float} wheelTravel - wheel travel in m (+ = bump)
     // @return {float} - roll-centre height in m
-    public float RollCentreHeightAt(float wheelTravel) { var tables = carParams.kin; if (!tables) return 0f; if (front) return SuspensionTables.Interpolate1D(tables.travel, tables.frontRcHeight, wheelTravel); return carParams.rearModel == CarParams.RearModel.FullTwistBeam ? tables.rbRcHeight : tables.rearRcHeight; }
+    public float RollCentreHeightAt(float wheelTravel) { var tables = carParams.suspensionTables; if (!tables) return 0f; if (front) return SuspensionTables.Interpolate1D(tables.travel, tables.frontRollCentreHeight, wheelTravel); return carParams.rearModel == CarParams.RearModel.FullTwistBeam ? tables.rearBeamRollCentreHeight : tables.rearRollCentreHeight; }
     [HideInInspector] public float antiCoef;   // vertical body force per N of +x tire force (set by controller)
     // @description - Bump-stop force from compression, integrating the piecewise-linear stiffness table: F(x) = integral of rate(x) dx, linear extrapolation past the last point.
     // @param {float} compression - bump-stop compression in m (<= 0 means not touching)
     // @return {float} - bump-stop force in N
     float BumpStopForce(float compression)   // integrate piecewise-linear rate table
     {
-        if (compression <= 0f) return 0f; float force = 0f; var positions = carParams.bumpStopX; var rates = carParams.bumpStopRate;
+        if (compression <= 0f) return 0f; float force = 0f; var positions = carParams.bumpStopCompressionPoints; var rates = carParams.bumpStopRatePoints;
         for (int i = 1; i < positions.Length; i++)
         {
             float segmentStart = positions[i - 1], segmentEnd = positions[i]; if (compression <= segmentStart) break; float segmentReached = Mathf.Min(compression, segmentEnd);
@@ -60,16 +59,16 @@ public class WheelCorner : MonoBehaviour
     // @return {float} - damper force in N (sign follows the velocity)
     float DamperForceAt(float damperVelocity)
     {
-        var velocityPoints = carParams.damperV; var bumpForces = front ? carParams.damperBumpF : carParams.damperBumpR; var reboundForces = front ? carParams.damperReboundF : carParams.damperReboundR;
+        var velocityPoints = carParams.damperVelocityPoints; var bumpForces = front ? carParams.frontDamperBumpForces : carParams.rearDamperBumpForces; var reboundForces = front ? carParams.frontDamperReboundForces : carParams.rearDamperReboundForces;
         float speed = Mathf.Abs(damperVelocity), force; int pointCount = velocityPoints.Length; var forceTable = damperVelocity >= 0f ? bumpForces : reboundForces;
         if (speed >= velocityPoints[pointCount - 1]) force = forceTable[pointCount - 1] + (forceTable[pointCount - 1] - forceTable[pointCount - 2]) / (velocityPoints[pointCount - 1] - velocityPoints[pointCount - 2]) * (speed - velocityPoints[pointCount - 1]);
         else force = SuspensionTables.Interpolate1D(velocityPoints, forceTable, speed);
         return damperVelocity >= 0f ? force : -force;
     }
-    public float WheelRate => front ? carParams.wheelRateFront : carParams.wheelRateRear;
+    public float WheelRate => front ? carParams.frontWheelRate : carParams.rearWheelRate;
     // ---- unsprung vertical DOF (carParams.useUnsprungMass): wheel-centre height yw / velocity vw in world, tire spring to ground ----
-    [HideInInspector] [FormerlySerializedAs("Ftire")] public float tireForce;
-    [HideInInspector] [FormerlySerializedAs("Fsusp")] public float suspensionForce;
+    [HideInInspector] public float tireForce;
+    [HideInInspector] public float suspensionForce;
     [HideInInspector] public float unsprungMass; float wheelCentreHeight, wheelCentreVelocity; bool wheelHeightInitialised; Vector3 lastPointVelocity; bool havePointVelocity;
     // @description - 1 kHz vertical update: raycasts the ground, computes wheel travel, spring/damper/bump/ARB/jacking forces, optionally integrates the unsprung wheel height, and applies the force to the body.
     // @param {float} deltaTime - suspension step in s
@@ -78,8 +77,8 @@ public class WheelCorner : MonoBehaviour
     public void UpdateSuspension(float deltaTime, float arbForce)
     {
         if (!body) body = GetComponentInParent<Rigidbody>();
-        bool useUnsprungMass = carParams.useUnsprungMass; unsprungMass = useUnsprungMass ? (front ? carParams.unsprungFront : carParams.unsprungRear) : 0f;
-        float tireStaticDeflection = useUnsprungMass ? unsprungStaticLoad / carParams.tireRate : 0f;   // tire static deflection: free radius = R + statDefl keeps design ride height
+        bool useUnsprungMass = carParams.useUnsprungMass; unsprungMass = useUnsprungMass ? (front ? carParams.frontUnsprungMass : carParams.rearUnsprungMass) : 0f;
+        float tireStaticDeflection = useUnsprungMass ? unsprungStaticLoad / carParams.tireVerticalStiffness : 0f;   // tire static deflection: free radius = R + statDefl keeps design ride height
         float rayLength = carParams.hubDropDesign + ReboundTravel + carParams.wheelRadius + tireStaticDeflection + 0.05f;
         grounded = Physics.Raycast(transform.position, -transform.up, out hit, rayLength);
         Vector3 designHubPosition = transform.position - transform.up * carParams.hubDropDesign;
@@ -106,7 +105,7 @@ public class WheelCorner : MonoBehaviour
         if (grounded)
         {
             float tireDeflection = hit.point.y + carParams.wheelRadius + tireStaticDeflection - wheelCentreHeight;
-            tireForce = tireDeflection > 0f ? Mathf.Max(0f, carParams.tireRate * tireDeflection - carParams.tireDamping * wheelCentreVelocity) : 0f;
+            tireForce = tireDeflection > 0f ? Mathf.Max(0f, carParams.tireVerticalStiffness * tireDeflection - carParams.tireVerticalDamping * wheelCentreVelocity) : 0f;
             if (tireForce <= 0f) grounded = false;
         }
         else tireForce = 0f;
@@ -155,9 +154,9 @@ public class WheelCorner : MonoBehaviour
     // Blend: weight w of the slip-based Pacejka path = smoothstep over contact speed from vB/2 to vB, vB = the slip-regularisation floor
     // max(minDen, 0.5 m/s) below which the slip-based path no longer sees the true slip. Above vB the original path is used unchanged.
     public const float StickZeta = 1f;
-    [HideInInspector] [FormerlySerializedAs("stickDx")] public float patchDeflectionX;
-    [HideInInspector] [FormerlySerializedAs("stickDy")] public float patchDeflectionY;
-    [HideInInspector] [FormerlySerializedAs("stickWeight")] public float stickModelWeight;
+    [HideInInspector] public float patchDeflectionX;
+    [HideInInspector] public float patchDeflectionY;
+    [HideInInspector] public float stickModelWeight;
       // deflections (m); weight of the stick model in the force (diagnostics)
     // tire thermal model (option): null when off; thermalScale = Pacejka multipliers (TireScale.One when off -> bit-identical forces)
     public TireThermal thermal; public TireScale thermalScale = TireScale.One; double frictionHeatAccumulated, rollingResistanceHeatAccumulated, thermalAccumulatedTime;
@@ -172,17 +171,17 @@ public class WheelCorner : MonoBehaviour
         thermal.SetColdPressure(coldGauge);
         double integrationTime = thermalAccumulatedTime > 0 ? thermalAccumulatedTime : Time.fixedDeltaTime;
         thermal.bulkFrictionPower = bulkHeatAccumulated / integrationTime;
-        thermal.Step(integrationTime, frictionHeatAccumulated / integrationTime, rollingResistanceHeatAccumulated / integrationTime, Vector3.Dot(body.GetPointVelocity(transform.position), transform.forward), verticalLoad, camberDeg * Mathf.Deg2Rad, carParams.tireRate, grounded);
+        thermal.Step(integrationTime, frictionHeatAccumulated / integrationTime, rollingResistanceHeatAccumulated / integrationTime, Vector3.Dot(body.GetPointVelocity(transform.position), transform.forward), verticalLoad, camberDeg * Mathf.Deg2Rad, carParams.tireVerticalStiffness, grounded);
         frictionHeatAccumulated = rollingResistanceHeatAccumulated = thermalAccumulatedTime = bulkHeatAccumulated = 0; thermalScale = thermal.Scale();
     }
     // ---- Experimental (viscoelastic) compound (ViscoTire.cs); never reached with the Default compound ----
     ViscoTire.Flags viscoFlags; double viscoReferenceSlipSpeed = -1, bulkHeatAccumulated;
-    [HideInInspector] [FormerlySerializedAs("veGrip")] public float viscoGripFactor = 1f;
-    [HideInInspector] [FormerlySerializedAs("veFlashK")] public float viscoFlashTemperatureRise;
-    [HideInInspector] [FormerlySerializedAs("veKScale")] public float viscoStiffnessScale = 1f;
-    [HideInInspector] [FormerlySerializedAs("veSigScale")] public float viscoRelaxationScale = 1f;
-    [HideInInspector] [FormerlySerializedAs("veRrScale")] public float viscoRollingResistanceScale = 1f;
-    [HideInInspector] [FormerlySerializedAs("veMu")] public float viscoFrictionCoefficient;
+    [HideInInspector] public float viscoGripFactor = 1f;
+    [HideInInspector] public float viscoFlashTemperatureRise;
+    [HideInInspector] public float viscoStiffnessScale = 1f;
+    [HideInInspector] public float viscoRelaxationScale = 1f;
+    [HideInInspector] public float viscoRollingResistanceScale = 1f;
+    [HideInInspector] public float viscoFrictionCoefficient;
       // diagnostics
     // @description - Applies the viscoelastic (Experimental) compound: grip factor, rate-dependent stiffness, load-dependent relaxation length and rolling-resistance scale.
     // @param {float} longitudinalSpeed - contact-patch speed along the wheel heading, m/s
@@ -198,21 +197,21 @@ public class WheelCorner : MonoBehaviour
         double contactPressure = thermal != null ? System.Math.Max(thermal.gaugePressure, 20000.0) : TireThermal.NominalGaugePressure;   // nominal contact pressure ~ inflation
         double slipSpeedX = longitudinalSpeed - angularVelocity * carParams.wheelRadius, slipSpeed = System.Math.Sqrt(slipSpeedX * slipSpeedX + lateralSpeed * lateralSpeed);
         double gripFactor = ViscoTire.GripFactor(slipSpeed, gripTemperature, contactPressure, viscoReferenceSlipSpeed, viscoFlags, out double flashTemperatureRise);
-        scale.mux *= (float)gripFactor; scale.muy *= (float)gripFactor; viscoGripFactor = (float)gripFactor; viscoFlashTemperatureRise = (float)flashTemperatureRise;
+        scale.longitudinalFriction *= (float)gripFactor; scale.lateralFriction *= (float)gripFactor; viscoGripFactor = (float)gripFactor; viscoFlashTemperatureRise = (float)flashTemperatureRise;
         float loadClamped = Mathf.Max(verticalLoad, 1f); double stiffnessFactor = 1.0;
-        if (viscoFlags.rateStiffness)
+        if (viscoFlags.rateDependentStiffness)
         {
-            double contactLength = loadClamped / (contactPressure * TireThermal.TreadWidth), referenceContactLength = carParams.Fz0 / (TireThermal.NominalGaugePressure * TireThermal.TreadWidth);   // contact length (D, membrane approx.)
-            stiffnessFactor = ViscoTire.StiffnessFactor(longitudinalSpeed, contactLength, referenceContactLength); scale.kx *= (float)stiffnessFactor; scale.ky *= (float)stiffnessFactor;
+            double contactLength = loadClamped / (contactPressure * TireThermal.TreadWidth), referenceContactLength = carParams.nominalVerticalLoad / (TireThermal.NominalGaugePressure * TireThermal.TreadWidth);   // contact length (D, membrane approx.)
+            stiffnessFactor = ViscoTire.StiffnessFactor(longitudinalSpeed, contactLength, referenceContactLength); scale.longitudinalStiffness *= (float)stiffnessFactor; scale.lateralStiffness *= (float)stiffnessFactor;
         }
         viscoStiffnessScale = (float)stiffnessFactor;
-        if (viscoFlags.loadRelax)
+        if (viscoFlags.loadRelaxation)
         {   // sigma = C_Falpha / c_Fy with constant lateral carcass stiffness c_Fy (Pacejka 2012 ch. 7, S; c_Fy const E): sigma scales with C_Falpha
-            float corneringStiffness = scale.ky * Mathf.Sin(2f * Mathf.Atan(loadClamped / (carParams.pKy2 * scale.kyLoad * carParams.Fz0))), referenceCorneringStiffness = Mathf.Sin(2f * Mathf.Atan(1f / carParams.pKy2));
+            float corneringStiffness = scale.lateralStiffness * Mathf.Sin(2f * Mathf.Atan(loadClamped / (carParams.lateralStiffnessLoadCoefficient * scale.lateralStiffnessLoadSaturation * carParams.nominalVerticalLoad))), referenceCorneringStiffness = Mathf.Sin(2f * Mathf.Atan(1f / carParams.lateralStiffnessLoadCoefficient));
             relaxationLength *= corneringStiffness / referenceCorneringStiffness;
         }
-        viscoRelaxationScale = relaxationLength / carParams.relaxLength;
-        if (viscoFlags.rollingRes)
+        viscoRelaxationScale = relaxationLength / carParams.relaxationLength;
+        if (viscoFlags.rollingResistance)
         {
             double rollingLossTemperature = thermal != null ? TireThermal.RollingLossTreadShare * thermal.bulkTemperature + (1 - TireThermal.RollingLossTreadShare) * thermal.carcassTemperature : ViscoTire.RollingResistanceReferenceTemperature;
             rrScale = (float)ViscoTire.RollingFactor(longitudinalSpeed, carParams.wheelRadius, rollingLossTemperature);
@@ -232,7 +231,7 @@ public class WheelCorner : MonoBehaviour
     {
         if (thermal == null) return 0f;
         float loadClamped = Mathf.Max(verticalLoad, 1f);
-        double longitudinalStiffness = carParams.pKx1 * scale.kx * loadClamped, lateralStiffness = carParams.pKy1 * scale.ky * carParams.Fz0 * Mathf.Sin(2f * Mathf.Atan(loadClamped / (carParams.pKy2 * scale.kyLoad * carParams.Fz0)));
+        double longitudinalStiffness = carParams.longitudinalStiffnessCoefficient * scale.longitudinalStiffness * loadClamped, lateralStiffness = carParams.lateralStiffnessCoefficient * scale.lateralStiffness * carParams.nominalVerticalLoad * Mathf.Sin(2f * Mathf.Atan(loadClamped / (carParams.lateralStiffnessLoadCoefficient * scale.lateralStiffnessLoadSaturation * carParams.nominalVerticalLoad)));
         double contactLength = loadClamped / (System.Math.Max(thermal.gaugePressure, 20000.0) * TireThermal.TreadWidth), absoluteSpeed = System.Math.Abs(longitudinalSpeed);
         double tanDelta = ViscoTire.TanDelta(System.Math.Max(absoluteSpeed, 0.5) / contactLength, thermal.bulkTemperature);
         return (float)(System.Math.PI * tanDelta * absoluteSpeed * ViscoTire.TreadShare * (longitudinalForce * longitudinalForce / (4 * longitudinalStiffness) + lateralForce * lateralForce / (4 * lateralStiffness)));
@@ -256,20 +255,20 @@ public class WheelCorner : MonoBehaviour
         Vector3 forwardDirection = steerRotation * transform.forward, rightDirection = steerRotation * transform.right;
         Vector3 contactVelocity = body.GetPointVelocity(hit.point);
         float longitudinalSpeed = Vector3.Dot(contactVelocity, forwardDirection), lateralSpeed = Vector3.Dot(contactVelocity, rightDirection);
-        float minimumSlipDenominator = 1.5f * carParams.pKx1 * Mathf.Max(verticalLoad, 500f) * carParams.wheelRadius * carParams.wheelRadius * substep / rotationalInertia;
+        float minimumSlipDenominator = 1.5f * carParams.longitudinalStiffnessCoefficient * Mathf.Max(verticalLoad, 500f) * carParams.wheelRadius * carParams.wheelRadius * substep / rotationalInertia;
         float blendSpeed = Mathf.Max(minimumSlipDenominator, 0.5f);
         float slipDenominator = Mathf.Max(Mathf.Abs(longitudinalSpeed), blendSpeed);
         float magicFormulaSlipRatio = Mathf.Clamp((angularVelocity * carParams.wheelRadius - longitudinalSpeed) / slipDenominator, -1.5f, 1.5f);
         slipRatio = magicFormulaSlipRatio;
         slipAngle = Mathf.Atan2(lateralSpeed, Mathf.Max(Mathf.Abs(longitudinalSpeed), 0.5f));
-        float relaxationLength = carParams.relaxLength, rollingResistanceScale = 1f; TireScale effectiveScale = thermalScale;   // Default compound: exactly the original values
+        float relaxationLength = carParams.relaxationLength, rollingResistanceScale = 1f; TireScale effectiveScale = thermalScale;   // Default compound: exactly the original values
         bool isViscoCompound = carParams.tireCompound == CarParams.TireCompound.ExperimentalViscoelastic;
         if (isViscoCompound) ViscoUpdate(longitudinalSpeed, lateralSpeed, ref relaxationLength, ref effectiveScale, ref rollingResistanceScale);
         float relaxationStepFraction = Mathf.Min(1f, (Mathf.Abs(longitudinalSpeed) + 0.5f) * substep / relaxationLength);
         relaxedSlipAngle += relaxationStepFraction * (slipAngle - relaxedSlipAngle);
         float camberRadians = camberDeg * Mathf.Deg2Rad * (left ? -1f : 1f);
         force = PacejkaTire.Combined(carParams, magicFormulaSlipRatio, -relaxedSlipAngle, verticalLoad, camberRadians, isViscoCompound ? effectiveScale : thermalScale);
-        float wheelSpeedKmh = longitudinalSpeed * 3.6f, rollingResistanceForce = (carParams.rollingRes + carParams.rollingResV2 * wheelSpeedKmh * wheelSpeedKmh) * verticalLoad * thermalScale.rr * Mathf.Clamp(longitudinalSpeed, -1f, 1f);
+        float wheelSpeedKmh = longitudinalSpeed * 3.6f, rollingResistanceForce = (carParams.rollingResistanceCoefficient + carParams.rollingResistanceSpeedSquaredCoefficient * wheelSpeedKmh * wheelSpeedKmh) * verticalLoad * thermalScale.rollingResistance * Mathf.Clamp(longitudinalSpeed, -1f, 1f);
         if (isViscoCompound) rollingResistanceForce *= rollingResistanceScale;   // speed-dependent radial-tire RR (Wong form, E)
         force.x -= rollingResistanceForce;
         float contactSpeed = Mathf.Sqrt(longitudinalSpeed * longitudinalSpeed + lateralSpeed * lateralSpeed);
@@ -286,8 +285,8 @@ public class WheelCorner : MonoBehaviour
         else
         {
             float loadClamped = Mathf.Max(verticalLoad, 0f);
-            float longitudinalSlipStiffness = carParams.pKx1 * thermalScale.kx * loadClamped;                                                             // dFx/dkappa at 0 (= B*C*D)
-            float corneringStiffness = carParams.pKy1 * thermalScale.ky * carParams.Fz0 * Mathf.Sin(2f * Mathf.Atan(loadClamped / (carParams.pKy2 * thermalScale.kyLoad * carParams.Fz0)));       // Ky = dFy/dalpha at 0
+            float longitudinalSlipStiffness = carParams.longitudinalStiffnessCoefficient * thermalScale.longitudinalStiffness * loadClamped;                                                             // dFx/dkappa at 0 (= B*C*D)
+            float corneringStiffness = carParams.lateralStiffnessCoefficient * thermalScale.lateralStiffness * carParams.nominalVerticalLoad * Mathf.Sin(2f * Mathf.Atan(loadClamped / (carParams.lateralStiffnessLoadCoefficient * thermalScale.lateralStiffnessLoadSaturation * carParams.nominalVerticalLoad)));       // Ky = dFy/dalpha at 0
             float patchStiffnessX = longitudinalSlipStiffness / patchRelaxationLength, patchStiffnessY = corneringStiffness / patchRelaxationLength;
             float cornerMass = Mathf.Max(unsprungStaticLoad, 1f) / 9.81f;
             float patchDampingX = 2f * StickZeta * Mathf.Sqrt(patchStiffnessX * cornerMass), patchDampingY = 2f * StickZeta * Mathf.Sqrt(patchStiffnessY * cornerMass);
@@ -300,8 +299,8 @@ public class WheelCorner : MonoBehaviour
             float slipSpeedX = longitudinalSpeed - angularVelocity * wheelRadius, slipSpeedY = lateralSpeed;
             patchDeflectionX += substep * (-slipSpeedX - absoluteLongitudinalSpeed * patchDeflectionX / patchRelaxationLength); patchDeflectionY += substep * (-slipSpeedY - absoluteLongitudinalSpeed * patchDeflectionY / patchRelaxationLength);
             float patchForceX = patchStiffnessX * patchDeflectionX - patchDampingX * slipSpeedX, patchForceY = patchStiffnessY * patchDeflectionY - patchDampingY * slipSpeedY;
-            float relativeLoadChange = (loadClamped - carParams.Fz0) / carParams.Fz0;
-            float peakForceX = Mathf.Max((carParams.pDx1 + carParams.pDx2 * relativeLoadChange) * thermalScale.mux * loadClamped, 1f), peakForceY = Mathf.Max((carParams.pDy1 + carParams.pDy2 * relativeLoadChange) * thermalScale.muy * (1f - 4f * camberRadians * camberRadians) * loadClamped, 1f);
+            float relativeLoadChange = (loadClamped - carParams.nominalVerticalLoad) / carParams.nominalVerticalLoad;
+            float peakForceX = Mathf.Max((carParams.longitudinalPeakFrictionCoefficient + carParams.longitudinalPeakFrictionLoadSlope * relativeLoadChange) * thermalScale.longitudinalFriction * loadClamped, 1f), peakForceY = Mathf.Max((carParams.lateralPeakFrictionCoefficient + carParams.lateralPeakFrictionLoadSlope * relativeLoadChange) * thermalScale.lateralFriction * (1f - 4f * camberRadians * camberRadians) * loadClamped, 1f);
             float ellipseRatio = (patchForceX / peakForceX) * (patchForceX / peakForceX) + (patchForceY / peakForceY) * (patchForceY / peakForceY);
             if (ellipseRatio > 1f) { float scaleBack = 1f / Mathf.Sqrt(ellipseRatio); patchForceX *= scaleBack; patchForceY *= scaleBack; patchDeflectionX = patchForceX / patchStiffnessX; patchDeflectionY = patchForceY / patchStiffnessY; }   // sliding: elastic part at the limit
             force = new Vector2(pacejkaWeight * force.x + stickBlend * (patchForceX - rollingResistanceForce), pacejkaWeight * force.y + stickBlend * patchForceY);
@@ -313,7 +312,7 @@ public class WheelCorner : MonoBehaviour
         {   // thermal inputs: friction power -F.Vs (tire force without RR) and rolling-resistance power, applied force scale included
             float slipSpeedX = longitudinalSpeed - angularVelocity * carParams.wheelRadius;
             frictionHeatAccumulated += -((force.x + rollingResistanceForce) * slipSpeedX + force.y * lateralSpeed) * forceScale * substep; rollingResistanceHeatAccumulated += rollingResistanceForce * longitudinalSpeed * forceScale * substep; thermalAccumulatedTime += substep;
-            if (isViscoCompound && viscoFlags.bulkHeat) bulkHeatAccumulated += BulkHysteresisPower(longitudinalSpeed, force.x + rollingResistanceForce, force.y, effectiveScale) * forceScale * substep;
+            if (isViscoCompound && viscoFlags.bulkHeating) bulkHeatAccumulated += BulkHysteresisPower(longitudinalSpeed, force.x + rollingResistanceForce, force.y, effectiveScale) * forceScale * substep;
         }
         // longitudinal at the contact patch; lateral at roll-centre height (geometric lateral load transfer)
         Vector3 lateralForcePoint = carParams.useJacking ? hit.point + transform.up * rollCentreHeight : hit.point;
@@ -328,9 +327,9 @@ public class WheelCorner : MonoBehaviour
     void ClampPatch(float loadClamped, float camberRadians, float patchRelaxationLength)
     {   // keep the tracked patch deflection inside the friction ellipse (what the patch can hold elastically)
         loadClamped = Mathf.Max(loadClamped, 0f); if (loadClamped <= 0f) { patchDeflectionX = patchDeflectionY = 0f; return; }
-        float relativeLoadChange = (loadClamped - carParams.Fz0) / carParams.Fz0;
-        float patchStiffnessX = carParams.pKx1 * thermalScale.kx * loadClamped / patchRelaxationLength, patchStiffnessY = carParams.pKy1 * thermalScale.ky * carParams.Fz0 * Mathf.Sin(2f * Mathf.Atan(loadClamped / (carParams.pKy2 * thermalScale.kyLoad * carParams.Fz0))) / patchRelaxationLength;
-        float peakForceX = Mathf.Max((carParams.pDx1 + carParams.pDx2 * relativeLoadChange) * thermalScale.mux * loadClamped, 1f), peakForceY = Mathf.Max((carParams.pDy1 + carParams.pDy2 * relativeLoadChange) * thermalScale.muy * (1f - 4f * camberRadians * camberRadians) * loadClamped, 1f);
+        float relativeLoadChange = (loadClamped - carParams.nominalVerticalLoad) / carParams.nominalVerticalLoad;
+        float patchStiffnessX = carParams.longitudinalStiffnessCoefficient * thermalScale.longitudinalStiffness * loadClamped / patchRelaxationLength, patchStiffnessY = carParams.lateralStiffnessCoefficient * thermalScale.lateralStiffness * carParams.nominalVerticalLoad * Mathf.Sin(2f * Mathf.Atan(loadClamped / (carParams.lateralStiffnessLoadCoefficient * thermalScale.lateralStiffnessLoadSaturation * carParams.nominalVerticalLoad))) / patchRelaxationLength;
+        float peakForceX = Mathf.Max((carParams.longitudinalPeakFrictionCoefficient + carParams.longitudinalPeakFrictionLoadSlope * relativeLoadChange) * thermalScale.longitudinalFriction * loadClamped, 1f), peakForceY = Mathf.Max((carParams.lateralPeakFrictionCoefficient + carParams.lateralPeakFrictionLoadSlope * relativeLoadChange) * thermalScale.lateralFriction * (1f - 4f * camberRadians * camberRadians) * loadClamped, 1f);
         float patchForceX = patchStiffnessX * patchDeflectionX, patchForceY = patchStiffnessY * patchDeflectionY, ellipseRatio = (patchForceX / peakForceX) * (patchForceX / peakForceX) + (patchForceY / peakForceY) * (patchForceY / peakForceY);
         if (ellipseRatio > 1f) { float scaleBack = 1f / Mathf.Sqrt(ellipseRatio); patchDeflectionX *= scaleBack; patchDeflectionY *= scaleBack; }
     }

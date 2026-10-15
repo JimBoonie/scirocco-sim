@@ -42,14 +42,14 @@ public class InputRouter : MonoBehaviour
         var p = car.carParams;
         car.throttle = map.Axis(InAction.Throttle); car.brake = map.Axis(InAction.Brake); car.clutch = map.Axis(InAction.Clutch);
         car.handbrakeInput = map.Axis(InAction.Handbrake);
-        car.autoClutch = map.profile.autoClutch; p.tireThermal = map.profile.tireThermal; p.tireCompound = map.profile.tireCompound == 1 ? CarParams.TireCompound.ExperimentalViscoelastic : CarParams.TireCompound.Default; p.coldPressureFront = map.profile.coldPsiFront * (float)TireThermal.PaPerPsi; p.coldPressureRear = map.profile.coldPsiRear * (float)TireThermal.PaPerPsi; CarAudio.Volume = map.profile.audioVolume; CarAudio.TireVolume = map.profile.tireVolume; CarAudio.Mute = map.profile.audioMute; AmbientLighting.Apply(map.profile.ambientBrightness);
+        car.autoClutch = map.profile.autoClutch; p.tireThermal = map.profile.tireThermal; p.tireCompound = map.profile.tireCompound == 1 ? CarParams.TireCompound.ExperimentalViscoelastic : CarParams.TireCompound.Default; p.frontColdPressure = map.profile.coldPsiFront * (float)TireThermal.PaPerPsi; p.rearColdPressure = map.profile.coldPsiRear * (float)TireThermal.PaPerPsi; CarAudio.Volume = map.profile.audioVolume; CarAudio.TireVolume = map.profile.tireVolume; CarAudio.Mute = map.profile.audioMute; AmbientLighting.Apply(map.profile.ambientBrightness);
         if (map.Pressed(InAction.Ignition)) car.engine.ignition = !car.engine.ignition;
         bool interlockOk = !map.profile.starterInterlock || car.drivetrain.gear == 0 || car.ClutchFullyIn;
         car.engine.starter = map.Held(InAction.Starter) && interlockOk;
         hintNeutral = car.drivetrain.gear == 0 && car.throttle > 0.05f;
         if (map.assist == null) { map.assist = new GamepadSteering(map.profile.gamepadSteer); map.meanToHandwheel = m => SteeringLinkage.HandwheelForMean(car.carParams, m); }
         map.assistCtx = GamepadSteering.Context(car);
-        car.handwheelDeg = map.StepSteer(Time.deltaTime, p.handwheelLockDeg, p.steerRate, SteeringLinkage.CentreRatio(p));
+        car.handwheelDeg = map.StepSteer(Time.deltaTime, p.handwheelLockDeg, p.steeringRateDegPerSecond, SteeringLinkage.CentreRatio(p));
         car.handwheelInput = true;                                            // column -> pinion -> rack -> per-wheel kinematics (CarController)
         if (map.Pressed(InAction.ShiftUp)) car.drivetrain.Shift(1);
         if (map.Pressed(InAction.ShiftDown)) car.drivetrain.Shift(-1);

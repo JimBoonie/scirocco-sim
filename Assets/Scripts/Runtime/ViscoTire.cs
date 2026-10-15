@@ -5,7 +5,7 @@
 //  - Payne effect: Kraus (1984) strain softening of the filler part at the asperity strain (Persson: strain ~ rms slope / 2).
 //  - rubber friction = hysteretic (Persson 2001 theory, self-affine road, Lorenz/Persson 2015 rms-slope cutoff) + adhesive
 //    (Lorenz/Persson real-contact shear stress, Gaussian in log sliding speed) -> master curve mu(log10(aT v)), precomputed tables.
-//  - flash temperature of the macro-asperity contacts (Tian & Kennedy 1994 moving heat source) raises the friction temperature.
+//  - flashTemperature temperature of the macro-asperity contacts (Tian & Kennedy 1994 moving heat source) raises the friction temperature.
 //  - calibration (D): grip factor g = mu(vs, T)/mu(vs_ref, T) multiplies the sourced peak coefficients; at the reference sliding speed
 //    (peak slip at V_ref) g = 1 exactly, so the sourced peak mu and mu(T) of TireThermal are kept and nothing is added. Slip stiffness
 //    (B = K/(C D)) is unaffected by g.
@@ -49,17 +49,17 @@ public static class ViscoTire
     public const double ReferenceContactPressure = TireThermal.NominalGaugePressure;   // Pa nominal contact pressure ~ inflation pressure (D: membrane approx., as TireThermal)
     public const double RollingResistanceReferenceTemperature = 25.0, RollingResistanceReferenceSpeed = 80.0 / 3.6;   // ISO 28580 rolling-resistance reference: 25 C, 80 km/h (S)
     public const double TreadShare = 0.5;           // tread (brush) share of the tyre's tangential compliance (E)
-    // ---- flash temperature ----
+    // ---- flashTemperature temperature ----
     public static readonly double AsperityRadius = RollOffWavelength / 4;   // m macro-asperity contact radius (E: quarter roll-off wavelength)
     static readonly double ThermalDiffusivity = TireThermal.RubberConductivity / (TireThermal.RubberDensity * TireThermal.RubberSpecificHeat);   // kappa in m^2/s (D, S data)
 
     // Switches for the individual physics terms (ablation tests turn single ones off).
-    public struct Flags { public bool hysteresis, adhesion, wlf, flash, payne, rateStiffness, loadRelax, rollingRes, bulkHeat; }
+    public struct Flags { public bool hysteresis, adhesion, williamsLandelFerry, flashTemperature, payneEffect, rateDependentStiffness, loadRelaxation, rollingResistance, bulkHeating; }
 
     // @description - reads the experimental-compound switches from the car parameters
     // @param {CarParams} carParams - car parameters holding the ve* switches
     // @return {Flags} - the switches as a value struct
-    public static Flags FromParams(CarParams carParams) => new Flags { hysteresis = carParams.veHysteresis, adhesion = carParams.veAdhesion, wlf = carParams.veWlf, flash = carParams.veFlash, payne = carParams.vePayne, rateStiffness = carParams.veRateStiffness, loadRelax = carParams.veLoadRelax, rollingRes = carParams.veRollingRes, bulkHeat = carParams.veBulkHeat };
+    public static Flags FromParams(CarParams carParams) => new Flags { hysteresis = carParams.viscoHysteresisEnabled, adhesion = carParams.viscoAdhesionEnabled, williamsLandelFerry = carParams.viscoWilliamsLandelFerryEnabled, flashTemperature = carParams.viscoFlashTemperatureEnabled, payneEffect = carParams.viscoPayneEffectEnabled, rateDependentStiffness = carParams.viscoRateStiffnessEnabled, loadRelaxation = carParams.viscoLoadRelaxationEnabled, rollingResistance = carParams.viscoRollingResistanceEnabled, bulkHeating = carParams.viscoBulkHeatEnabled };
 
     // @description - WLF time-temperature shift log10(aT) = -C1 (T - Tg) / (C2 + T - Tg); valid above Tg
     // @param {double} temperature - rubber temperature in degC
@@ -71,13 +71,13 @@ public static class ViscoTire
     ///   E_HN = E_glass + (E_0 - E_glass) / (1 + (i w tau_g)^a)^b;  filler = ratio E_0 pay (i w / w_ref)^n;  pay = 1 / (1 + (strain / eps_c)^(2 m))  (Kraus)
     // @param {double} reducedAngularFrequency - angular frequency in rad/s referenced to Tg
     // @param {double} strain - strain amplitude (dimensionless)
-    // @param {bool} payne - true = apply the Payne strain softening to the filler network
+    // @param {bool} payneEffect - true = apply the Payne strain softening to the filler network
     // @return {Complex} - complex modulus in Pa (real = storage, imaginary = loss)
-    public static Complex ComplexModulus(double reducedAngularFrequency, double strain, bool payne)
+    public static Complex ComplexModulus(double reducedAngularFrequency, double strain, bool payneEffect)
     {
         reducedAngularFrequency = System.Math.Max(System.Math.Abs(reducedAngularFrequency), 1e-300);
         Complex polymer = GlassyModulus + (RubberyModulus - GlassyModulus) / Complex.Pow(1 + Complex.Pow(new Complex(0, reducedAngularFrequency * System.Math.Pow(10, LogRelaxationTimeAtTg)), HavriliakNegamiAlpha), HavriliakNegamiBeta);
-        double paynePrefactor = payne && strain > 0 ? 1.0 / (1.0 + System.Math.Pow(strain / PayneCriticalStrain, 2 * KrausExponent)) : 1.0;
+        double paynePrefactor = payneEffect && strain > 0 ? 1.0 / (1.0 + System.Math.Pow(strain / PayneCriticalStrain, 2 * KrausExponent)) : 1.0;
         Complex filler = FillerRatio * RubberyModulus * paynePrefactor * Complex.Pow(new Complex(0, reducedAngularFrequency / FillerReferenceAngularFrequency), FillerExponent);
         return polymer + filler;
     }
@@ -110,7 +110,7 @@ public static class ViscoTire
     // @return {Void} - stores the tables in hysteresisFrictionTable / contactAreaTable
     static void BuildMasterCurves(int payneIndex)
     {
-        bool payne = payneIndex == 1; var frictionCurve = new double[MasterCurveSamples]; var areaCurve = new double[MasterCurveSamples];
+        bool payneEffect = payneIndex == 1; var frictionCurve = new double[MasterCurveSamples]; var areaCurve = new double[MasterCurveSamples];
         double[] wavenumbers = new double[WavenumberSamples], cosines = new double[AngleSamples], angleWeights = new double[AngleSamples];
         for (int i = 0; i < WavenumberSamples; i++) wavenumbers[i] = RollOffWavenumber * System.Math.Pow(CutoffWavenumber / RollOffWavenumber, i / (double)(WavenumberSamples - 1));
         for (int j = 0; j < AngleSamples; j++) { double angle = (j + 0.5) * 0.5 * System.Math.PI / AngleSamples; cosines[j] = System.Math.Cos(angle); angleWeights[j] = 0.5 * System.Math.PI / AngleSamples; }   // midpoint rule on [0, pi/2]
@@ -120,7 +120,7 @@ public static class ViscoTire
         {
             double reducedSpeed = System.Math.Pow(10, MasterCurveMin + k * MasterCurveStep);
             for (int i = 0; i < WavenumberSamples; i++)
-                AngleIntegrals(wavenumbers[i] * reducedSpeed, cosines, angleWeights, normalisingStress, payne, out imaginaryIntegral[i], out absoluteIntegral[i]);
+                AngleIntegrals(wavenumbers[i] * reducedSpeed, cosines, angleWeights, normalisingStress, payneEffect, out imaginaryIntegral[i], out absoluteIntegral[i]);
             IntegrateOverWavenumber(wavenumbers, imaginaryIntegral, absoluteIntegral, out frictionCurve[k], out areaCurve[k]);   // P(q1) = A/A0 real contact area
         }
         hysteresisFrictionTable[payneIndex] = frictionCurve; contactAreaTable[payneIndex] = areaCurve;
@@ -132,14 +132,14 @@ public static class ViscoTire
     // @param {double[]} cosines - cos(phi) at the midpoint-rule nodes
     // @param {double[]} angleWeights - midpoint-rule weights
     // @param {double} normalisingStress - (1 - nu^2) sigma0 in Pa
-    // @param {bool} payne - Payne softening on/off
+    // @param {bool} payneEffect - Payne softening on/off
     // @param {double} imaginaryIntegral - (out) 4 sum w cos Im(E*)/s0
     // @param {double} absoluteIntegral - (out) 4 sum w |E*/s0|^2
     // @return {Void}
-    static void AngleIntegrals(double wavenumberTimesSpeed, double[] cosines, double[] angleWeights, double normalisingStress, bool payne, out double imaginaryIntegral, out double absoluteIntegral)
+    static void AngleIntegrals(double wavenumberTimesSpeed, double[] cosines, double[] angleWeights, double normalisingStress, bool payneEffect, out double imaginaryIntegral, out double absoluteIntegral)
     {
         double sumImaginary = 0, sumAbsolute = 0;
-        for (int j = 0; j < AngleSamples; j++) { var modulus = ComplexModulus(wavenumberTimesSpeed * cosines[j], FrictionStrain, payne) / normalisingStress; sumImaginary += angleWeights[j] * cosines[j] * modulus.Imaginary; sumAbsolute += angleWeights[j] * (modulus.Real * modulus.Real + modulus.Imaginary * modulus.Imaginary); }
+        for (int j = 0; j < AngleSamples; j++) { var modulus = ComplexModulus(wavenumberTimesSpeed * cosines[j], FrictionStrain, payneEffect) / normalisingStress; sumImaginary += angleWeights[j] * cosines[j] * modulus.Imaginary; sumAbsolute += angleWeights[j] * (modulus.Real * modulus.Real + modulus.Imaginary * modulus.Imaginary); }
         imaginaryIntegral = 4 * sumImaginary; absoluteIntegral = 4 * sumAbsolute;
     }
 
@@ -191,17 +191,17 @@ public static class ViscoTire
 
     // @description - hysteretic friction coefficient from the master curve
     // @param {double} x - log10(aT v)
-    // @param {bool} payne - Payne softening on/off
+    // @param {bool} payneEffect - Payne softening on/off
     // @return {double} - hysteretic mu
-    public static double MuHys(double x, bool payne) { int payneIndex = payne ? 1 : 0; EnsureBuilt(payneIndex); return InterpolateTable(hysteresisFrictionTable[payneIndex], x); }
+    public static double MuHys(double x, bool payneEffect) { int payneIndex = payneEffect ? 1 : 0; EnsureBuilt(payneIndex); return InterpolateTable(hysteresisFrictionTable[payneIndex], x); }
 
     // @description - real contact area ratio A/A0 from the master curve
     // @param {double} x - log10(aT v)
-    // @param {bool} payne - Payne softening on/off
+    // @param {bool} payneEffect - Payne softening on/off
     // @return {double} - contact area ratio (0..1)
-    public static double ContactAreaRatio(double x, bool payne) { int payneIndex = payne ? 1 : 0; EnsureBuilt(payneIndex); return InterpolateTable(contactAreaTable[payneIndex], x); }
+    public static double ContactAreaRatio(double x, bool payneEffect) { int payneIndex = payneEffect ? 1 : 0; EnsureBuilt(payneIndex); return InterpolateTable(contactAreaTable[payneIndex], x); }
 
-    /// @description - friction coefficient at sliding speed and rubber temperature, isothermal (no flash): hysteresis + adhesion
+    /// @description - friction coefficient at sliding speed and rubber temperature, isothermal (no flashTemperature): hysteresis + adhesion
     ///   adhesion = tau_f0 exp(-c log10^2(v/v0)) A/A0 / sigma
     // @param {double} slidingSpeed - v in m/s
     // @param {double} temperature - rubber temperature in degC
@@ -211,12 +211,12 @@ public static class ViscoTire
     {
         double x = System.Math.Log10(System.Math.Max(slidingSpeed, 1e-12)) + LogTimeTemperatureShift(temperature);
         double friction = 0;
-        if (flags.hysteresis) friction += MuHys(x, flags.payne);
-        if (flags.adhesion) { double logSpeedOffset = x - LogTimeTemperatureShift(AdhesionReferenceTemperature) - System.Math.Log10(AdhesionSpeed0); friction += AdhesionShearStress0 * System.Math.Exp(-AdhesionWidthFactor * logSpeedOffset * logSpeedOffset) * ContactAreaRatio(x, flags.payne) / ReferenceContactPressure; }
+        if (flags.hysteresis) friction += MuHys(x, flags.payneEffect);
+        if (flags.adhesion) { double logSpeedOffset = x - LogTimeTemperatureShift(AdhesionReferenceTemperature) - System.Math.Log10(AdhesionSpeed0); friction += AdhesionShearStress0 * System.Math.Exp(-AdhesionWidthFactor * logSpeedOffset * logSpeedOffset) * ContactAreaRatio(x, flags.payneEffect) / ReferenceContactPressure; }
         return friction;
     }
 
-    /// @description - flash temperature rise of the macro-asperity contacts (Tian & Kennedy 1994, circular source, all Peclet numbers):
+    /// @description - flashTemperature temperature rise of the macro-asperity contacts (Tian & Kennedy 1994, circular source, all Peclet numbers):
     ///   dT = 2 q a / (k sqrt(pi) sqrt(1.273 + Pe)), Pe = v a / (2 kappa); q = mu sigma v / contact ratio (all heat into the rubber, as TireThermal)
     // @param {double} slidingSpeed - v in m/s
     // @param {double} frictionCoefficient - mu
@@ -229,18 +229,18 @@ public static class ViscoTire
     }
     public const int FlashIterations = 4;   // fixed-point iterations (converged to < 0.1 % in tests)
 
-    /// @description - effective friction with flash temperature (fixed-point iteration of mu(T + dT(mu))); T = macro rubber (grip) temperature
+    /// @description - effective friction with flashTemperature temperature (fixed-point iteration of mu(T + dT(mu))); T = macro rubber (grip) temperature
     // @param {double} slidingSpeed - v in m/s
     // @param {double} temperature - macro rubber temperature in degC
     // @param {double} contactPressure - sigma in Pa
     // @param {Flags} flags - enabled physics terms (WLF off freezes the friction temperature at the reference)
-    // @param {double} flashRise - (out) flash temperature rise in K
+    // @param {double} flashRise - (out) flashTemperature temperature rise in K
     // @return {double} - effective friction coefficient
     public static double MuEff(double slidingSpeed, double temperature, double contactPressure, in Flags flags, out double flashRise)
     {
-        flashRise = 0; if (!flags.wlf) temperature = TireThermal.OptimalTemperature;   // WLF ablated: friction temperature frozen at the reference
+        flashRise = 0; if (!flags.williamsLandelFerry) temperature = TireThermal.OptimalTemperature;   // WLF ablated: friction temperature frozen at the reference
         double friction = Mu(slidingSpeed, temperature, flags);
-        if (flags.flash && flags.wlf) for (int i = 0; i < FlashIterations; i++) { flashRise = Flash(slidingSpeed, friction, contactPressure); friction = Mu(slidingSpeed, temperature + flashRise, flags); }
+        if (flags.flashTemperature && flags.williamsLandelFerry) for (int i = 0; i < FlashIterations; i++) { flashRise = Flash(slidingSpeed, friction, contactPressure); friction = Mu(slidingSpeed, temperature + flashRise, flags); }
         return friction;
     }
 
@@ -250,7 +250,7 @@ public static class ViscoTire
     // @param {double} contactPressure - sigma in Pa
     // @param {double} referenceSlidingSpeed - sliding speed at the reference condition in m/s
     // @param {Flags} flags - enabled physics terms
-    // @param {double} flashRise - (out) flash temperature rise at the current speed in K
+    // @param {double} flashRise - (out) flashTemperature temperature rise at the current speed in K
     // @return {double} - multiplicative grip factor
     public static double GripFactor(double slidingSpeed, double temperature, double contactPressure, double referenceSlidingSpeed, in Flags flags, out double flashRise)
     {
@@ -264,7 +264,7 @@ public static class ViscoTire
     public static double VsRef(CarParams carParams)
     {
         double low = 0.001, high = 0.5, goldenRatio = 0.5 * (System.Math.Sqrt(5) - 1);
-        for (int i = 0; i < 80; i++) { double lowerProbe = high - goldenRatio * (high - low), upperProbe = low + goldenRatio * (high - low); if (PacejkaTire.PureLat(carParams, (float)lowerProbe, carParams.Fz0, 0f) > PacejkaTire.PureLat(carParams, (float)upperProbe, carParams.Fz0, 0f)) high = upperProbe; else low = lowerProbe; }
+        for (int i = 0; i < 80; i++) { double lowerProbe = high - goldenRatio * (high - low), upperProbe = low + goldenRatio * (high - low); if (PacejkaTire.PureLat(carParams, (float)lowerProbe, carParams.nominalVerticalLoad, 0f) > PacejkaTire.PureLat(carParams, (float)upperProbe, carParams.nominalVerticalLoad, 0f)) high = upperProbe; else low = lowerProbe; }
         return ReferenceSpeed * System.Math.Tan(0.5 * (low + high));
     }
 

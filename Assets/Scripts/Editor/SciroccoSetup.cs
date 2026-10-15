@@ -23,7 +23,7 @@ public static class SciroccoSetup
         var kin = AssetDatabase.LoadAssetAtPath<SuspensionTables>(kpath);
         if (!kin) { kin = ScriptableObject.CreateInstance<SuspensionTables>(); AssetDatabase.CreateAsset(kin, kpath); }
         SuspensionTablesData.Fill(kin); EditorUtility.SetDirty(kin);   // always refresh from generated data
-        p.kin = kin;
+        p.suspensionTables = kin;
         EditorUtility.SetDirty(p);
         AssetDatabase.DeleteAsset("Assets/SuspensionTablesProposed.asset");   // single handling baseline (2026-10-13): the second table set is gone
         // flat track: 2km plane + cones

@@ -20,7 +20,7 @@ public class DebugHUD : MonoBehaviour
             foreach (var w in new[] { car.frontLeftWheel, car.frontRightWheel, car.rearLeftWheel, car.rearRightWheel })
             {
                 var th = w.thermal; if (th == null) continue;
-                s += $"{w.name}: {F(th.surfaceTemperatures[0]),4:0}/{F(th.surfaceTemperatures[1]),4:0}/{F(th.surfaceTemperatures[2]),4:0}  {F(th.bulkTemperature),4:0} {F(th.gasTemperature),4:0}  {th.gaugePressure / TireThermal.PaPerPsi,4:0.0}  {w.thermalScale.muy * 100f,3:0}%\n";
+                s += $"{w.name}: {F(th.surfaceTemperatures[0]),4:0}/{F(th.surfaceTemperatures[1]),4:0}/{F(th.surfaceTemperatures[2]),4:0}  {F(th.bulkTemperature),4:0} {F(th.gasTemperature),4:0}  {th.gaugePressure / TireThermal.PaPerPsi,4:0.0}  {w.thermalScale.lateralFriction * 100f,3:0}%\n";
             }
         }
 
@@ -69,24 +69,24 @@ public class DebugHUD : MonoBehaviour
     static readonly string[] FJ = { "armF", "armR", "tieRod", "topMnt", "ballJ" }, RJ = { "pivL", "pivR", "dampL", "dampR" };
     public static Vector3[] FrontJoints(SuspensionTables k, WheelCorner w)
     {
-        var r = new Vector3[5]; if (k == null || k.fcJoint == null || k.fcJoint.Length < 60) return r;
+        var r = new Vector3[5]; if (k == null || k.frontJointReactions == null || k.frontJointReactions.Length < 60) return r;
         float sy = w.left ? 1f : -1f, fy = w.left ? -w.force.y : w.force.y;   // outward lateral, left-corner frame
         bool brk = w.brakeTorque > 0f && w.force.x < 0f;
         float[] L = { brk ? w.force.x : 0f, brk ? 0f : w.force.x, fy, w.verticalLoad };
         for (int l = 0; l < 4; l++) for (int jn = 0; jn < 5; jn++)
-        { int b = (l * 5 + jn) * 3; r[jn] += L[l] * new Vector3(k.fcJoint[b], sy * k.fcJoint[b + 1], k.fcJoint[b + 2]); }
+        { int b = (l * 5 + jn) * 3; r[jn] += L[l] * new Vector3(k.frontJointReactions[b], sy * k.frontJointReactions[b + 1], k.frontJointReactions[b + 2]); }
         return r;
     }
     public static Vector3[] RearJoints(SuspensionTables k, WheelCorner wl, WheelCorner wr)
     {
-        var r = new Vector3[4]; if (k == null || k.rbJoint == null || k.rbJoint.Length < 36) return r;
+        var r = new Vector3[4]; if (k == null || k.rearBeamJointReactions == null || k.rearBeamJointReactions.Length < 36) return r;
         int[] swap = { 1, 0, 3, 2 };
         foreach (var w in new[] { wl, wr })
         {
             float fy = w.left ? -w.force.y : w.force.y; float[] L = { w.force.x, fy, w.verticalLoad };
             for (int l = 0; l < 3; l++) for (int jn = 0; jn < 4; jn++)
             {
-                int b = (l * 4 + jn) * 3; var v = new Vector3(k.rbJoint[b], k.rbJoint[b + 1], k.rbJoint[b + 2]) * L[l];
+                int b = (l * 4 + jn) * 3; var v = new Vector3(k.rearBeamJointReactions[b], k.rearBeamJointReactions[b + 1], k.rearBeamJointReactions[b + 2]) * L[l];
                 if (w.left) r[jn] += v; else { v.y = -v.y; r[swap[jn]] += v; }
             }
         }
@@ -94,7 +94,7 @@ public class DebugHUD : MonoBehaviour
     }
     static string JointText(CarController car)
     {
-        var k = car.carParams.kin; if (!k) return "";
+        var k = car.carParams.suspensionTables; if (!k) return "";
         string s = "Joint reactions on body |F| (Fz) N  [linear maps, bushes E]\n";
         foreach (var w in new[] { car.frontLeftWheel, car.frontRightWheel })
         {

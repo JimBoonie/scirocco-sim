@@ -9,8 +9,8 @@
 using UnityEngine;
 public struct TireScale
 {   // multipliers on the Pacejka terms; One = exact identity (x*1f is exact in IEEE, so thermal-off results are bit-identical)
-    public float kx, mux, ky, kyLoad, muy, rr;   // kx = longitudinal stiffness, mux = longitudinal peak friction, ky = lateral stiffness, kyLoad = lateral stiffness load-saturation, muy = lateral peak friction, rr = rolling resistance
-    public static readonly TireScale One = new TireScale { kx = 1f, mux = 1f, ky = 1f, kyLoad = 1f, muy = 1f, rr = 1f };
+    public float longitudinalStiffness, longitudinalFriction, lateralStiffness, lateralStiffnessLoadSaturation, lateralFriction, rollingResistance;
+    public static readonly TireScale One = new TireScale { longitudinalStiffness = 1f, longitudinalFriction = 1f, lateralStiffness = 1f, lateralStiffnessLoadSaturation = 1f, lateralFriction = 1f, rollingResistance = 1f };
 }
 public class TireThermal
 {
@@ -249,7 +249,7 @@ public class TireThermal
     }
 
     /// @description - Pacejka multipliers: temperature acts on peak mu only (stiffness ~independent of T, S Vargas); MF6.1 pressure terms act on stiffness + mu.
-    ///   Pressure change dpi = (p - p_nom) / p_nom; e.g. kx = 1 + PPX1 dpi + PPX2 dpi^2.
+    ///   Pressure change dpi = (p - p_nom) / p_nom; e.g. longitudinalStiffness = 1 + PPX1 dpi + PPX2 dpi^2.
     // @return {TireScale} - multipliers for the longitudinal/lateral stiffness, peak friction and rolling resistance
     public TireScale Scale()
     {
@@ -257,9 +257,9 @@ public class TireThermal
         double pressureChange = (gaugePressure - NominalGaugePressure) / NominalGaugePressure;
         return new TireScale
         {
-            kx = (float)(1 + PPX1 * pressureChange + PPX2 * pressureChange * pressureChange), mux = (float)(temperatureFactor * (1 + PPX3 * pressureChange + PPX4 * pressureChange * pressureChange)),
-            ky = (float)(1 + PPY1 * pressureChange), kyLoad = (float)(1 + PPY2 * pressureChange), muy = (float)(temperatureFactor * (1 + PPY3 * pressureChange + PPY4 * pressureChange * pressureChange)),
-            rr = (float)System.Math.Pow(System.Math.Max(gaugePressure, 20000.0) / NominalGaugePressure, QSY8)
+            longitudinalStiffness = (float)(1 + PPX1 * pressureChange + PPX2 * pressureChange * pressureChange), longitudinalFriction = (float)(temperatureFactor * (1 + PPX3 * pressureChange + PPX4 * pressureChange * pressureChange)),
+            lateralStiffness = (float)(1 + PPY1 * pressureChange), lateralStiffnessLoadSaturation = (float)(1 + PPY2 * pressureChange), lateralFriction = (float)(temperatureFactor * (1 + PPY3 * pressureChange + PPY4 * pressureChange * pressureChange)),
+            rollingResistance = (float)System.Math.Pow(System.Math.Max(gaugePressure, 20000.0) / NominalGaugePressure, QSY8)
         };
     }
 

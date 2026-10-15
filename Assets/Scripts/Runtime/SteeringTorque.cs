@@ -23,7 +23,7 @@ public static class SteeringTorque
     public static Geo FromTables(SuspensionTables tables)
     {
         var geometry = new Geo();
-        if (tables != null && tables.kpU != null && tables.kpU.Length == 3) { geometry.kingpinAxis = new Vector3(tables.kpU[0], tables.kpU[1], tables.kpU[2]).normalized; geometry.contactPatchOffset = ToVector3(tables.kpRcp); geometry.wheelCentreOffset = ToVector3(tables.kpRwc); }
+        if (tables != null && tables.kingpinAxis != null && tables.kingpinAxis.Length == 3) { geometry.kingpinAxis = new Vector3(tables.kingpinAxis[0], tables.kingpinAxis[1], tables.kingpinAxis[2]).normalized; geometry.contactPatchOffset = ToVector3(tables.kingpinContactPatchOffset); geometry.wheelCentreOffset = ToVector3(tables.kingpinWheelCentreOffset); }
         else geometry.kingpinAxis = Vector3.forward;   // (x,y,z) = (fwd,left,up) in this frame -> vertical axis fallback (no tables)
         return geometry;
     }
@@ -74,7 +74,7 @@ public static class SteeringTorque
     // @param {CarParams} carParams - holds pneumaticTrail0 and peakSlipTrail
     // @param {float} slipAngleRad - slip angle in rad
     // @return {float} - pneumatic trail in m
-    public static float PneumaticTrail(CarParams carParams, float slipAngleRad) => carParams.pneumaticTrail0 * Mathf.Max(0f, 1f - Mathf.Abs(slipAngleRad) / carParams.peakSlipTrail);
+    public static float PneumaticTrail(CarParams carParams, float slipAngleRad) => carParams.pneumaticTrailAtZeroSlip * Mathf.Max(0f, 1f - Mathf.Abs(slipAngleRad) / carParams.peakSlipTrail);
 
     /// @description - road-wheel steer torque of one corner (about the kingpin; + = steers the wheel to the RIGHT, car convention). Brake force acts at the patch, drive force at the hub.
     // @param {Geo} geometry - kingpin geometry

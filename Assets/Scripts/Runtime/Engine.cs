@@ -239,7 +239,7 @@ public class Engine
     // @param {float} engineRpm - engine speed in rpm
     // @param {float} manifoldPressureNow - manifold absolute pressure in Pa
     // @return {float} - friction mean effective pressure in Pa
-    float FrictionMeanEffectivePressure(float engineRpm, float manifoldPressureNow) { float kiloRpm = engineRpm / 1000f; return carParams.fmepA + carParams.fmepB * carParams.peakCylPressureWot * manifoldPressureNow / carParams.ambientPressure + carParams.fmepCPerKrpm * kiloRpm + carParams.fmepDPerKrpm2 * kiloRpm * kiloRpm; }
+    float FrictionMeanEffectivePressure(float engineRpm, float manifoldPressureNow) { float kiloRpm = engineRpm / 1000f; return carParams.frictionMepConstant + carParams.frictionMepPeakPressureCoefficient * carParams.peakCylinderPressureWideOpenThrottle * manifoldPressureNow / carParams.ambientPressure + carParams.frictionMepSpeedCoefficientPerKrpm * kiloRpm + carParams.frictionMepSpeedSquaredCoefficientPerKrpm2 * kiloRpm * kiloRpm; }
 
     // @description - splits the engine torque into indicated, friction and extra pumping parts. Torque = mean effective pressure x Vd / (4 pi);
     //   indicated = eta_i m_air_per_cycle LHV / AFR / (4 pi); pumping = (p_man,WOT(rpm) - p_man) Vd / (4 pi) (extra throttling loss below the WOT manifold pressure only)
@@ -253,7 +253,7 @@ public class Engine
     void ComputeTorqueParts(float engineRpm, float manifoldPressureNow, float efficiency, out float indicated, out float friction, out float pumping)
     {
         float torquePerPressure = carParams.displacement / (4f * Mathf.PI), airMassPerCycle = efficiency * FreshFraction(engineRpm, manifoldPressureNow) * manifoldPressureNow / (carParams.airGasConstant * carParams.ambientTemperature) * carParams.displacement;
-        indicated = carParams.indicatedEfficiency * airMassPerCycle * carParams.fuelLhv / carParams.airFuelRatio / (4f * Mathf.PI);
+        indicated = carParams.indicatedEfficiency * airMassPerCycle * carParams.fuelLowerHeatingValue / carParams.airFuelRatio / (4f * Mathf.PI);
         friction = FrictionMeanEffectivePressure(engineRpm, manifoldPressureNow) * torquePerPressure; pumping = (InterpolateLinear(carParams.rpmPoints, wideOpenManifoldPressure, engineRpm) - manifoldPressureNow) * torquePerPressure;
     }
 

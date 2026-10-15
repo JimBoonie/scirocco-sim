@@ -151,27 +151,27 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: db82e589cd176f93cb64fa6126acd96f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  p: {fileID: 11400000, guid: 00d050ad83d51eb2ab9a2135e7d5a945, type: 2}
+  carParams: {fileID: 11400000, guid: 00d050ad83d51eb2ab9a2135e7d5a945, type: 2}
   front: 0
   left: 0
   visual: {fileID: 1484731620}
   travel: 0
-  Fz: 0
-  Fspring: 0
-  Fdamper: 0
-  Fbump: 0
-  Farb: 0
-  Fjack: 0
-  Fanti: 0
+  verticalLoad: 0
+  springForce: 0
+  damperForce: 0
+  bumpStopTotalForce: 0
+  antiRollBarForce: 0
+  jackingForce: 0
+  antiPitchForce: 0
   steerDeg: 0
   driveTorque: 0
   brakeTorque: 0
   camberDeg: 0
-  rcHeight: 0
-  omega: 0
+  rollCentreHeight: 0
+  angularVelocity: 0
   slipRatio: 0
   slipAngle: 0
-  alphaRelaxed: 0
+  relaxedSlipAngle: 0
   staticSag: 0
   halfTrack: 0
   force: {x: 0, y: 0}
@@ -179,13 +179,13 @@ MonoBehaviour:
   bodyForce: {x: 0, y: 0, z: 0}
   DriveInertia: 0
   antiCoef: 0
-  Ftire: 0
-  Fsusp: 0
+  tireForce: 0
+  suspensionForce: 0
   unsprungMass: 0
   unsprungStaticLoad: 0
-  stickDx: 0
-  stickDy: 0
-  stickWeight: 0
+  patchDeflectionX: 0
+  patchDeflectionY: 0
+  stickModelWeight: 0
 --- !u!4 &32365907
 Transform:
   m_ObjectHideFlags: 0
@@ -230,27 +230,27 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: db82e589cd176f93cb64fa6126acd96f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  p: {fileID: 11400000, guid: 00d050ad83d51eb2ab9a2135e7d5a945, type: 2}
+  carParams: {fileID: 11400000, guid: 00d050ad83d51eb2ab9a2135e7d5a945, type: 2}
   front: 0
   left: 1
   visual: {fileID: 647459050}
   travel: 0
-  Fz: 0
-  Fspring: 0
-  Fdamper: 0
-  Fbump: 0
-  Farb: 0
-  Fjack: 0
-  Fanti: 0
+  verticalLoad: 0
+  springForce: 0
+  damperForce: 0
+  bumpStopTotalForce: 0
+  antiRollBarForce: 0
+  jackingForce: 0
+  antiPitchForce: 0
   steerDeg: 0
   driveTorque: 0
   brakeTorque: 0
   camberDeg: 0
-  rcHeight: 0
-  omega: 0
+  rollCentreHeight: 0
+  angularVelocity: 0
   slipRatio: 0
   slipAngle: 0
-  alphaRelaxed: 0
+  relaxedSlipAngle: 0
   staticSag: 0
   halfTrack: 0
   force: {x: 0, y: 0}
@@ -258,13 +258,13 @@ MonoBehaviour:
   bodyForce: {x: 0, y: 0, z: 0}
   DriveInertia: 0
   antiCoef: 0
-  Ftire: 0
-  Fsusp: 0
+  tireForce: 0
+  suspensionForce: 0
   unsprungMass: 0
   unsprungStaticLoad: 0
-  stickDx: 0
-  stickDy: 0
-  stickWeight: 0
+  patchDeflectionX: 0
+  patchDeflectionY: 0
+  stickModelWeight: 0
 --- !u!4 &36206459
 Transform:
   m_ObjectHideFlags: 0
@@ -392,27 +392,27 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: db82e589cd176f93cb64fa6126acd96f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  p: {fileID: 11400000, guid: 00d050ad83d51eb2ab9a2135e7d5a945, type: 2}
+  carParams: {fileID: 11400000, guid: 00d050ad83d51eb2ab9a2135e7d5a945, type: 2}
   front: 1
   left: 1
   visual: {fileID: 1362425052}
   travel: 0
-  Fz: 0
-  Fspring: 0
-  Fdamper: 0
-  Fbump: 0
-  Farb: 0
-  Fjack: 0
-  Fanti: 0
+  verticalLoad: 0
+  springForce: 0
+  damperForce: 0
+  bumpStopTotalForce: 0
+  antiRollBarForce: 0
+  jackingForce: 0
+  antiPitchForce: 0
   steerDeg: 0
   driveTorque: 0
   brakeTorque: 0
   camberDeg: 0
-  rcHeight: 0
-  omega: 0
+  rollCentreHeight: 0
+  angularVelocity: 0
   slipRatio: 0
   slipAngle: 0
-  alphaRelaxed: 0
+  relaxedSlipAngle: 0
   staticSag: 0
   halfTrack: 0
   force: {x: 0, y: 0}
@@ -420,13 +420,13 @@ MonoBehaviour:
   bodyForce: {x: 0, y: 0, z: 0}
   DriveInertia: 0
   antiCoef: 0
-  Ftire: 0
-  Fsusp: 0
+  tireForce: 0
+  suspensionForce: 0
   unsprungMass: 0
   unsprungStaticLoad: 0
-  stickDx: 0
-  stickDy: 0
-  stickWeight: 0
+  patchDeflectionX: 0
+  patchDeflectionY: 0
+  stickModelWeight: 0
 --- !u!4 &275173949
 Transform:
   m_ObjectHideFlags: 0
@@ -2133,27 +2133,27 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: db82e589cd176f93cb64fa6126acd96f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  p: {fileID: 11400000, guid: 00d050ad83d51eb2ab9a2135e7d5a945, type: 2}
+  carParams: {fileID: 11400000, guid: 00d050ad83d51eb2ab9a2135e7d5a945, type: 2}
   front: 1
   left: 0
   visual: {fileID: 592548852}
   travel: 0
-  Fz: 0
-  Fspring: 0
-  Fdamper: 0
-  Fbump: 0
-  Farb: 0
-  Fjack: 0
-  Fanti: 0
+  verticalLoad: 0
+  springForce: 0
+  damperForce: 0
+  bumpStopTotalForce: 0
+  antiRollBarForce: 0
+  jackingForce: 0
+  antiPitchForce: 0
   steerDeg: 0
   driveTorque: 0
   brakeTorque: 0
   camberDeg: 0
-  rcHeight: 0
-  omega: 0
+  rollCentreHeight: 0
+  angularVelocity: 0
   slipRatio: 0
   slipAngle: 0
-  alphaRelaxed: 0
+  relaxedSlipAngle: 0
   staticSag: 0
   halfTrack: 0
   force: {x: 0, y: 0}
@@ -2161,13 +2161,13 @@ MonoBehaviour:
   bodyForce: {x: 0, y: 0, z: 0}
   DriveInertia: 0
   antiCoef: 0
-  Ftire: 0
-  Fsusp: 0
+  tireForce: 0
+  suspensionForce: 0
   unsprungMass: 0
   unsprungStaticLoad: 0
-  stickDx: 0
-  stickDy: 0
-  stickWeight: 0
+  patchDeflectionX: 0
+  patchDeflectionY: 0
+  stickModelWeight: 0
 --- !u!4 &1287243167
 Transform:
   m_ObjectHideFlags: 0
@@ -2963,17 +2963,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3b4ce71fa2bf5c5f1ac6482770e310c1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  p: {fileID: 11400000, guid: 00d050ad83d51eb2ab9a2135e7d5a945, type: 2}
-  FL: {fileID: 275173948}
-  FR: {fileID: 1287243166}
-  RL: {fileID: 36206458}
-  RR: {fileID: 32365906}
+  carParams: {fileID: 11400000, guid: 00d050ad83d51eb2ab9a2135e7d5a945, type: 2}
+  frontLeftWheel: {fileID: 275173948}
+  frontRightWheel: {fileID: 1287243166}
+  rearLeftWheel: {fileID: 36206458}
+  rearRightWheel: {fileID: 32365906}
   substeps: 2
   sprungMass: 0
-  source: {fileID: 0}
-  steerCompl: 0
-  roadTorqueL: 0
-  roadTorqueR: 0
+  sourceParams: {fileID: 0}
+  steeringCompliance: 0
+  leftRoadTorque: 0
+  rightRoadTorque: 0
   columnTorque: 0
   throttle: 0
   brake: 0

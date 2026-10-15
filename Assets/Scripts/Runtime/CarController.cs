@@ -1,20 +1,19 @@
 using UnityEngine;
-using UnityEngine.Serialization;
 [RequireComponent(typeof(Rigidbody))]
 public class CarController : MonoBehaviour
 {
-    [FormerlySerializedAs("p")] public CarParams carParams;
-    [FormerlySerializedAs("FL")] public WheelCorner frontLeftWheel;
-    [FormerlySerializedAs("FR")] public WheelCorner frontRightWheel;
-    [FormerlySerializedAs("RL")] public WheelCorner rearLeftWheel;
-    [FormerlySerializedAs("RR")] public WheelCorner rearRightWheel;
+    public CarParams carParams;
+    public WheelCorner frontLeftWheel;
+    public WheelCorner frontRightWheel;
+    public WheelCorner rearLeftWheel;
+    public WheelCorner rearRightWheel;
     [Tooltip("Tire/drivetrain substeps per FixedUpdate (FixedUpdate itself runs at 500 Hz)")] public int substeps = 2;
     public Engine engine; public Drivetrain drivetrain; Rigidbody body;
     [HideInInspector] public float sprungMass; 
-    [HideInInspector] [FormerlySerializedAs("source")] public CarParams sourceParams;
-    [HideInInspector] [FormerlySerializedAs("steerCompl")] public float steeringCompliance;
-    [HideInInspector] [FormerlySerializedAs("roadTorqueL")] public float leftRoadTorque;
-    [HideInInspector] [FormerlySerializedAs("roadTorqueR")] public float rightRoadTorque;
+    [HideInInspector] public CarParams sourceParams;
+    [HideInInspector] public float steeringCompliance;
+    [HideInInspector] public float leftRoadTorque;
+    [HideInInspector] public float rightRoadTorque;
     [HideInInspector] public float columnTorque;
     SteeringTorque.Geo steerGeo; public float throttle, brake, clutch, steer; public bool handbrake, externalInput; public bool autoClutch; [HideInInspector] public float autoClutchPedal; [HideInInspector] public float handbrakeInput, handwheelDeg; [HideInInspector] public bool handwheelInput; public InputRouter router;
     WheelCorner[] allWheels;
@@ -41,14 +40,14 @@ public class CarController : MonoBehaviour
     {
         float groundY = -(carParams.hubDropDesign + carParams.wheelRadius);                     // ground in local space at design ride height
         // unsprung masses: Rigidbody carries the sprung mass; its CG is shifted so the total-vehicle CG (cgHeight, cgFromFront) is unchanged
-        float frontUnsprungMass = carParams.useUnsprungMass ? carParams.unsprungFront : 0f, rearUnsprungMass = carParams.useUnsprungMass ? carParams.unsprungRear : 0f, sprungMassKg = carParams.mass - 2f * (frontUnsprungMass + rearUnsprungMass);
+        float frontUnsprungMass = carParams.useUnsprungMass ? carParams.frontUnsprungMass : 0f, rearUnsprungMass = carParams.useUnsprungMass ? carParams.rearUnsprungMass : 0f, sprungMassKg = carParams.mass - 2f * (frontUnsprungMass + rearUnsprungMass);
         float sprungCgHeight = (carParams.mass * carParams.cgHeight - 2f * (frontUnsprungMass + rearUnsprungMass) * carParams.wheelRadius) / sprungMassKg, sprungCgFromFront = (carParams.mass * carParams.cgFromFront - 2f * rearUnsprungMass * carParams.wheelbase) / sprungMassKg;
         body.mass = sprungMassKg; sprungMass = sprungMassKg;
         body.centerOfMass = new Vector3(0f, groundY + sprungCgHeight, carParams.wheelbase * 0.5f - sprungCgFromFront);
         body.inertiaTensor = carParams.inertiaTensor; body.inertiaTensorRotation = Quaternion.identity;
         body.maxAngularVelocity = 50f;
         allWheels = new[] { frontLeftWheel, frontRightWheel, rearLeftWheel, rearRightWheel }; foreach (var wheel in allWheels) wheel.carParams = carParams;
-        steerGeo = SteeringTorque.FromTables(carParams.kin);
+        steerGeo = SteeringTorque.FromTables(carParams.suspensionTables);
         float gravity = 9.81f, frontCornerLoad = sprungMassKg * gravity * (carParams.wheelbase - sprungCgFromFront) / carParams.wheelbase * 0.5f, rearCornerLoad = sprungMassKg * gravity * sprungCgFromFront / carParams.wheelbase * 0.5f;   // sprung corner loads
         foreach (var wheel in allWheels)
         {
@@ -68,7 +67,7 @@ public class CarController : MonoBehaviour
         clutch = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.JoystickButton4) ? 1f : 0f;
         handbrake = Input.GetKey(KeyCode.Space) || Input.GetKey(KeyCode.JoystickButton1);
         float targetRoadAngleDeg = Input.GetAxis("Horizontal") * carParams.MeanLockDeg;
-        steer = Mathf.MoveTowards(steer, targetRoadAngleDeg, carParams.steerRate * Time.deltaTime); handwheelInput = false;   // road-angle command -> FixedUpdate inverts the linkage
+        steer = Mathf.MoveTowards(steer, targetRoadAngleDeg, carParams.steeringRateDegPerSecond * Time.deltaTime); handwheelInput = false;   // road-angle command -> FixedUpdate inverts the linkage
         if (Input.GetKeyDown(KeyCode.E) || Input.GetKeyDown(KeyCode.JoystickButton5)) drivetrain.Shift(1);
         if (Input.GetKeyDown(KeyCode.Q) || Input.GetKeyDown(KeyCode.JoystickButton2)) drivetrain.Shift(-1);
         if (Input.GetKeyDown(KeyCode.R) || Input.GetKeyDown(KeyCode.JoystickButton6))
@@ -95,13 +94,13 @@ public class CarController : MonoBehaviour
         // Steering: handwheel -> constant pinion -> rack -> per-wheel angle from the suspension kinematics at each wheel's travel
         // (SteeringLinkage; Ackermann and bump steer from the tie-rod geometry). handwheelInput: the driver's wheel sets handwheelDeg;
         // otherwise car.steer is a mean road-angle command (test driver / keyboard) and the linkage is inverted at design height.
-        var tables = carParams.kin;
+        var tables = carParams.suspensionTables;
         if (!handwheelInput) handwheelDeg = SteeringLinkage.HandwheelForMean(carParams, steer);
         handwheelDeg = Mathf.Clamp(handwheelDeg, -carParams.handwheelLockDeg, carParams.handwheelLockDeg);
         float rack = SteeringLinkage.Rack(carParams, handwheelDeg);
         SteeringLinkage.WheelAngles(tables, rack, frontLeftWheel.travel, frontRightWheel.travel, out float steerL, out float steerR);
         if (handwheelInput) steer = SteeringLinkage.MeanAngle(carParams, handwheelDeg);   // mean road angle at design height (HUD / logs)
-        float frontToeDeg = 0.5f * carParams.toeTotalF, rearToeDeg = 0.5f * carParams.toeTotalR;     // per side, + = toe-in
+        float frontToeDeg = 0.5f * carParams.frontTotalToeDeg, rearToeDeg = 0.5f * carParams.rearTotalToeDeg;     // per side, + = toe-in
         frontLeftWheel.steerDeg = steerL + frontToeDeg; frontRightWheel.steerDeg = steerR - frontToeDeg;      // toe-in: left points right(+), right points left(-)
         rearLeftWheel.steerDeg = rearToeDeg; rearRightWheel.steerDeg = -rearToeDeg;
         // Steering torque (physical): tire forces/moments about each kingpin axis (SteeringTorque), previous-step forces.
@@ -117,36 +116,36 @@ public class CarController : MonoBehaviour
         // camber to ground = static + kinematic change vs body + body roll (roll>0 = rolls left; outer/left wheel top-out)
         float roll = Vector3.SignedAngle(Vector3.ProjectOnPlane(Vector3.up, transform.forward), transform.up, transform.forward);
         float leftKinematicCamber = tables ? tables.FrontCamber(frontLeftWheel.travel, frontLeftWheel.steerDeg) : 0f, rightKinematicCamber = tables ? tables.FrontCamber(frontRightWheel.travel, -frontRightWheel.steerDeg) : 0f;
-        frontLeftWheel.camberDeg = carParams.staticCamberF + leftKinematicCamber + roll; frontRightWheel.camberDeg = carParams.staticCamberF + rightKinematicCamber - roll;
+        frontLeftWheel.camberDeg = carParams.frontStaticCamberDeg + leftKinematicCamber + roll; frontRightWheel.camberDeg = carParams.frontStaticCamberDeg + rightKinematicCamber - roll;
         if (tables && carParams.frontModel == CarParams.FrontModel.CompliantMultibody)
         {   // bush compliance (multibody_compliance.py, kinematic part removed) from previous-step tire forces + geometric anti-dive/anti-squat
             float leftOutwardLateralForce = -frontLeftWheel.force.y, rightOutwardLateralForce = frontRightWheel.force.y;                     // outward lateral force
             bool leftBraking = frontLeftWheel.brakeTorque > 0f && frontLeftWheel.force.x < 0f, rightBraking = frontRightWheel.brakeTorque > 0f && frontRightWheel.force.x < 0f;
-            float leftToeChange = tables.fcToeFy * leftOutwardLateralForce + (leftBraking ? tables.fcToeFx : tables.fcToeFxD) * frontLeftWheel.force.x, rightToeChange = tables.fcToeFy * rightOutwardLateralForce + (rightBraking ? tables.fcToeFx : tables.fcToeFxD) * frontRightWheel.force.x;
-            float leftBushCamberChange = tables.fcCamFy * leftOutwardLateralForce + (leftBraking ? tables.fcCamFx : tables.fcCamFxD) * frontLeftWheel.force.x, rightBushCamberChange = tables.fcCamFy * rightOutwardLateralForce + (rightBraking ? tables.fcCamFx : tables.fcCamFxD) * frontRightWheel.force.x;
+            float leftToeChange = tables.frontToePerLateralForce * leftOutwardLateralForce + (leftBraking ? tables.frontToePerBrakeForce : tables.frontToePerDriveForce) * frontLeftWheel.force.x, rightToeChange = tables.frontToePerLateralForce * rightOutwardLateralForce + (rightBraking ? tables.frontToePerBrakeForce : tables.frontToePerDriveForce) * frontRightWheel.force.x;
+            float leftBushCamberChange = tables.frontCamberPerLateralForce * leftOutwardLateralForce + (leftBraking ? tables.frontCamberPerBrakeForce : tables.frontCamberPerDriveForce) * frontLeftWheel.force.x, rightBushCamberChange = tables.frontCamberPerLateralForce * rightOutwardLateralForce + (rightBraking ? tables.frontCamberPerBrakeForce : tables.frontCamberPerDriveForce) * frontRightWheel.force.x;
             frontLeftWheel.steerDeg += leftToeChange; frontRightWheel.steerDeg -= rightToeChange; frontLeftWheel.camberDeg += leftBushCamberChange; frontRightWheel.camberDeg += rightBushCamberChange;
-            frontLeftWheel.antiCoef = leftBraking ? tables.fcAntiBrake : tables.fcAntiDrive; frontRightWheel.antiCoef = rightBraking ? tables.fcAntiBrake : tables.fcAntiDrive;
+            frontLeftWheel.antiCoef = leftBraking ? tables.frontAntiDiveCoefficient : tables.frontAntiSquatCoefficient; frontRightWheel.antiCoef = rightBraking ? tables.frontAntiDiveCoefficient : tables.frontAntiSquatCoefficient;
         }
         else frontLeftWheel.antiCoef = frontRightWheel.antiCoef = 0f;
         if (tables && carParams.rearModel == CarParams.RearModel.FullTwistBeam)
         {   // full twist beam: geometry (own/other travel) + bush compliance from outward lateral and +x forces (previous step)
             float leftOutwardLateralForce = -rearLeftWheel.force.y, rightOutwardLateralForce = rearRightWheel.force.y;          // outward lateral force (Unity +y_right)
-            float leftBeamCamber = tables.rbCamOwn * rearLeftWheel.travel + tables.rbCamOther * rearRightWheel.travel + tables.rbCamFyOwn * leftOutwardLateralForce + tables.rbCamFyOther * rightOutwardLateralForce;
-            float rightBeamCamber = tables.rbCamOwn * rearRightWheel.travel + tables.rbCamOther * rearLeftWheel.travel + tables.rbCamFyOwn * rightOutwardLateralForce + tables.rbCamFyOther * leftOutwardLateralForce;
-            float leftToeChange = tables.rbToeOwn * rearLeftWheel.travel + tables.rbToeOther * rearRightWheel.travel + tables.rbToeFyOwn * leftOutwardLateralForce + tables.rbToeFyOther * rightOutwardLateralForce + tables.rbToeFxOwn * rearLeftWheel.force.x + tables.rbToeFxOther * rearRightWheel.force.x;
-            float rightToeChange = tables.rbToeOwn * rearRightWheel.travel + tables.rbToeOther * rearLeftWheel.travel + tables.rbToeFyOwn * rightOutwardLateralForce + tables.rbToeFyOther * leftOutwardLateralForce + tables.rbToeFxOwn * rearRightWheel.force.x + tables.rbToeFxOther * rearLeftWheel.force.x;
-            rearLeftWheel.camberDeg = carParams.staticCamberR + leftBeamCamber + roll; rearRightWheel.camberDeg = carParams.staticCamberR + rightBeamCamber - roll;
+            float leftBeamCamber = tables.rearBeamCamberPerOwnTravel * rearLeftWheel.travel + tables.rearBeamCamberPerOtherTravel * rearRightWheel.travel + tables.rearBeamCamberPerOwnLateralForce * leftOutwardLateralForce + tables.rearBeamCamberPerOtherLateralForce * rightOutwardLateralForce;
+            float rightBeamCamber = tables.rearBeamCamberPerOwnTravel * rearRightWheel.travel + tables.rearBeamCamberPerOtherTravel * rearLeftWheel.travel + tables.rearBeamCamberPerOwnLateralForce * rightOutwardLateralForce + tables.rearBeamCamberPerOtherLateralForce * leftOutwardLateralForce;
+            float leftToeChange = tables.rearBeamToePerOwnTravel * rearLeftWheel.travel + tables.rearBeamToePerOtherTravel * rearRightWheel.travel + tables.rearBeamToePerOwnLateralForce * leftOutwardLateralForce + tables.rearBeamToePerOtherLateralForce * rightOutwardLateralForce + tables.rearBeamToePerOwnLongitudinalForce * rearLeftWheel.force.x + tables.rearBeamToePerOtherLongitudinalForce * rearRightWheel.force.x;
+            float rightToeChange = tables.rearBeamToePerOwnTravel * rearRightWheel.travel + tables.rearBeamToePerOtherTravel * rearLeftWheel.travel + tables.rearBeamToePerOwnLateralForce * rightOutwardLateralForce + tables.rearBeamToePerOtherLateralForce * leftOutwardLateralForce + tables.rearBeamToePerOwnLongitudinalForce * rearRightWheel.force.x + tables.rearBeamToePerOtherLongitudinalForce * rearLeftWheel.force.x;
+            rearLeftWheel.camberDeg = carParams.rearStaticCamberDeg + leftBeamCamber + roll; rearRightWheel.camberDeg = carParams.rearStaticCamberDeg + rightBeamCamber - roll;
             rearLeftWheel.steerDeg = rearToeDeg + leftToeChange; rearRightWheel.steerDeg = -(rearToeDeg + rightToeChange);
-            rearLeftWheel.antiCoef = rearRightWheel.antiCoef = tables.rbAntiLift;
+            rearLeftWheel.antiCoef = rearRightWheel.antiCoef = tables.rearBeamAntiLiftCoefficient;
         }
         else
         {
             float beam = tables ? -tables.rearCamberRollFraction * Mathf.Rad2Deg * (rearLeftWheel.travel - rearRightWheel.travel) / carParams.trackRear : 0f;   // beam twist counter-tilt
-            rearLeftWheel.camberDeg = carParams.staticCamberR + beam + roll; rearRightWheel.camberDeg = carParams.staticCamberR + beam - roll;
+            rearLeftWheel.camberDeg = carParams.rearStaticCamberDeg + beam + roll; rearRightWheel.camberDeg = carParams.rearStaticCamberDeg + beam - roll;
             rearLeftWheel.antiCoef = rearRightWheel.antiCoef = 0f;
         }
         // ARB / twist beam: k * (travel difference)
-        float frontAntiRollForce = (frontLeftWheel.travel - frontRightWheel.travel) * carParams.arbFront, rearBeamRollForce = (rearLeftWheel.travel - rearRightWheel.travel) * carParams.twistBeamRoll;
+        float frontAntiRollForce = (frontLeftWheel.travel - frontRightWheel.travel) * carParams.frontAntiRollBarRate, rearBeamRollForce = (rearLeftWheel.travel - rearRightWheel.travel) * carParams.twistBeamRollRate;
         frontLeftWheel.UpdateSuspension(fixedStep, frontAntiRollForce); frontRightWheel.UpdateSuspension(fixedStep, -frontAntiRollForce); rearLeftWheel.UpdateSuspension(fixedStep, rearBeamRollForce); rearRightWheel.UpdateSuspension(fixedStep, -rearBeamRollForce);
         float substep = fixedStep / substeps, substepForceScale = 1f / substeps;
         for (int i = 0; i < substeps; i++)
@@ -174,10 +173,10 @@ public class CarController : MonoBehaviour
         }
         if (carParams.tireThermal || ThermalForced)
         {   // tire thermal model (option): 1 kHz node update from the substep-averaged heat inputs, then new Pacejka multipliers
-            foreach (var wheel in allWheels) wheel.ThermalStep(wheel == frontLeftWheel || wheel == frontRightWheel ? carParams.coldPressureFront : carParams.coldPressureRear, TireWarmStart, TireWarmCarcass);
+            foreach (var wheel in allWheels) wheel.ThermalStep(wheel == frontLeftWheel || wheel == frontRightWheel ? carParams.frontColdPressure : carParams.rearColdPressure, TireWarmStart, TireWarmCarcass);
         }
         else foreach (var wheel in allWheels) if (wheel.thermal != null) wheel.ThermalOff();
         Vector3 bodyVelocity = body.velocity;
-        body.AddForce(-bodyVelocity * (0.5f * carParams.airDensity * carParams.cd * carParams.frontalArea * bodyVelocity.magnitude));
+        body.AddForce(-bodyVelocity * (0.5f * carParams.airDensity * carParams.dragCoefficient * carParams.frontalArea * bodyVelocity.magnitude));
     }
 }

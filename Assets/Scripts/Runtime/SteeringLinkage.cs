@@ -27,7 +27,7 @@ public static class SteeringLinkage
     // @param {float} handwheelDeg - handwheel angle in deg
     // @return {float} - mean of the left and right road-wheel angles in deg
     public static float MeanAngle(CarParams carParams, float handwheelDeg)
-    { WheelAngles(carParams.kin, Rack(carParams, handwheelDeg), 0f, 0f, out float left, out float right); return 0.5f * (left + right); }
+    { WheelAngles(carParams.suspensionTables, Rack(carParams, handwheelDeg), 0f, 0f, out float left, out float right); return 0.5f * (left + right); }
 
     /// @description - inverse of MeanAngle (monotonic -> bisection), clamped at the rack stop. Used by the test driver / keyboard, which command a road angle.
     // @param {CarParams} carParams - car parameters
@@ -49,7 +49,7 @@ public static class SteeringLinkage
     // @return {float} - lever in deg/deg
     public static float Lever(CarParams carParams, bool left, float rack, float travel)
     {
-        var tables = carParams.kin; float halfStep = 0.5f * (tables.rackGrid[1] - tables.rackGrid[0]);
+        var tables = carParams.suspensionTables; float halfStep = 0.5f * (tables.rackGrid[1] - tables.rackGrid[0]);
         float sideSign = left ? 1f : -1f;   // right wheel: -FrontSteerLeft(t, -rack) -> derivative = FrontSteerLeft'(t, -rack)
         float sideRack = sideSign * rack;
         return (tables.FrontSteerLeft(travel, sideRack + halfStep) - tables.FrontSteerLeft(travel, sideRack - halfStep)) / (2f * halfStep) * carParams.rackPerHandwheelDeg;

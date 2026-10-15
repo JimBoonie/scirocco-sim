@@ -10,13 +10,13 @@ public class Cockpit : MonoBehaviour
     static readonly Dictionary<Color, Material> mats = new Dictionary<Color, Material>();
 
     public static float GroundY(CarParams p) => -(p.hubDropDesign + p.wheelRadius);
-    public static Vector3 HPoint(CarParams p) => new Vector3(-p.driverLateral, GroundY(p) + p.hPointHeight, p.wheelbase * 0.5f - p.hPointBehindFrontAxle);
+    public static Vector3 HPoint(CarParams p) => new Vector3(-p.driverLateral, GroundY(p) + p.hipPointHeight, p.wheelbase * 0.5f - p.hipPointBehindFrontAxle);
     public static Vector3 EyePoint(CarParams p)
     {
-        float torso = p.sittingEyeRatio * p.driverStature - p.hPointAboveSeat, a = p.seatBackAngle * Mathf.Deg2Rad;   // H-point -> eye along the reclined torso
+        float torso = p.sittingEyeRatio * p.driverStature - p.hipPointAboveSeat, a = p.seatBackAngle * Mathf.Deg2Rad;   // H-point -> eye along the reclined torso
         return HPoint(p) + new Vector3(0f, torso * Mathf.Cos(a), -torso * Mathf.Sin(a));
     }
-    public static Vector3 WheelCentre(CarParams p) => HPoint(p) + new Vector3(0f, p.wheelCentreAboveH, p.wheelCentreAheadOfH);
+    public static Vector3 WheelCentre(CarParams p) => HPoint(p) + new Vector3(0f, p.wheelCentreAboveHipPoint, p.wheelCentreAheadOfHipPoint);
     public void ApplySeat(float fwd, float up)
     {
         var p = car.carParams; seatFwd = Mathf.Clamp(fwd, -p.seatTravelAft, p.seatTravelFore); seatUp = Mathf.Clamp(up, -p.seatTravelDown, p.seatTravelUp);

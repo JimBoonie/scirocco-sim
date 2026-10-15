@@ -9,6 +9,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [2026-10-14] (PT)
 
+### Changed (readability pass 6/6 part 1: parameter, table and scene field names, PT 21:20)
+
+- **Old scenes data, saved assets and `-overrides` files from before this change no longer match: serialized field names were renamed (breaking change approved by Taylor).** `CarParams`, `SuspensionTables`, `TireScale`, `ViscoTire.Flags` members now use full names; `Assets/SciroccoParams.asset`, `Assets/SuspensionTables.asset` and `Assets/TestTrack.unity` were re-keyed with the values preserved (checked with a SerializedObject dump before/after). `FormerlySerializedAs` attributes and the legend comments were removed. `tools/kinematics/export_unity.py` writes the new names; `-overrides` files must use the new `p.<name>` keys (see `docs/RENAMES.md`).
+- Removed `tools/patches/` (stale dev-box copies and `.bak` files; unreferenced).
+- No behaviour change: 117/117 tests, 15 scenarios bit-identical to the baseline.
+
 ### Changed (readability pass 5/6: WheelCorner, CarController, PT 20:30)
 
 - `WheelCorner.cs`, `CarController.cs`: full-word members and locals, `@description/@param/@return` headers, `FormerlySerializedAs` on scene-serialized fields. Call sites in HUD/audio/input/SmokeTest/editor updated. No behaviour change: 117/117 tests, 15 scenarios bit-identical to baseline, serialized scene values identical.

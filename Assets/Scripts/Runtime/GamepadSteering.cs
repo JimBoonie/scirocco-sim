@@ -11,7 +11,7 @@
 using System; using UnityEngine;
 [Serializable] public class GamepadSteerSettings
 {
-    public bool enabled = true;           // off = previous direct behaviour (stick position -> full-lock target at CarParams.steerRate)
+    public bool enabled = true;           // off = previous direct behaviour (stick position -> full-lock target at CarParams.steeringRateDegPerSecond)
     public float steerSpeed = 30f;        // road-wheel deg/s when turning in (~500 deg/s at the handwheel on this car's ~17:1 centre ratio)
     public float gamma = 2.0f;            // response exponent: target = |s|^gamma (1 = linear)
     public float deadzone = 0.05f;        // stick fraction ignored around centre, the rest rescaled to 0..1

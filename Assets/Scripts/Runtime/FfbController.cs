@@ -72,7 +72,7 @@ public class FfbController : MonoBehaviour
         // rack end stop: overtravel against the steering-system stiffness referred to the column (k_road / ratio^2)
         float over = Mathf.Abs(wheelDeg) - p.handwheelLockDeg, cr = SteeringLinkage.CentreRatio(p), kCol = p.steeringStiffness / (cr * cr);   // on-centre linkage ratio (D)
         stopTorque = over > 0f ? -Mathf.Sign(wheelDeg) * kCol * over * Mathf.Deg2Rad : 0f;
-        frictionTorque = -p.columnFriction * Mathf.Clamp(w / p.columnFrictionVel, -1f, 1f);
+        frictionTorque = -p.columnFriction * Mathf.Clamp(w / p.columnFrictionRegularisationSpeed, -1f, 1f);
         dampingTorque = -p.columnDamping * w;
         totalTorque = car.columnTorque + stopTorque + frictionTorque + dampingTorque;   // + = turns the wheel clockwise (right)
         if (pr == null || pr.wheelbaseMaxTorqueNm <= 0f) { command = 0f; return; }

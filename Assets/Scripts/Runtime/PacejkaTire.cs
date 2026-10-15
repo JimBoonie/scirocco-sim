@@ -31,11 +31,11 @@ public static class PacejkaTire
     // @return {float} - lateral force in N
     public static float PureLat(CarParams carParams, float slipAngle, float verticalLoad, float camberAngle, in TireScale scale)
     {
-        float normalisedLoadChange = (verticalLoad - carParams.Fz0) / carParams.Fz0;   // dfz
-        float peakFactor = (carParams.pDy1 + carParams.pDy2 * normalisedLoadChange) * scale.muy * (1f - 4f * camberAngle * camberAngle) * verticalLoad;
-        float corneringStiffness = carParams.pKy1 * scale.ky * carParams.Fz0 * Mathf.Sin(2f * Mathf.Atan(verticalLoad / (carParams.pKy2 * scale.kyLoad * carParams.Fz0)));
-        float stiffnessFactor = corneringStiffness / (carParams.pCy1 * peakFactor + 1e-3f);
-        return MagicFormula(stiffnessFactor, carParams.pCy1, peakFactor, Mathf.Min(carParams.pEy1, 0.99f), slipAngle) + carParams.camberThrust * camberAngle * verticalLoad;
+        float normalisedLoadChange = (verticalLoad - carParams.nominalVerticalLoad) / carParams.nominalVerticalLoad;   // dfz
+        float peakFactor = (carParams.lateralPeakFrictionCoefficient + carParams.lateralPeakFrictionLoadSlope * normalisedLoadChange) * scale.lateralFriction * (1f - 4f * camberAngle * camberAngle) * verticalLoad;
+        float corneringStiffness = carParams.lateralStiffnessCoefficient * scale.lateralStiffness * carParams.nominalVerticalLoad * Mathf.Sin(2f * Mathf.Atan(verticalLoad / (carParams.lateralStiffnessLoadCoefficient * scale.lateralStiffnessLoadSaturation * carParams.nominalVerticalLoad)));
+        float stiffnessFactor = corneringStiffness / (carParams.lateralShapeCoefficient * peakFactor + 1e-3f);
+        return MagicFormula(stiffnessFactor, carParams.lateralShapeCoefficient, peakFactor, Mathf.Min(carParams.lateralCurvatureCoefficient, 0.99f), slipAngle) + carParams.camberThrustCoefficient * camberAngle * verticalLoad;
     }
 
     // @description - pure longitudinal force with no tyre scaling (all scale factors 1)
@@ -53,10 +53,10 @@ public static class PacejkaTire
     // @return {float} - longitudinal force in N
     public static float PureLong(CarParams carParams, float slipRatio, float verticalLoad, in TireScale scale)
     {
-        float normalisedLoadChange = (verticalLoad - carParams.Fz0) / carParams.Fz0;   // dfz
-        float peakFactor = (carParams.pDx1 + carParams.pDx2 * normalisedLoadChange) * scale.mux * verticalLoad;
-        float stiffnessFactor = carParams.pKx1 * scale.kx * verticalLoad / (carParams.pCx1 * peakFactor + 1e-3f);
-        return MagicFormula(stiffnessFactor, carParams.pCx1, peakFactor, carParams.pEx1, slipRatio);
+        float normalisedLoadChange = (verticalLoad - carParams.nominalVerticalLoad) / carParams.nominalVerticalLoad;   // dfz
+        float peakFactor = (carParams.longitudinalPeakFrictionCoefficient + carParams.longitudinalPeakFrictionLoadSlope * normalisedLoadChange) * scale.longitudinalFriction * verticalLoad;
+        float stiffnessFactor = carParams.longitudinalStiffnessCoefficient * scale.longitudinalStiffness * verticalLoad / (carParams.longitudinalShapeCoefficient * peakFactor + 1e-3f);
+        return MagicFormula(stiffnessFactor, carParams.longitudinalShapeCoefficient, peakFactor, carParams.longitudinalCurvatureCoefficient, slipRatio);
     }
 
     // @description - combined slip with no tyre scaling (all scale factors 1)
@@ -80,8 +80,8 @@ public static class PacejkaTire
     public static Vector2 Combined(CarParams carParams, float slipRatio, float slipAngle, float verticalLoad, float camberAngle, in TireScale scale)
     {
         if (verticalLoad <= 0f) return Vector2.zero;
-        float longitudinalWeight = Mathf.Cos(Mathf.Atan(carParams.rBx1 * slipAngle));
-        float lateralWeight = Mathf.Cos(Mathf.Atan(carParams.rBy1 * slipRatio));
+        float longitudinalWeight = Mathf.Cos(Mathf.Atan(carParams.combinedSlipLongitudinalCoefficient * slipAngle));
+        float lateralWeight = Mathf.Cos(Mathf.Atan(carParams.combinedSlipLateralCoefficient * slipRatio));
         return new Vector2(PureLong(carParams, slipRatio, verticalLoad, scale) * longitudinalWeight, PureLat(carParams, slipAngle, verticalLoad, camberAngle, scale) * lateralWeight);
     }
 }

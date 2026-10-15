@@ -88,7 +88,7 @@ MonoBehaviour:
   - -0.00277959
   - -0.00414334
   - -0.00576316
-  frontRcHeight:
+  frontRollCentreHeight:
   - 0.272237
   - 0.25591
   - 0.23997
@@ -1497,31 +1497,31 @@ MonoBehaviour:
   - -1.04358
   - -0.950458
   rearCamberRollFraction: 0.206599
-  rearRcHeight: 0.18
-  rbCamOwn: -8.40604
-  rbCamOther: 8.33167
-  rbToeOwn: 0.137577
-  rbToeOther: -0.136366
-  rbToeFyOwn: 0.0000171684
-  rbToeFyOther: -0.0000161938
-  rbCamFyOwn: -0.00000846899
-  rbCamFyOther: 0.00000769216
-  rbToeFxOwn: 0.0000270484
-  rbToeFxOther: -0.0000267966
-  rbRcHeight: 0.0554701
-  rbAntiLift: 0.595914
-  fcToeFy: -0.0000316078
-  fcCamFy: -0.0000443358
-  fcToeFx: 0.0000739722
-  fcCamFx: 0.0000182814
-  fcToeFz: -0.00000385611
-  fcCamFz: -0.00000894604
-  fcAntiBrake: -0.0597794
-  fcAntiDrive: -0.0253345
-  fcJackPerFy: -0.196352
-  fcToeFxD: 0.0000898084
-  fcCamFxD: 0.00000272352
-  fcJoint:
+  rearRollCentreHeight: 0.18
+  rearBeamCamberPerOwnTravel: -8.40604
+  rearBeamCamberPerOtherTravel: 8.33167
+  rearBeamToePerOwnTravel: 0.137577
+  rearBeamToePerOtherTravel: -0.136366
+  rearBeamToePerOwnLateralForce: 0.0000171684
+  rearBeamToePerOtherLateralForce: -0.0000161938
+  rearBeamCamberPerOwnLateralForce: -0.00000846899
+  rearBeamCamberPerOtherLateralForce: 0.00000769216
+  rearBeamToePerOwnLongitudinalForce: 0.0000270484
+  rearBeamToePerOtherLongitudinalForce: -0.0000267966
+  rearBeamRollCentreHeight: 0.0554701
+  rearBeamAntiLiftCoefficient: 0.595914
+  frontToePerLateralForce: -0.0000316078
+  frontCamberPerLateralForce: -0.0000443358
+  frontToePerBrakeForce: 0.0000739722
+  frontCamberPerBrakeForce: 0.0000182814
+  frontToePerVerticalForce: -0.00000385611
+  frontCamberPerVerticalForce: -0.00000894604
+  frontAntiDiveCoefficient: -0.0597794
+  frontAntiSquatCoefficient: -0.0253345
+  frontJackingPerLateralForce: -0.196352
+  frontToePerDriveForce: 0.0000898084
+  frontCamberPerDriveForce: 0.00000272352
+  frontJointReactions:
   - 0.70267
   - -1.38374
   - 0.1073
@@ -1582,7 +1582,7 @@ MonoBehaviour:
   - -0.026658
   - -0.276477
   - 0.0271165
-  rbJoint:
+  rearBeamJointReactions:
   - 1.06405
   - -0.00995867
   - 0.441326
@@ -1619,15 +1619,15 @@ MonoBehaviour:
   - 0
   - 0.0153
   - 0.22695
-  kpU:
+  kingpinAxis:
   - -0.0311488
   - -0.222049
   - 0.974538
-  kpRcp:
+  kingpinContactPatchOffset:
   - -0.00884383
   - -0.00999533
   - 0
-  kpRwc:
+  kingpinWheelCentreOffset:
   - -0.00884383
   - -0.00999533
   - 0.2768

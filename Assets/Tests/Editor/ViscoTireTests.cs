@@ -4,7 +4,7 @@ using UnityEngine;
 public class ViscoTireTests
 {
     static CarParams P() => ScriptableObject.CreateInstance<CarParams>();
-    static ViscoTire.Flags All => new ViscoTire.Flags { hysteresis = true, adhesion = true, wlf = true, flash = true, payne = true, rateStiffness = true, loadRelax = true, rollingRes = true, bulkHeat = true };
+    static ViscoTire.Flags All => new ViscoTire.Flags { hysteresis = true, adhesion = true, williamsLandelFerry = true, flashTemperature = true, payneEffect = true, rateDependentStiffness = true, loadRelaxation = true, rollingResistance = true, bulkHeating = true };
 
     [Test] public void DefaultCompoundIsDefault()
     {
@@ -34,20 +34,20 @@ public class ViscoTireTests
         var p = P(); double vr = ViscoTire.VsRef(p); var f = All; float pk0 = 0, pk1 = 0;
         for (float a = 0.002f; a < 0.4f; a += 0.001f)
         {
-            pk0 = Mathf.Max(pk0, PacejkaTire.PureLat(p, a, p.Fz0, 0f));
+            pk0 = Mathf.Max(pk0, PacejkaTire.PureLat(p, a, p.nominalVerticalLoad, 0f));
             double g = ViscoTire.GripFactor(ViscoTire.ReferenceSpeed * System.Math.Tan(a), TireThermal.OptimalTemperature, ViscoTire.ReferenceContactPressure, vr, f, out _);
-            var s = TireScale.One; s.muy = (float)g; pk1 = Mathf.Max(pk1, PacejkaTire.PureLat(p, a, p.Fz0, 0f, s));
+            var s = TireScale.One; s.lateralFriction = (float)g; pk1 = Mathf.Max(pk1, PacejkaTire.PureLat(p, a, p.nominalVerticalLoad, 0f, s));
         }
         Debug.Log($"peak Fy default {pk0:0} N, experimental {pk1:0} N ({(pk1 / pk0 - 1) * 100:+0.00;-0.00} %)");
         Assert.AreEqual(pk0, pk1, 0.03f * pk0);
     }
     [Test] public void SlipStiffnessUnchangedByGripFactor()
     {   // B = K/(C D): scaling D leaves dFy/dalpha at 0 unchanged
-        var p = P(); var s = TireScale.One; s.muy = 0.7f; const float da = 1e-4f;
-        Assert.AreEqual(PacejkaTire.PureLat(p, da, p.Fz0, 0f) / da, PacejkaTire.PureLat(p, da, p.Fz0, 0f, s) / da, 0.01f * PacejkaTire.PureLat(p, da, p.Fz0, 0f) / da);
+        var p = P(); var s = TireScale.One; s.lateralFriction = 0.7f; const float da = 1e-4f;
+        Assert.AreEqual(PacejkaTire.PureLat(p, da, p.nominalVerticalLoad, 0f) / da, PacejkaTire.PureLat(p, da, p.nominalVerticalLoad, 0f, s) / da, 0.01f * PacejkaTire.PureLat(p, da, p.nominalVerticalLoad, 0f) / da);
     }
     [Test] public void FrictionRisesThenFallsWithSlipSpeed()
-    {   // with flash heating the master curve has an interior maximum (Grosch 1963 / Persson 2006 shape)
+    {   // with flashTemperature heating the master curve has an interior maximum (Grosch 1963 / Persson 2006 shape)
         var f = All; double best = 0, vBest = 0, lo = ViscoTire.MuEff(1e-3, 88, ViscoTire.ReferenceContactPressure, f, out _), hi = ViscoTire.MuEff(100, 88, ViscoTire.ReferenceContactPressure, f, out _);
         for (double lv = -3; lv <= 2; lv += 0.05) { double v = System.Math.Pow(10, lv), m = ViscoTire.MuEff(v, 88, ViscoTire.ReferenceContactPressure, f, out _); if (m > best) { best = m; vBest = v; } }
         Debug.Log($"mu(88 C): 1 mm/s {lo:0.000}, max {best:0.000} at {vBest:0.000} m/s, 100 m/s {hi:0.000}");
@@ -55,7 +55,7 @@ public class ViscoTireTests
     }
     [Test] public void WlfShiftsPeakToHigherSpeedWhenHot()
     {
-        var f = All; f.flash = false;
+        var f = All; f.flashTemperature = false;
         double Peak(double T) { double b = 0, vb = 0; for (double lv = -8; lv <= 3; lv += 0.02) { double m = ViscoTire.Mu(System.Math.Pow(10, lv), T, f); if (m > b) { b = m; vb = lv; } } return vb; }
         Assert.Less(ViscoTire.LogTimeTemperatureShift(60), ViscoTire.LogTimeTemperatureShift(20));
         Assert.Greater(Peak(80), Peak(20)); Assert.Greater(Peak(20), Peak(-10));
@@ -106,7 +106,7 @@ public class ViscoTireTests
     [Test] public void DumpCurves()
     {   // CSVs for tools/visco_plots.py when VISCO_DUMP is set
         var dir = System.Environment.GetEnvironmentVariable("VISCO_DUMP"); if (string.IsNullOrEmpty(dir)) { Assert.Pass("VISCO_DUMP not set"); return; }
-        System.IO.Directory.CreateDirectory(dir); var f = All; var nf = f; nf.flash = false;
+        System.IO.Directory.CreateDirectory(dir); var f = All; var nf = f; nf.flashTemperature = false;
         var sb = new System.Text.StringBuilder("T,v,mu_flash,mu_noflash,mu_hys,mu_adh,dT\n");
         foreach (double T in new[] { 0.0, 20.0, 40.0, 66.0, 88.0, 110.0 })
             for (double lv = -4; lv <= 2.001; lv += 0.05)
@@ -121,8 +121,8 @@ public class ViscoTireTests
             for (float a = 0f; a < 0.35f; a += 0.0025f)
             {
                 double g = ViscoTire.GripFactor(V * System.Math.Tan(a), T, ViscoTire.ReferenceContactPressure, vr, f, out _);
-                var s = TireScale.One; double mt = TireThermal.FrictionAtTemperature(T) / TireThermal.PeakFriction; s.muy = (float)(mt * g); var s0 = TireScale.One; s0.muy = (float)mt;
-                sc.AppendLine(FormattableString(V, T, a, PacejkaTire.PureLat(p, a, p.Fz0, 0f, s0), PacejkaTire.PureLat(p, a, p.Fz0, 0f, s)));
+                var s = TireScale.One; double mt = TireThermal.FrictionAtTemperature(T) / TireThermal.PeakFriction; s.lateralFriction = (float)(mt * g); var s0 = TireScale.One; s0.lateralFriction = (float)mt;
+                sc.AppendLine(FormattableString(V, T, a, PacejkaTire.PureLat(p, a, p.nominalVerticalLoad, 0f, s0), PacejkaTire.PureLat(p, a, p.nominalVerticalLoad, 0f, s)));
             }
         System.IO.File.WriteAllText(System.IO.Path.Combine(dir, "force_curves.csv"), sc.ToString());
         var md = new System.Text.StringBuilder("T,f,tand,absE\n");

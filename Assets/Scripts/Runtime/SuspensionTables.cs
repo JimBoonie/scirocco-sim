@@ -3,27 +3,25 @@ using UnityEngine;
 // Front: functions of wheel travel t (m, + bump) and left-wheel steer angle (deg, + = points right). Right side mirrored.
 public class SuspensionTables : ScriptableObject
 {
-    // NOTE: field names are written by kinematics/export_unity.py into the baked asset (serialized) and are intentionally NOT renamed; the abbreviations are explained next to each group:
-    //   rb* = rear (twist) beam, fc* = front compliant model, kp* = kingpin geometry, rc = roll centre, cam = camber, Fx/Fy/Fz = longitudinal/lateral/vertical tyre force
-    public float[] travel, frontCamberBody, frontBumpSteer, frontTrackChange, frontRcHeight, frontMotionRatio, rearMotionRatio;
+    public float[] travel, frontCamberBody, frontBumpSteer, frontTrackChange, frontRollCentreHeight, frontMotionRatio, rearMotionRatio;
     public float[] steerGrid;              // left-wheel steer angle at each solver rack position (ascending)
     public float[] frontCamberTravelSteer; // [travel.Length * steerGrid.Length], camber change vs body
-    public float rearCamberRollFraction, rearRcHeight;
+    public float rearCamberRollFraction, rearRollCentreHeight;
     // ---- full twist-beam (multibody_compliance.py, linearised at design; bush rates E) ----
-    public float rbCamOwn, rbCamOther, rbToeOwn, rbToeOther;          // deg per metre travel (own wheel, other wheel), body-relative
-    public float rbToeFyOwn, rbToeFyOther, rbCamFyOwn, rbCamFyOther;  // deg per N outward lateral force at a contact patch
-    public float rbToeFxOwn, rbToeFxOther;                            // deg per N +x force
-    public float rbRcHeight, rbAntiLift;                              // solved roll centre (m); vertical body force per N of +x force
+    public float rearBeamCamberPerOwnTravel, rearBeamCamberPerOtherTravel, rearBeamToePerOwnTravel, rearBeamToePerOtherTravel;          // deg per metre travel (own wheel, other wheel), body-relative
+    public float rearBeamToePerOwnLateralForce, rearBeamToePerOtherLateralForce, rearBeamCamberPerOwnLateralForce, rearBeamCamberPerOtherLateralForce;  // deg per N outward lateral force at a contact patch
+    public float rearBeamToePerOwnLongitudinalForce, rearBeamToePerOtherLongitudinalForce;                            // deg per N +x force
+    public float rearBeamRollCentreHeight, rearBeamAntiLiftCoefficient;                              // solved roll centre (m); vertical body force per N of +x force
     // ---- front compliant model ----
-    public float fcToeFy, fcCamFy, fcToeFx, fcCamFx, fcToeFz, fcCamFz; // deg per N (outward Fy, +x Fx at patch, Fz)
-    public float fcAntiBrake, fcAntiDrive;                             // vertical body force per N +x (brake at patch / drive at hub)
-    public float fcJackPerFy;                                          // validation only
-    public float fcToeFxD, fcCamFxD;                                   // deg per N drive force (reacted at the hub)
+    public float frontToePerLateralForce, frontCamberPerLateralForce, frontToePerBrakeForce, frontCamberPerBrakeForce, frontToePerVerticalForce, frontCamberPerVerticalForce; // deg per N (outward Fy, +x Fx at patch, Fz)
+    public float frontAntiDiveCoefficient, frontAntiSquatCoefficient;                             // vertical body force per N +x (brake at patch / drive at hub)
+    public float frontJackingPerLateralForce;                                          // validation only
+    public float frontToePerDriveForce, frontCamberPerDriveForce;                                   // deg per N drive force (reacted at the hub)
     // joint reaction maps (force ON THE CAR BODY, left-corner frame x fwd / y left / z up, per N of tire load; linear at design)
-    // fcJoint: [load Fx_brake, Fx_drive, Fy_out, Fz][joint arm_front_bush, arm_rear_bush, tie_rod, top_mount, ball_joint(on knuckle)][xyz]
-    // rbJoint: left-wheel loads [Fx, Fy_out, Fz][joint pivot_bush_L, pivot_bush_R, spring_damper_L, spring_damper_R][xyz]
-    public float[] fcJoint, rbJoint;
-    public float[] kpU, kpRcp, kpRwc;
+    // frontJointReactions: [load Fx_brake, Fx_drive, Fy_out, Fz][joint arm_front_bush, arm_rear_bush, tie_rod, top_mount, ball_joint(on knuckle)][xyz]
+    // rearBeamJointReactions: left-wheel loads [Fx, Fy_out, Fz][joint pivot_bush_L, pivot_bush_R, spring_damper_L, spring_damper_R][xyz]
+    public float[] frontJointReactions, rearBeamJointReactions;
+    public float[] kingpinAxis, kingpinContactPatchOffset, kingpinWheelCentreOffset;
     // steering: rack travel grid (m, + = rack to the left) and left-wheel road angle [travel x rack] (deg, + = points right, bump steer included; D)
     public float[] rackGrid, frontToeTravelRack;   // kingpin axis (unit) and contact patch / wheel centre relative to its ground point (left frame, D)
 

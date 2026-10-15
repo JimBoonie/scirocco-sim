@@ -62,7 +62,7 @@ public class TireThermalTests
         foreach (float k in new[] { -0.3f, -0.05f, 0f, 0.02f, 0.2f }) foreach (float a in new[] { -0.2f, 0f, 0.05f, 0.3f })
             Assert.AreEqual(PacejkaTire.Combined(p, k, a, 3200f, 0.01f), PacejkaTire.Combined(p, k, a, 3200f, 0.01f, TireScale.One));
         var t = new TireThermal(TireThermal.NominalGaugePressure, true); var s = t.Scale();
-        Assert.AreEqual(1f, s.muy, 1e-6f); Assert.AreEqual(1f, s.ky, 1e-6f); Assert.AreEqual(1f, s.rr, 1e-6f);
+        Assert.AreEqual(1f, s.lateralFriction, 1e-6f); Assert.AreEqual(1f, s.lateralStiffness, 1e-6f); Assert.AreEqual(1f, s.rollingResistance, 1e-6f);
         Assert.AreEqual(0.7 / 1.1, TireThermal.BenchFriction(TireThermal.AmbientTemperature) / 1.1, 1e-3, "bench curve alone still holds the lowest measured mu");
         Assert.AreEqual(1.0, TireThermal.FrictionAtTemperature(TireThermal.TrackTemperature) / TireThermal.PeakFriction, 1e-12, "road data: full grip at 70 F (option b)");
     }
@@ -70,7 +70,7 @@ public class TireThermalTests
     {   // grip temperature = heat-capacity-weighted tread mean (skin zones + bulk)
         var t = new TireThermal(TireThermal.NominalGaugePressure);
         for (int i = 0; i < 3; i++) t.surfaceTemperatures[i] = TireThermal.OptimalTemperature; t.bulkTemperature = TireThermal.OptimalTemperature;
-        Assert.AreEqual(1.0, t.Scale().muy, 1e-6, "whole tread at Topt -> base grip");
+        Assert.AreEqual(1.0, t.Scale().lateralFriction, 1e-6, "whole tread at Topt -> base grip");
         t.surfaceTemperatures[0] = 100; t.surfaceTemperatures[1] = 60; t.surfaceTemperatures[2] = 20; t.bulkTemperature = 40;
         double w = 3 * TireThermal.SkinHeatCapacity / (3 * TireThermal.SkinHeatCapacity + TireThermal.BulkHeatCapacity);
         Assert.AreEqual(w * 60 + (1 - w) * 40, t.GripTemp(), 1e-9);
@@ -90,7 +90,7 @@ public class TireThermalTests
     {   // Taylor's reading: fronts ~270 F on the I/M/O display but only ~70% grip (bulk-based grip, cold hold)
         var t = new TireThermal(TireThermal.NominalGaugePressure); double ts = (270.0 - 32.0) * 5.0 / 9.0;
         for (int i = 0; i < 3; i++) t.surfaceTemperatures[i] = ts; t.bulkTemperature = 25.0;
-        double before = TireThermal.BenchFriction(t.bulkTemperature) / TireThermal.PeakFriction, surfOnly = TireThermal.BenchFriction(ts) / TireThermal.PeakFriction, after = t.Scale().muy;
+        double before = TireThermal.BenchFriction(t.bulkTemperature) / TireThermal.PeakFriction, surfOnly = TireThermal.BenchFriction(ts) / TireThermal.PeakFriction, after = t.Scale().lateralFriction;
         Log($"270 F surface / 77 F bulk: grip temp {TireThermal.CelsiusToFahrenheit(t.GripTemp()):0} F; grip before (bulk, cold hold) {before * 100:0}%, surface-only would be {surfOnly * 100:0}%, now {after * 100:0}%");
         Assert.AreEqual(TireThermal.FrictionAtTemperature(t.GripTemp()) / TireThermal.PeakFriction, after, 1e-6); Assert.Greater(after, 0.95, "no ice feel");
     }
@@ -99,9 +99,9 @@ public class TireThermalTests
         // 4000 N, 37 mph, 8 deg), then 30 s straight at 60 mph: a surface-only grip temp would collapse, tread-mean grip must hold
         var t = new TireThermal(230000); double dt = 0.001, V = 60 / 3.6, a = 8 * Mathf.Deg2Rad;
         for (int i = 0; i < 180000; i++) t.Step(dt, TireThermal.BenchFriction(t.SurfaceTemp()) * 4000 * V * System.Math.Sin(a), 0.012 * 4000 * V, V, 4000, 0, 180000, true);
-        double muHot = t.Scale().muy, sHot = t.SurfaceTemp(), bHot = t.bulkTemperature;
+        double muHot = t.Scale().lateralFriction, sHot = t.SurfaceTemp(), bHot = t.bulkTemperature;
         for (int i = 0; i < 30000; i++) t.Step(dt, 0, 0.012 * 3000 * 27, 27, 3000, 0, 180000, true);
-        double muStr = t.Scale().muy, muSurf = TireThermal.BenchFriction(t.SurfaceTemp()) / TireThermal.PeakFriction;
+        double muStr = t.Scale().lateralFriction, muSurf = TireThermal.BenchFriction(t.SurfaceTemp()) / TireThermal.PeakFriction;
         Log($"bench 3 min then 30 s straight 60 mph: surface {TireThermal.CelsiusToFahrenheit(sHot):0} -> {TireThermal.CelsiusToFahrenheit(t.SurfaceTemp()):0} F, bulk {TireThermal.CelsiusToFahrenheit(bHot):0} -> {TireThermal.CelsiusToFahrenheit(t.bulkTemperature):0} F; grip {muHot * 100:0}% -> {muStr * 100:0}% (old bench-only curve on the surface would be {muSurf * 100:0}%)");
         Assert.Less(t.SurfaceTemp(), sHot - 20.0, "surface cools fast");
         Assert.Greater(muStr, muHot - 0.1, "grip holds through the straight (tread mean passes the ~151 F road/bench crossover dip, SD)");
