@@ -142,6 +142,7 @@ public class TorsionalDriveline : ITorsionalDriveline
         double ratio = input.totalRatioSigned, wheelInertia = input.wheelInertiaKilogramMetersSquared;
         leftSpeed = input.leftWheelAngularVelocity; rightSpeed = input.rightWheelAngularVelocity;   // resynchronize the predicted wheels with the tire integrator
         if (ratio != 0.0) { if (previousRatio != ratio) { UpdateMeshProperties(ratio); EngageGear(ratio); } } else meshDeflection = 0.0;
+        if (ratio != 0.0 && input.overrideMeshLash) meshHalfLash = input.meshHalfLashAtInputShaftRadians / System.Math.Abs(ratio);   // the transmission owns the gear lash (no double counting)
         previousRatio = ratio;
         int microstepCount = (int)System.Math.Ceiling(stepSeconds * FastestAngularFrequency(ratio, wheelInertia) / parameters.maximumPhaseAdvancePerMicrostepRadians);
         if (microstepCount < 1) microstepCount = 1;
@@ -187,8 +188,8 @@ public class TorsionalDriveline : ITorsionalDriveline
         double crankTotalInertia = crankInertia + auxiliaryInertia;
         crankSpeed += (engineTorque - clutchTorque) / crankTotalInertia * step;
         discSpeed += (clutchTorque - damperTorque) / discInertia * step;
-        inputSpeed += (damperTorque + inputReaction) / inputShaftInertia * step;
-        carrierSpeed += (meshTorque - shaftTorque) / carrierInertia * step;
+        inputSpeed += (damperTorque + inputReaction + input.inputShaftExternalTorque) / inputShaftInertia * step;
+        carrierSpeed += (meshTorque - shaftTorque + input.carrierExternalTorque) / carrierInertia * step;
         leftSpeed += (0.5 * shaftTorque - input.leftTireResistingTorque) / wheelInertia * step;
         rightSpeed += (0.5 * shaftTorque - input.rightTireResistingTorque) / wheelInertia * step;
         if (engineRollEnabled) blockSpeed += (-engineTorque - (inputReaction + meshTorque) - mountStiffness * blockAngle - mountDamping * blockSpeed) / blockInertia * step;

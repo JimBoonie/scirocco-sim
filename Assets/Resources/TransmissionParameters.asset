@@ -1,0 +1,105 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b757fda9679817fee8e41a8b3e1cfe4a, type: 3}
+  m_Name: TransmissionParameters
+  m_EditorClassIdentifier: 
+  drivenToothCount: 260000002400000027000000230000002a000000
+  drivingToothCount: 0b000000110000001b0000001f0000002f000000
+  reverseInputToothCount: 12
+  reverseIdlerToothCount: 20
+  reverseDrivenToothCount: 38
+  finalDrivePinionToothCount: 18
+  finalDriveRingToothCount: 66
+  gearIsLooseOnInputShaft: 0000010101
+  helixAngleDegrees: 20
+  normalModuleMillimeters: 2
+  gearFaceWidthMillimeters: 18
+  normalPressureAngleDegrees: 20
+  normalBacklashMillimeters: 0.12
+  gearFillFactor: 0.6
+  steelDensityKilogramsPerCubicMeter: 7850
+  coneHalfAngleDegrees: 6.5
+  meanConeRadiusMeters:
+  - 0.038
+  - 0.036
+  - 0.034
+  - 0.032
+  - 0.03
+  blockingToothToConeRadiusRatio: 1.176
+  roofIncludedAngleDegrees:
+  - 110
+  - 110
+  - 110
+  - 110
+  - 110
+  blockingToothFrictionCoefficient: 0.1
+  coneFrictionSlidingSpeedsMetersPerSecond:
+  - 0
+  - 0.5
+  - 1
+  - 3.5
+  coneFrictionCoefficientAtSpeed:
+  - 0.17
+  - 0.13
+  - 0.115
+  - 0.11
+  coneFrictionScale: 1
+  ringToConeAxialGapMeters:
+  - 0.0014
+  - 0.0014
+  - 0.00145
+  - 0.0016
+  - 0.0016
+  ringGapWearLimitMeters: 0.0005
+  dogToothRadiusMeters: 0.03
+  dogToothCount: 30
+  dogFlankFrictionCoefficient: 0.1
+  dogRetentionUndercutDegrees: 3
+  dogAngularLashDegrees: 1.5
+  dogChamferCaptureFraction: 0.25
+  dogChamferTravelMeters: 0.003
+  postUnblockSleeveTravelMeters: 0.002
+  reverseToothCaptureFraction: 0.25
+  reverseChamferTravelMeters: 0.004
+  impactRestitution: 0.3
+  handToSleeveMechanicalAdvantage: 8
+  linkageEfficiency: 0.8
+  driverPushForceNewtons: 30
+  driverPullForceNewtons: 20
+  knobPushSpeedMetersPerSecond: 0.4
+  neutralToRingContactKnobTravelMeters: 0.03
+  railSpacingKnobMeters: 0.04
+  detentForceAtSleeveNewtons: 40
+  inputShaftAssemblyInertiaKilogramMetersSquared: 0.012
+  carrierSideDragInertiaKilogramMetersSquared: 0.5
+  looseGearRollingDragNewtonMeters: 0.05
+  looseGearViscousDragNewtonMetersSecondPerRadian: 0.0002
+  meshFrictionCoefficient: 0.05
+  meshContactRatio: 1.4
+  outputPinionBearingTurningTorqueNewtonMeters: 0.3
+  differentialBearingTurningTorqueNewtonMeters: 0.3
+  spinLossReferenceTorqueNewtonMeters: 1.43
+  spinLossReferenceSpeedRevolutionsPerMinute: 1000
+  spinLossSecondSpeedRevolutionsPerMinute: 4000
+  spinLossSecondTorqueNewtonMeters: 2.91
+  spinLossReferenceOilTemperatureKelvin: 353
+  spinLossColdOilTemperatureKelvin: 303
+  spinLossDropFromColdToReference: 0.465
+  spinLossScaleForThisGearbox: 0.35
+  oilKinematicViscosityAt40CMillimetersSquaredPerSecond: 100
+  oilKinematicViscosityAt100CMillimetersSquaredPerSecond: 15
+  oilMassKilograms: 1.76
+  oilSpecificHeatJoulesPerKilogramKelvin: 2000
+  casingThermalConductanceWattsPerKelvin: 10
+  autoClutchOpenSeconds: 0.08
+  autoClutchCloseSeconds: 0.35
+  stickDeadBandSafetyFactor: 1

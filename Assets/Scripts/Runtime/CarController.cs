@@ -7,6 +7,8 @@ public class CarController : MonoBehaviour
     public WheelCorner frontRightWheel;
     public WheelCorner rearLeftWheel;
     public WheelCorner rearRightWheel;
+    ExperimentalTransmission experimentalTransmission;   // created on first use of the experimental transmission toggle; null while it was never on
+    public ExperimentalTransmission ExperimentalTransmissionModel => experimentalTransmission;   // read-only view for the HUD
     ExperimentalDriveline experimentalDriveline;   // created on first use of the experimental driveline toggle; null while it was never on
     [Tooltip("Tire/drivetrain substeps per FixedUpdate (FixedUpdate itself runs at 500 Hz)")] public int substeps = 2;
     public Engine engine; public Drivetrain drivetrain; Rigidbody body;
@@ -166,7 +168,14 @@ public class CarController : MonoBehaviour
             }
             // ...except for a bump start: engine not firing, ignition on, in gear, and the wheels would spin the crank past its firing speed -> engage
             if (autoClutch && !engine.combusting && engine.ignition && !engine.starter && drivetrain.gear != 0 && Mathf.Abs((frontLeftWheel.angularVelocity + frontRightWheel.angularVelocity) * 0.5f * drivetrain.TotalRatio) * 30f / Mathf.PI > engine.FireRpm * 1.5f) autoClutchPedal = 0f;
-            if (carParams.experimentalDrivelineEnabled)
+            if (!carParams.experimentalTransmissionEnabled && experimentalTransmission != null) experimentalTransmission.Deactivate(frontLeftWheel, frontRightWheel);
+            if (carParams.experimentalTransmissionEnabled)
+            {   // EXPERIMENTAL transmission and synchronizer model (Transmission/*.cs): runs on the simple drivetrain (adapter A) or inside the torsional chain when the driveline toggle is also on (adapter B)
+                if (experimentalTransmission == null) experimentalTransmission = new ExperimentalTransmission(engine, carParams, null);
+                if (experimentalDriveline != null) experimentalDriveline.Deactivate();
+                experimentalTransmission.Advance(substep, throttle, clutch, autoClutch, autoClutchPedal, drivetrain, frontLeftWheel, frontRightWheel);
+            }
+            else if (carParams.experimentalDrivelineEnabled)
             {   // EXPERIMENTAL driveline shuffle model (Driveline/*.cs): torsional chain with Karnopp clutch, damper, lash, halfshafts, engine roll, firing pulses
                 if (experimentalDriveline == null) experimentalDriveline = new ExperimentalDriveline(engine, carParams, null);
                 experimentalDriveline.Advance(substep, throttle, clutch, autoClutchPedal, drivetrain, frontLeftWheel, frontRightWheel);

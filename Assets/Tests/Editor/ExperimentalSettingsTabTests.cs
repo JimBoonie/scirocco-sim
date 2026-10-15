@@ -41,8 +41,11 @@ public class ExperimentalSettingsTabTests
         ExperimentalSettingsTab.Adjust(profile, 4, 0, true); Assert.IsTrue(profile.experimentalDrivelineEnabled, "Select flips the driveline shuffle model on");
         ExperimentalSettingsTab.Adjust(profile, 4, -1, false); Assert.IsFalse(profile.experimentalDrivelineEnabled, "Left switches it off");
         ExperimentalSettingsTab.Adjust(profile, 4, 1, false); Assert.IsTrue(profile.experimentalDrivelineEnabled, "Right switches it on"); profile.experimentalDrivelineEnabled = false;
+        ExperimentalSettingsTab.Adjust(profile, 5, 0, true); Assert.IsTrue(profile.experimentalTransmissionEnabled, "Select flips the transmission model on"); Assert.IsFalse(profile.experimentalDrivelineEnabled, "and leaves the driveline model alone");
+        ExperimentalSettingsTab.Adjust(profile, 5, -1, false); Assert.IsFalse(profile.experimentalTransmissionEnabled, "Left switches it off");
+        ExperimentalSettingsTab.Adjust(profile, 5, 1, false); Assert.IsTrue(profile.experimentalTransmissionEnabled, "Right switches it on"); profile.experimentalTransmissionEnabled = false;
     }
-    // @description - Verifies keyboard/gamepad navigation: down and up wrap around the four options, and a change applies to the highlighted option.
+    // @description - Verifies keyboard/gamepad navigation: down and up wrap around the options, and a change applies to the highlighted option.
     // @return {Void} - nothing
     [Test] public void NavigationWrapsAndAppliesToHighlightedOption()
     {
@@ -64,9 +67,9 @@ public class ExperimentalSettingsTabTests
         Assert.AreEqual(BindingProfile.CurrentVersion, oldLoaded.version); Assert.IsFalse(oldLoaded.experimentalDrivelineEnabled);
         Assert.AreEqual(InputMapper.Defaults().actions.Count, oldLoaded.actions.Count, "bindings are not reset");
     }
-    // @description - Verifies the driveline and transmission placeholders are independent settings: each round-trips through JSON without affecting the other, an old file without either field loads both as false, and the menu cannot change either.
+    // @description - Verifies the driveline and transmission toggles are independent settings: each round-trips through JSON without affecting the other, an old file without either field loads both as false, and each menu item changes only its own flag.
     // @return {Void} - nothing
-    [Test] public void DrivelineAndTransmissionPlaceholdersAreIndependent()
+    [Test] public void DrivelineAndTransmissionTogglesAreIndependent()
     {
         var drivelineOnly = new BindingProfile { experimentalDrivelineEnabled = true };
         var loadedDriveline = JsonUtility.FromJson<BindingProfile>(JsonUtility.ToJson(drivelineOnly));
@@ -77,8 +80,9 @@ public class ExperimentalSettingsTabTests
         var oldJson = System.Text.RegularExpressions.Regex.Replace(JsonUtility.ToJson(InputMapper.Defaults()), "\"experimental(Driveline|Transmission)Enabled\":(true|false),?", "");
         var oldLoaded = JsonUtility.FromJson<BindingProfile>(oldJson);
         Assert.IsFalse(oldLoaded.experimentalDrivelineEnabled); Assert.IsFalse(oldLoaded.experimentalTransmissionEnabled); Assert.AreEqual(BindingProfile.CurrentVersion, oldLoaded.version);
-        for (int item = 0; item <= ExperimentalSettingsTab.ItemCount + 1; item++) { ExperimentalSettingsTab.Adjust(drivelineOnly, item, 1, true); ExperimentalSettingsTab.Adjust(transmissionOnly, item, 1, true); }
-        Assert.IsTrue(transmissionOnly.experimentalTransmissionEnabled, "menu actions never touch the transmission placeholder"); Assert.IsFalse(drivelineOnly.experimentalTransmissionEnabled, "menu actions never touch the transmission placeholder"); Assert.IsFalse(drivelineOnly.experimentalDrivelineEnabled, "Select toggled the driveline model off again (the driveline toggle is real now)");
+        ExperimentalSettingsTab.Adjust(drivelineOnly, 5, 0, true); Assert.IsTrue(drivelineOnly.experimentalDrivelineEnabled && drivelineOnly.experimentalTransmissionEnabled, "item 5 flips only the transmission flag (both on)");
+        ExperimentalSettingsTab.Adjust(drivelineOnly, 4, 0, true); Assert.IsFalse(drivelineOnly.experimentalDrivelineEnabled); Assert.IsTrue(drivelineOnly.experimentalTransmissionEnabled, "item 4 flips only the driveline flag");
+        ExperimentalSettingsTab.Adjust(transmissionOnly, 5, 0, true); Assert.IsFalse(transmissionOnly.experimentalTransmissionEnabled); Assert.IsFalse(transmissionOnly.experimentalDrivelineEnabled);
     }
     // @description - Runs one IMGUI pass headlessly as an IMGUIContainer would, through the VR mouse dispatch.
     // @param {EventType} eventType - IMGUI event type of this pass
@@ -133,6 +137,5 @@ public class ExperimentalSettingsTabTests
             queue.Sample(true, dragStart, 0f); Frame(queue, dragStart, Draw); queue.Sample(true, dragEnd, 0f); Frame(queue, dragEnd, Draw); queue.Sample(false, dragEnd, 0f); Frame(queue, dragEnd, Draw);
         }
         Assert.IsTrue(profile.frontColdPressurePsi != 24.7f || profile.rearColdPressurePsi != 24.7f, "a VR drag on a pressure slider must change it");
-        Assert.IsFalse(profile.experimentalTransmissionEnabled, "the disabled transmission placeholder ignores clicks");
     }
 }

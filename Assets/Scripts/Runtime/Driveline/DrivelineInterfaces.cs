@@ -11,6 +11,9 @@ public struct DrivelineStepInput
     public double leftWheelAngularVelocity, rightWheelAngularVelocity;   // rad/s measured at the start of the step
     public double leftTireResistingTorque, rightTireResistingTorque;     // N m the tire currently exerts against wheel rotation (R times longitudinal force)
     public double drivetrainEfficiency;                       // - mesh efficiency applied to the power flow direction
+    public double inputShaftExternalTorque, carrierExternalTorque;   // N m applied to the input-shaft node and to the carrier by the experimental transmission (0 = none; unused while the transmission toggle is off)
+    public bool overrideMeshLash;                             // true = the transmission owns the gear lash: use meshHalfLashAtInputShaftRadians instead of the parameter
+    public double meshHalfLashAtInputShaftRadians;            // rad half lash referred to the input shaft (read only when overrideMeshLash)
 }
 
 // @description - result of one driveline step

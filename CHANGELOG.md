@@ -7,6 +7,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed (merged the experimental transmission branch into main, PT 2026-10-15 15:30)
+
+- Merged branch `transmission-synchro` (`5657264`, `704b8f5`) into main on top of the camera fix (`af03997`), the experimental driveline start fix (`c47ac10`) and the overrun fix (`c4dae08`). The only textual conflict was this file; both sides are kept below.
+- Partial-clutch shift behavior is unchanged (the synchronizer cone friction was deliberately not lowered).
+- With every experimental toggle off the default path is unchanged: the 15 diagnostic scenarios were compared with main before the merge (see the readability and verification entries from this date).
+
 ### Fixed (engine would not start with the Experimental driveline ON, PT 2026-10-15 11:00)
 
 - **Root cause:** the experimental firing-pulse model adds a zero-mean gas ripple on top of the mean engine torque. For a motored (not firing) 1.8 L four-cylinder at 1 bar the compression hump is about +-100 N m, larger than the starter stall torque (about 105 N m, falling linearly with speed). When the crank rests in front of a hump (about 60 % of rest angles: 80 to 160 deg of the 180 deg period, which includes every crank that stalled) the starter cannot climb it and the engine never cranks (measured 0 rpm; the stallrestart scenario with the toggle ON stayed at 0 rpm after the restart). The default path has no ripple, so it always started. Starting worked only at lucky rest angles such as the spawn angle 0.
@@ -19,6 +25,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Fix:** the scene key is now `vrManager`, and the field has `FormerlySerializedAs("vr")` so older scenes keep working. The same silent drop affected `Cockpit.seatFwd`/`seatUp` (now `seatForwardOffset`/`seatUpOffset`, values were 0) and `FfbController.clipPct` (now `clippingPercent`, a runtime statistic); both fixed the same way. A scan of `TestTrack.unity`, `LagunaSeca.unity`, `SciroccoParams.asset` and `SuspensionTables.asset` against the C# fields found no other orphaned keys, and the values of all other re-keyed fields match the commit before the refactor.
 - `InputRouter.ApplyCameraActions()` extracted from `Update` (no behavior change) so the camera buttons can be tested.
 - Tests: `CameraToggleTests` (default `C` binding exists; keyboard, gamepad and wheel buttons switch chase <-> cockpit through `InputRouter`; the choice is stored in the profile; a missing reference is detected) and `SceneSerializationTests` (no scene/asset key without a matching field; the router's `vrManager` is assigned).
+
+### Added (experimental transmission and synchronizer model, PT 2026-10-15 08:20)
+- New setting `experimentalTransmissionEnabled` (Experimental tab row 5, default off) replaces the "coming soon" placeholder. Independent of `experimentalDrivelineEnabled`; all four combinations run. With both off the default path is untouched (dispatch branch added, default branch text unchanged).
+- New `Assets/Scripts/Runtime/Transmission/`: 5-speed (VW 020) gearbox with per-gear single-cone synchronizers and blocking rings (Schaeffler cone and blocking torque, speed-dependent friction, Karnopp stick), dog-tooth crossing with capture angle and double bump, unsynchronized reverse clash (impact energy), gear release only when the assumed driver pull exceeds the dog retention force, loose-gear inertias from geometry, neutral rattle of the loose 1st/2nd gears (lash, impacts, drag; needs both toggles for firing pulses), per-gear oil drag and mesh efficiency (power: x eta, overrun: / eta, counted once), lumped oil temperature. Two-port interface (`ITransmission`: input-shaft node and carrier). No sounds, state and events only.
+- Keyboard auto-clutch assist for shifts (only with the transmission on): pedal opens in 0.08 s and closes in 0.35 s, estimates, so the synchronizer can finish.
+- `DrivelineStepInput` has four additive fields (external torques on both ports, lash override), zero defaults, inert for every existing path. HUD shows an "[Experimental transmission ...]" tag.
+- Parameters: `TransmissionParameters` asset, every value tagged S/SD/D/E with bounds, documented in `docs/TransmissionSources.md` (including limits and what to measure).
+- Tests: `TransmissionTests` (sync time 0.689 s vs formula 0.688 s vs measured 0.69 s, blocking threshold, crunch, clutch drag, reverse clash, release vs lift-off, neutral drag, rattle onset, step convergence) and `TransmissionIntegrationTests` (four combinations, Off-On-Off isolation, auto-clutch shift, shift window with plot `tools/plot_shift_window.py`, energy balance both directions, lash counted once).
 
 ### Added (experimental driveline efficiency consistency, PT 2026-10-15 08:00)
 - Checked the experimental driveline against the new overrun efficiency convention (`Drivetrain.TorqueScaleFromCrankSide`): its gear mesh already applies eta on power and 1/eta on overrun, so no model change was needed. New test `EfficiencyMatchesTheStandardPathOnPowerAndOverrun` compares the transmitted torque with `Drivetrain.WheelTorqueEach` in both directions (within 1 %). Added a read-only `TorsionalDriveline.ShaftTorque` for it. Default path untouched.
