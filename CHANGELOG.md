@@ -7,6 +7,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added (brake research note, plots, hash proof, PT 2026-10-15 17:00)
+
+- `docs/HandbrakeModelingNote.md` (research only, no code change) on modeling the cable-driven rear handbrake. `tools/plot_brakes.py` and `diagnostics/brakes/` (`stopping_distance.png`, `pedal_response.png`, CSVs). Stopping from the test speed, experimental model on: legacy full pedal 45.56 m, keyboard full press 48.72 m, load-cell 70 lb 42.98 m, dead booster 87.65 m. The tire was not tuned.
+- Toggle-off proof: per-step float-bit hash of the 15 scenarios, run one at a time, equal to the 99064bc baseline for all 15 (accel's step count varies by a few steps run to run in the baseline too; the new player reproduced the baseline hash on rerun).
+
 ### Added (experimental brakes: model, parameters, sources, settings and car hook, PT 2026-10-15 16:15)
 
 - New `Assets/Scripts/Runtime/Brakes/` (see the wiring bullet below): tandem master cylinder 20.64 mm with the diagonal split (two circuit objects), vacuum booster with a reaction-disc characteristic (cut-in, jump-in, power slope, run-out that scales with vacuum), two integrated chamber pressures with compressible-orifice air valve, vacuum valve, check valve and leak (pneumatic lag, vacuum supply from the intake manifold, depletion by repeated pumping), rear pressure limiter (knee 35 bar, slope 1/3, fits Bentley Table b), front 239 x 20 mm vented disc with the 48 mm floating caliper, rear 180 mm drum with 17.46 mm wheel cylinders (brake factor 2.4, estimate E), foot model (load-cell force path; rate-limited travel path for keyboard and gamepad, apply 0.30 m/s and release 0.60 m/s, estimates E with a sourced basis), `IBrakeSystem` interface and a `BoosterFault` input (extra leak, blocked vacuum supply) so a faulty booster can be simulated later.

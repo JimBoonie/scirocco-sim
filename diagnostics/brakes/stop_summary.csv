@@ -1,0 +1,5 @@
+scheme,distance_m,time_s,peak_deceleration_g,front_locked,rear_locked
+legacy,45.56,3.35,1.110,True,False
+keyboard_full_press,48.72,3.47,1.112,True,False
+loadcell_70lb,42.98,3.06,0.934,False,False
+dead_booster_70lb,87.65,6.30,0.450,False,False
