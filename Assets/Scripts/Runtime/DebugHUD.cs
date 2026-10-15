@@ -2,7 +2,11 @@ using UnityEngine;
 public class DebugHUD : MonoBehaviour
 {
     public CarController car; GUIStyle mono, big;
+    // @description - Handles the gui.
+    // @return {Void} - nothing
     void OnGUI() { if (VrPanel.Active) return; UiSurface.Begin(out var m); Draw(); UiSurface.End(m); }
+    // @description - Draw (see the body for details).
+    // @return {Void} - nothing
     public void Draw()
     {
         if (!car || car.engine == null) return;
@@ -42,10 +46,10 @@ public class DebugHUD : MonoBehaviour
         var f = car.GetComponent<FfbController>();
         if (f && info)
         {
-            float x = UiSurface.Width - 238f, y = 70f; var pr = car.router && car.router.map != null ? car.router.map.profile : null; float cap = pr != null ? pr.ffbMaxOutputPct * 0.01f : 1f;
+            float x = UiSurface.Width - 238f, y = 70f; var pr = car.router && car.router.map != null ? car.router.map.profile : null; float cap = pr != null ? pr.forceFeedbackMaxOutputPercent * 0.01f : 1f;
             string ft = $"FFB {f.status}\ncol {f.totalTorque,5:0.0} Nm (tire {car.columnTorque,4:0.0} stop {f.stopTorque,3:0.0})\ncmd {f.command * 100f,4:0}%  clip {f.clipPct,3:0}%"; var sz = mono.CalcSize(new GUIContent(ft));
             GUI.Box(new Rect(x, y, 230f, sz.y + 18f), GUIContent.none); GUI.Label(new Rect(x + 4f, y + 2f, 224f, sz.y), ft, mono); y += sz.y + 6f;
-            float n = pr != null && pr.wheelbaseMaxTorqueNm > 0f ? Mathf.Clamp(f.totalTorque / pr.wheelbaseMaxTorqueNm * pr.ffbStrengthPct * 0.01f, -1.5f, 1.5f) : 0f;   // clipping meter
+            float n = pr != null && pr.wheelbaseMaxTorqueNm > 0f ? Mathf.Clamp(f.totalTorque / pr.wheelbaseMaxTorqueNm * pr.forceFeedbackStrengthPercent * 0.01f, -1.5f, 1.5f) : 0f;   // clipping meter
             float cx = x + 115f, bw = 100f; GUI.color = Color.gray; GUI.DrawTexture(new Rect(x + 10f, y, 210f, 7f), Texture2D.whiteTexture);
             GUI.color = Mathf.Abs(n) > cap ? Color.red : Color.green; GUI.DrawTexture(n >= 0 ? new Rect(cx, y, Mathf.Min(n, 1f) * bw, 7f) : new Rect(cx + Mathf.Max(n, -1f) * bw, y, -Mathf.Max(n, -1f) * bw, 7f), Texture2D.whiteTexture);
             GUI.color = Color.white; GUI.DrawTexture(new Rect(cx - 1f, y - 2f, 2f, 11f), Texture2D.whiteTexture); GUI.DrawTexture(new Rect(cx + cap * bw, y - 2f, 2f, 11f), Texture2D.whiteTexture); GUI.DrawTexture(new Rect(cx - cap * bw, y - 2f, 2f, 11f), Texture2D.whiteTexture);
@@ -53,12 +57,24 @@ public class DebugHUD : MonoBehaviour
         if (info) { Box(8f, UiSurface.Height - 230f, JointText(car).TrimEnd('\n')); GUI.Label(new Rect(8, UiSurface.Height - 56f, 1200, 16), "W/S throttle/brake | A/D steer | E/Q shift | LShift clutch | Space handbrake | I ign | hold T starter | R reset | Backspace reset to start | C cam | H hide info | F1/Esc settings", mono); }
     }
     public const float MphPerMs = 2.236936f;   // display only: 1 m/s = 2.236936 mph (exact by definition of the mile); physics stays SI
+    // @description - F.
+    // @param {double} c - value of type double
+    // @return {double} - the f
     static double F(double c) => TireThermal.CelsiusToFahrenheit(c);
+    // @description - Box.
+    // @param {float} x - value of type float
+    // @param {float} y - value of type float
+    // @param {string} t - value of type string
+    // @return {Void} - nothing
     void Box(float x, float y, string t) { var sz = mono.CalcSize(new GUIContent(t)); GUI.Box(new Rect(x, y, sz.x + 10f, sz.y + 6f), GUIContent.none); GUI.Label(new Rect(x + 5f, y + 3f, sz.x + 2f, sz.y), t, mono); }
-    static bool HudVisible(CarController c) => !(c.router && c.router.map != null && c.router.map.profile != null) || c.router.map.profile.hudVisible;
+    // @description - Hud visible.
+    // @param {CarController} car - car
+    // @return {bool} - the hud visible
+    static bool HudVisible(CarController car) => !(car.router && car.router.map != null && car.router.map.profile != null) || car.router.map.profile.hudVisible;
 
-    // Steering readout (numbers only). The on-screen wheel ring graphic was removed: GUIUtility.RotateAroundPivot under the UiSurface
-    // scale matrix drew it oversized as a giant arc down the right side. Car's steering-wheel (column) angle; road-wheel angles from the linkage kinematics (SteeringLinkage).
+    // @description - Steering readout (numbers only). The on-screen wheel ring graphic was removed: GUIUtility.RotateAroundPivot under the UiSurface scale matrix drew it oversized as a giant arc down the right side. Car's steering-wheel (column) angle; road-wheel angles from the linkage kinematics (SteeringLinkage).
+    // @param {CarController} car - car
+    // @return {Void} - nothing
     static void DrawWheel(CarController car)
     {
         float cx = UiSurface.Width - 110f;
@@ -67,6 +83,10 @@ public class DebugHUD : MonoBehaviour
     // Joint reaction forces on the car body (tire-to-body force path), from the linear maps in compliance.json (linearised at design
     // ride height, bush rates ESTIMATED). Shown as |F| in N with the vertical component; front corners use previous-step tire forces.
     static readonly string[] FJ = { "armF", "armR", "tieRod", "topMnt", "ballJ" }, RJ = { "pivL", "pivR", "dampL", "dampR" };
+    // @description - Front joints.
+    // @param {SuspensionTables} k - value of type SuspensionTables
+    // @param {WheelCorner} w - value of type WheelCorner
+    // @return {Vector3[]} - the front joints
     public static Vector3[] FrontJoints(SuspensionTables k, WheelCorner w)
     {
         var r = new Vector3[5]; if (k == null || k.frontJointReactions == null || k.frontJointReactions.Length < 60) return r;
@@ -77,6 +97,11 @@ public class DebugHUD : MonoBehaviour
         { int b = (l * 5 + jn) * 3; r[jn] += L[l] * new Vector3(k.frontJointReactions[b], sy * k.frontJointReactions[b + 1], k.frontJointReactions[b + 2]); }
         return r;
     }
+    // @description - Rear joints.
+    // @param {SuspensionTables} k - value of type SuspensionTables
+    // @param {WheelCorner} wl - value of type WheelCorner
+    // @param {WheelCorner} wr - value of type WheelCorner
+    // @return {Vector3[]} - the rear joints
     public static Vector3[] RearJoints(SuspensionTables k, WheelCorner wl, WheelCorner wr)
     {
         var r = new Vector3[4]; if (k == null || k.rearBeamJointReactions == null || k.rearBeamJointReactions.Length < 36) return r;
@@ -92,6 +117,9 @@ public class DebugHUD : MonoBehaviour
         }
         return r;
     }
+    // @description - Joint text.
+    // @param {CarController} car - car
+    // @return {string} - the joint text
     static string JointText(CarController car)
     {
         var k = car.carParams.suspensionTables; if (!k) return "";

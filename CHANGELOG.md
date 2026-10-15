@@ -9,6 +9,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [2026-10-14] (PT)
 
+### Changed (readability pass 6/6 part 2: input, settings, UI/VR, PT 21:55)
+
+- **Old saved settings are broken on purpose:** `input_bindings.json` settings version is now 9 and files of any other version are discarded (defaults used, a warning is logged). JSON keys were renamed (see `docs/RENAMES.md`). The settings migration code and its 5 migration-only tests were removed and 1 test added (edit-mode tests: 113/113 pass; the 112 retained tests are unchanged).
+- Headers (`@description/@param/@return`) on all methods of `InputBindings`, `InputRouter`, `GamepadSteering`, `HidReportFilter`, `VrManager`, `VrPanel`, `Cockpit`, `FfbController`, `DebugHUD`, `FollowCam` and their tests; cryptic parameters renamed. No simulation change.
+
 ### Changed (readability pass 6/6 part 1: parameter, table and scene field names, PT 21:20)
 
 - **Old scenes data, saved assets and `-overrides` files from before this change no longer match: serialized field names were renamed (breaking change approved by Taylor).** `CarParams`, `SuspensionTables`, `TireScale`, `ViscoTire.Flags` members now use full names; `Assets/SciroccoParams.asset`, `Assets/SuspensionTables.asset` and `Assets/TestTrack.unity` were re-keyed with the values preserved (checked with a SerializedObject dump before/after). `FormerlySerializedAs` attributes and the legend comments were removed. `tools/kinematics/export_unity.py` writes the new names; `-overrides` files must use the new `p.<name>` keys (see `docs/RENAMES.md`).

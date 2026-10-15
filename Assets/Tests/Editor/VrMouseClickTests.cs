@@ -9,7 +9,12 @@ public class VrMouseClickTests
     static readonly MethodInfo EndC = typeof(GUIUtility).GetMethod("Internal_EndContainer", BindingFlags.NonPublic | BindingFlags.Static);
     static readonly object State = Activator.CreateInstance(typeof(GUIUtility).Assembly.GetType("UnityEngine.ObjectGUIState"), true);   // what IMGUIContainer uses to enter OnGUI
     const int Id = 424242;
-    // one OnGUI call as Unity makes it: given event type, panel matrix, VrPanel's dispatch logic
+    // @description - one OnGUI call as Unity makes it: given event type, panel matrix, VrPanel's dispatch logic
+    // @param {EventType} t - value of type EventType
+    // @param {VrPointerQueue} q - value of type VrPointerQueue
+    // @param {Vector2} cursor - cursor
+    // @param {Action} draw - draw
+    // @return {Void} - nothing
     static void Pass(EventType t, VrPointerQueue q, Vector2 cursor, Action draw)
     {
         Event.current = new Event { type = t, mousePosition = new Vector2(-999f, -999f) };   // native position is meaningless (desktop window)
@@ -23,8 +28,15 @@ public class VrMouseClickTests
         }
         finally { GUI.matrix = Matrix4x4.identity; End.Invoke(null, new object[] { 1 }); EndC.Invoke(null, null); }
     }
+    // @description - Frame.
+    // @param {VrPointerQueue} q - value of type VrPointerQueue
+    // @param {Vector2} cursor - cursor
+    // @param {Action} draw - draw
+    // @return {Void} - nothing
     static void Frame(VrPointerQueue q, Vector2 cursor, Action draw) { Pass(EventType.Layout, q, cursor, draw); Pass(EventType.Repaint, q, cursor, draw); }
 
+    // @description - Queue down drag up scroll.
+    // @return {Void} - nothing
     [Test] public void Queue_Down_Drag_Up_Scroll()
     {
         var q = new VrPointerQueue();
@@ -35,6 +47,8 @@ public class VrMouseClickTests
         var s = q.Dequeue(); Assert.AreEqual(EventType.ScrollWheel, s.type); Assert.Greater(s.delta.y, 0f);
         Assert.AreEqual(0, q.Count);
     }
+    // @description - Click fires layout button through queue.
+    // @return {Void} - nothing
     [Test] public void Click_Fires_Layout_Button_Through_Queue()
     {
         var q = new VrPointerQueue(); int clicks = 0; Rect btn = default;
@@ -55,6 +69,8 @@ public class VrMouseClickTests
         var off = new Vector2(c.x, c.y + 200f); q.Sample(true, off, 0f); Frame(q, off, Draw); q.Sample(false, off, 0f); Frame(q, off, Draw);
         Assert.AreEqual(1, clicks, "click elsewhere must not fire it");
     }
+    // @description - Drag moves slider through queue.
+    // @return {Void} - nothing
     [Test] public void Drag_Moves_Slider_Through_Queue()
     {
         var q = new VrPointerQueue(); float v = 0f; var r = new Rect(50, 50, 200, 20);
@@ -66,6 +82,8 @@ public class VrMouseClickTests
         q.Sample(false, b, 0f); Frame(q, b, Draw);
         Assert.Greater(v, 0.8f, "slider must follow the VR cursor drag");
     }
+    // @description - Map to panel corners.
+    // @return {Void} - nothing
     [Test] public void MapToPanel_Corners()
     {
         Assert.AreEqual(new Vector2(0f, 480f), VrMouse.MapToPanel(Vector2.zero, 1920, 1080, 1280, 720, 1.5f));

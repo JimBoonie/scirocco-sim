@@ -4,7 +4,13 @@ using UnityEngine;
 public static class UiSurface
 {
     public const float DesignHeight = 720f;   // UI layout reference height (px); larger screens scale the IMGUI up, never down
+    // @description - Begin.
+    // @param {out Matrix4x4} old - old
+    // @return {Void} - nothing
     public static void Begin(out Matrix4x4 old) { old = GUI.matrix; float s = Mathf.Max(1f, Screen.height / DesignHeight); GUI.matrix = Matrix4x4.Scale(new Vector3(s, s, 1f)); W = Mathf.RoundToInt(Screen.width / s); H = Mathf.RoundToInt(Screen.height / s); }
+    // @description - End.
+    // @param {Matrix4x4} old - old
+    // @return {Void} - nothing
     public static void End(Matrix4x4 old) { GUI.matrix = old; W = H = 0; }
     public static int W = 0, H = 0; public static int Width => W > 0 ? W : Screen.width; public static int Height => H > 0 ? H : Screen.height; }
 public class VrPanel : MonoBehaviour
@@ -16,12 +22,21 @@ public class VrPanel : MonoBehaviour
     RenderTexture hudRT, menuRT; Transform hudQuad, menuQuad; Material hudMat, menuMat;
     // panel size/placement in the cockpit (m; layout choice for legibility at ~0.8-1 m, not physics)
     const int TexW = 1280, TexH = 720; const float UiScale = 1.5f;   // IMGUI drawn at 853x480 logical px, scaled 1.5x: ~13-14 px text at Index pixel density (~14 px/deg) at 0.6 m
+    // @description - Awake.
+    // @return {Void} - nothing
     void Awake() { forced = System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-vrpanels") >= 0; }
-    Transform Quad(string n, out Material m, RenderTexture rt)
+    // @description - Quad.
+    // @param {string} objectName - object name
+    // @param {out Material} m - value of type Material
+    // @param {RenderTexture} rt - value of type RenderTexture
+    // @return {Transform} - the quad
+    Transform Quad(string objectName, out Material m, RenderTexture rt)
     {
-        var g = GameObject.CreatePrimitive(PrimitiveType.Quad); g.name = n; Destroy(g.GetComponent<Collider>()); g.layer = 2;
+        var g = GameObject.CreatePrimitive(PrimitiveType.Quad); g.name = objectName; Destroy(g.GetComponent<Collider>()); g.layer = 2;
         m = new Material(Shader.Find("Unlit/Texture")) { mainTexture = rt }; g.GetComponent<MeshRenderer>().sharedMaterial = m; return g.transform;
     }
+    // @description - Ensure.
+    // @return {Void} - nothing
     void Ensure()
     {
         if (hudRT || !cockpit || !cockpit.eyeAnchor) return;
@@ -31,12 +46,16 @@ public class VrPanel : MonoBehaviour
         hudQuad.SetParent(cockpit.eyeAnchor, false); hudQuad.localPosition = new Vector3(0.36f, -0.16f, 0.6f); hudQuad.localRotation = Quaternion.Euler(10f, 30f, 0f); hudQuad.localScale = new Vector3(0.48f, 0.27f, 1f);
         menuQuad.SetParent(cockpit.eyeAnchor, false); menuQuad.localPosition = new Vector3(0.05f, 0.04f, 0.6f); menuQuad.localRotation = Quaternion.identity; menuQuad.localScale = new Vector3(0.8f, 0.45f, 1f);
     }
+    // @description - Late update.
+    // @return {Void} - nothing
     void LateUpdate()
     {
         bool on = Active; if (on) Ensure();
         if (hudQuad) hudQuad.gameObject.SetActive(on && showHud && !(router && router.menuOpen));
         if (menuQuad) menuQuad.gameObject.SetActive(on && router && router.menuOpen);
     }
+    // @description - Handles the gui.
+    // @return {Void} - nothing
     void OnGUI()
     {
         if (!Active || !hudRT) return;
@@ -64,6 +83,8 @@ public class VrPanel : MonoBehaviour
         GUI.matrix = m0; UiSurface.W = UiSurface.H = 0;
     }
     readonly VrPointerQueue pointer = new VrPointerQueue();
+    // @description - Update (see the body for details).
+    // @return {Void} - nothing
     void Update()
     {   // sample the mouse through the Input System every frame (works while SteamVR owns window focus; OS clicks then never reach IMGUI)
         var ms = UnityEngine.InputSystem.Mouse.current;
@@ -71,6 +92,8 @@ public class VrPanel : MonoBehaviour
         var mp = VrMouse.MapToPanel(ms.position.ReadValue(), Screen.width, Screen.height, TexW, TexH, UiScale);
         pointer.Sample(ms.leftButton.isPressed, mp, ms.scroll.ReadValue().y);
     }
+    // @description - Handles the destroy.
+    // @return {Void} - nothing
     void OnDestroy() { if (hudRT) hudRT.Release(); if (menuRT) menuRT.Release(); }
 }
 
@@ -87,6 +110,10 @@ public static class VrMouse
     /// Fix: push a parent clip whose INPUT transform maps that absolute position onto the panel point (render transform unchanged),
     /// the mechanism UIElements' IMGUIContainer uses for the same problem. Falls back to the plain write if the internal API is missing.
     static System.Reflection.MethodInfo pushParent, popParent, absMouse, popClip, clipCount; static bool resolved;
+    // @description - With mouse.
+    // @param {Vector2} panelPos - panel pos
+    // @param {System.Action} draw - draw
+    // @return {Void} - nothing
     public static void WithMouse(Vector2 panelPos, System.Action draw)
     {
         if (!resolved)
@@ -111,13 +138,15 @@ public static class VrMouse
             popParent.Invoke(null, null); GUI.matrix = m;
         }
     }
+    // @description - Tests whether pointer event.
+    // @param {EventType} t - value of type EventType
+    // @return {bool} - the is pointer event
     public static bool IsPointerEvent(EventType t) => t == EventType.MouseDown || t == EventType.MouseUp || t == EventType.MouseDrag || t == EventType.ScrollWheel || t == EventType.ContextClick;
-    /// Clicks for the VR menu: the native IMGUI mouse events only arrive when the desktop mirror window has OS focus and the OS cursor is
-    /// over it, which in VR it usually is not (SteamVR / the compositor owns focus, runInBackground keeps us running). The cursor position
-    /// came from the Input System, so it moved, but MouseDown/MouseUp never reached the menu. Now the Input System button/scroll state is
-    /// turned into IMGUI events here: one queued event replaces a Repaint pass (the Layout pass just before it has laid the menu out),
-    /// the panel's own native mouse events are ignored (they are in desktop-window coordinates, not panel coordinates). Returns true when
-    /// a queued event was dispatched (the caller must not render this pass).
+    // @description - Clicks for the VR menu: the native IMGUI mouse events only arrive when the desktop mirror window has OS focus and the OS cursor is over it, which in VR it usually is not (SteamVR / the compositor owns focus, runInBackground keeps us running). The cursor position came from the Input System, so it mov
+    // @param {VrPointerQueue} q - value of type VrPointerQueue
+    // @param {Vector2} panelPos - panel pos
+    // @param {System.Action} draw - draw
+    // @return {bool} - the dispatch
     public static bool Dispatch(VrPointerQueue q, Vector2 panelPos, System.Action draw)
     {
         var e = Event.current; if (e == null || e.type != EventType.Repaint || q.Count == 0) return false;
@@ -127,19 +156,35 @@ public static class VrMouse
         e.type = EventType.Repaint;   // other OnGUI scripts this frame still get their Repaint
         return true;
     }
+    // @description - Enabled.
+    // @param {bool} xrActive - xr active
+    // @param {bool} menuOpen - menu open
+    // @return {bool} - the enabled
     public static bool Enabled(bool xrActive, bool menuOpen) => xrActive && menuOpen;
+    // @description - Tries to get the screen pos.
+    // @param {out Vector2} p - value of type Vector2
+    // @return {bool} - the try screen pos
     public static bool TryScreenPos(out Vector2 p)
     {
         var m = UnityEngine.InputSystem.Mouse.current; p = default; if (m == null) return false;
         p = m.position.ReadValue(); return true;   // Input System: pixels, origin bottom-left of the game window
     }
-    /// screen pixel (bottom-left origin) -> IMGUI logical position inside the menu texture (top-left origin, divided by the UI scale)
+    // @description - screen pixel (bottom-left origin) -> IMGUI logical position inside the menu texture (top-left origin, divided by the UI scale)
+    // @param {Vector2} screen - screen
+    // @param {float} screenW - screen w
+    // @param {float} screenH - screen h
+    // @param {float} texW - tex w
+    // @param {float} texH - tex h
+    // @param {float} uiScale - ui scale
+    // @return {Vector2} - the map to panel
     public static Vector2 MapToPanel(Vector2 screen, float screenW, float screenH, float texW, float texH, float uiScale)
     {
         float u = Mathf.Clamp01(screen.x / Mathf.Max(1f, screenW)), v = Mathf.Clamp01(screen.y / Mathf.Max(1f, screenH));
         return new Vector2(u * texW / uiScale, (1f - v) * texH / uiScale);
     }
     static Texture2D tex;
+    // @description - Cursor texture.
+    // @return {Texture2D} - the cursor texture
     public static Texture2D CursorTexture()
     {   // 16x24 arrow, white with black outline (generated: no asset to import)
         if (tex) return tex;
@@ -152,6 +197,9 @@ public static class VrMouse
         }
         tex.Apply(); return tex;
     }
+    // @description - Draws the cursor.
+    // @param {Vector2} p - value of type Vector2
+    // @return {Void} - nothing
     public static void DrawCursor(Vector2 p)
     {
         if (Event.current.type != EventType.Repaint) return;
@@ -166,8 +214,17 @@ public class VrPointerQueue
     readonly System.Collections.Generic.Queue<Evt> q = new System.Collections.Generic.Queue<Evt>();
     bool down; Vector2 last;
     public int Count => q.Count;
+    // @description - Dequeue.
+    // @return {Evt} - the dequeue
     public Evt Dequeue() => q.Dequeue();
+    // @description - Reset (see the body for details).
+    // @return {Void} - nothing
     public void Reset() { q.Clear(); down = false; }
+    // @description - Sample (see the body for details).
+    // @param {bool} pressed - pressed
+    // @param {Vector2} pos - pos
+    // @param {float} scrollY - scroll y
+    // @return {Void} - nothing
     public void Sample(bool pressed, Vector2 pos, float scrollY)
     {
         if (pressed && !down) Add(EventType.MouseDown, pos, Vector2.zero);
@@ -177,6 +234,11 @@ public class VrPointerQueue
         down = pressed; last = pos;
         while (q.Count > 16) q.Dequeue();
     }
+    // @description - Add (see the body for details).
+    // @param {EventType} t - value of type EventType
+    // @param {Vector2} p - value of type Vector2
+    // @param {Vector2} d - value of type Vector2
+    // @return {Void} - nothing
     void Add(EventType t, Vector2 p, Vector2 d)
     {   // coalesce consecutive drags (one per frame is enough; a click is never dropped)
         if (t == EventType.MouseDrag && q.Count > 0) { var arr = q.ToArray(); var l = arr[arr.Length - 1]; if (l.type == EventType.MouseDrag) { q.Clear(); for (int i = 0; i < arr.Length - 1; i++) q.Enqueue(arr[i]); d += l.delta; } }

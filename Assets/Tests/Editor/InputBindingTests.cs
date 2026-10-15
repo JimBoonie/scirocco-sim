@@ -3,6 +3,8 @@ using NUnit.Framework; using UnityEngine; using UnityEngine.InputSystem; using U
 public class InputBindingTests : InputTestFixture
 {
     InputDevice wheel, pedals, shifter; Gamepad pad;
+    // @description - Setup (see the body for details).
+    // @return {Void} - nothing
     [SetUp] public override void Setup()
     {
         base.Setup();
@@ -14,58 +16,81 @@ public class InputBindingTests : InputTestFixture
         shifter = InputSystem.AddDevice(new InputDeviceDescription { product = "BrandC Shifter" });
         pad = InputSystem.AddDevice<Gamepad>();
     }
-    static InputMapper NM(BindingProfile p) { p.debounceMs = 0f; return new InputMapper(p); }   // edge-logic tests: debounce off (chatter tests below set it)
+    // @description - Nm.
+    // @param {BindingProfile} profile - profile
+    // @return {InputMapper} - the nm
+    static InputMapper NM(BindingProfile profile) { profile.debounceMs = 0f; return new InputMapper(profile); }   // edge-logic tests: debounce off (chatterCount tests below set it)
     double now; [TearDown] public override void TearDown() { InputMapper.Clock = () => Time.realtimeSinceStartupAsDouble; base.TearDown(); }
-    static AxisControl A(InputDevice d, string path) => (AxisControl)d.TryGetChildControl(path);
+    // @description - A.
+    // @param {InputDevice} device - device
+    // @param {string} path - path
+    // @return {AxisControl} - the a
+    static AxisControl A(InputDevice device, string path) => (AxisControl)device.TryGetChildControl(path);
 
+    // @description - Calibration math.
+    // @return {Void} - nothing
     [Test] public void Calibration_Math()
     {
-        var c = new AxisCal { min = -1f, max = 1f };                       // pedal reporting -1 released .. +1 pressed
+        var c = new AxisCalibration { min = -1f, max = 1f };                       // pedal reporting -1 released .. +1 pressed
         Assert.AreEqual(0f, c.Normalize(-1f, false), 1e-5); Assert.AreEqual(0.5f, c.Normalize(0f, false), 1e-5); Assert.AreEqual(1f, c.Normalize(1f, false), 1e-5);
         c.invert = true; Assert.AreEqual(1f, c.Normalize(-1f, false), 1e-5);  // inverted pedal (released = +1)
-        var h = new AxisCal { min = -1f, max = 1f, center = 0f, half = AxisHalf.Negative }; Assert.AreEqual(0.6f, h.Normalize(-0.6f, false), 1e-5); Assert.AreEqual(0f, h.Normalize(0.6f, false), 1e-5);
-        var w = new AxisCal { min = 0f, max = 1f, center = 0.5f }; Assert.AreEqual(-1f, w.Normalize(0f, true), 1e-5); Assert.AreEqual(0.5f, w.Normalize(0.75f, true), 1e-5);   // 0..1 wheel axis
-        var dz = new AxisCal { min = 0f, max = 1f, deadzone = 0.1f }; Assert.AreEqual(0f, dz.Normalize(0.05f, false), 1e-5); Assert.AreEqual(0.5f, dz.Normalize(0.55f, false), 1e-5);
+        var h = new AxisCalibration { min = -1f, max = 1f, center = 0f, half = AxisHalf.Negative }; Assert.AreEqual(0.6f, h.Normalize(-0.6f, false), 1e-5); Assert.AreEqual(0f, h.Normalize(0.6f, false), 1e-5);
+        var w = new AxisCalibration { min = 0f, max = 1f, center = 0.5f }; Assert.AreEqual(-1f, w.Normalize(0f, true), 1e-5); Assert.AreEqual(0.5f, w.Normalize(0.75f, true), 1e-5);   // 0..1 wheel axis
+        var dz = new AxisCalibration { min = 0f, max = 1f, deadzone = 0.1f }; Assert.AreEqual(0f, dz.Normalize(0.05f, false), 1e-5); Assert.AreEqual(0.5f, dz.Normalize(0.55f, false), 1e-5);
     }
+    // @description - Calibration full range bipolar pedal.
+    // @return {Void} - nothing
     [Test] public void Calibration_FullRangeBipolarPedal()   // Heusinkveld Sprint on Windows: -1 released .. +1 pressed
     {
-        var c = new AxisCal(); Assert.IsTrue(c.ApplyCapture(-1f, 1f, -1f, false));
+        var c = new AxisCalibration(); Assert.IsTrue(c.ApplyCapture(-1f, 1f, -1f, false));
         Assert.IsFalse(c.invert); Assert.IsTrue(c.hasRest);
         Assert.AreEqual(0f, c.Normalize(-1f, false), 1e-5); Assert.AreEqual(0.5f, c.Normalize(0f, false), 1e-5); Assert.AreEqual(1f, c.Normalize(1f, false), 1e-5);
         Assert.AreEqual(0f, c.Normalize(-1.2f, false), 1e-5); Assert.AreEqual(1f, c.Normalize(1.2f, false), 1e-5);   // clamped
     }
+    // @description - Calibration inverted bipolar pedal.
+    // @return {Void} - nothing
     [Test] public void Calibration_InvertedBipolarPedal()     // +1 released .. -1 pressed
     {
-        var c = new AxisCal(); Assert.IsTrue(c.ApplyCapture(-1f, 1f, 1f, false));
+        var c = new AxisCalibration(); Assert.IsTrue(c.ApplyCapture(-1f, 1f, 1f, false));
         Assert.IsTrue(c.invert);
         Assert.AreEqual(0f, c.Normalize(1f, false), 1e-5); Assert.AreEqual(0.25f, c.Normalize(0.5f, false), 1e-5); Assert.AreEqual(1f, c.Normalize(-1f, false), 1e-5);
     }
+    // @description - Calibration inverted unipolar and rest offset.
+    // @return {Void} - nothing
     [Test] public void Calibration_InvertedUnipolar_And_RestOffset()
     {
-        var c = new AxisCal(); Assert.IsTrue(c.ApplyCapture(0f, 1f, 1f, false)); Assert.IsTrue(c.invert);
+        var c = new AxisCalibration(); Assert.IsTrue(c.ApplyCapture(0f, 1f, 1f, false)); Assert.IsTrue(c.invert);
         Assert.AreEqual(0f, c.Normalize(1f, false), 1e-5); Assert.AreEqual(1f, c.Normalize(0f, false), 1e-5);
-        var r = new AxisCal(); Assert.IsTrue(r.ApplyCapture(-1f, 1f, -0.9f, false));   // rest slightly off the end: rest still reads 0
+        var r = new AxisCalibration(); Assert.IsTrue(r.ApplyCapture(-1f, 1f, -0.9f, false));   // rest slightly off the end: rest still reads 0
         Assert.AreEqual(0f, r.Normalize(-0.9f, false), 1e-5); Assert.AreEqual(0f, r.Normalize(-1f, false), 1e-5); Assert.AreEqual(1f, r.Normalize(1f, false), 1e-5);
         r.deadzone = 0.1f; Assert.AreEqual(0f, r.Normalize(-0.8f, false), 1e-5);
     }
+    // @description - Calibration no travel keeps previous.
+    // @return {Void} - nothing
     [Test] public void Calibration_NoTravel_KeepsPrevious()
     {
-        var c = new AxisCal { min = -1f, max = 1f }; Assert.IsFalse(c.ApplyCapture(-1f, -0.99f, -1f, false)); Assert.IsFalse(c.calibrated); Assert.IsFalse(c.hasRest);
+        var c = new AxisCalibration { min = -1f, max = 1f }; Assert.IsFalse(c.ApplyCapture(-1f, -0.99f, -1f, false)); Assert.IsFalse(c.calibrated); Assert.IsFalse(c.hasRest);
     }
+    // @description - Calibration wheel and combined axis use centre.
+    // @return {Void} - nothing
     [Test] public void Calibration_WheelAndCombinedAxis_UseCentre()
     {
-        var w = new AxisCal(); w.ApplyCapture(-1f, 1f, 0.02f, true); Assert.IsFalse(w.hasRest); Assert.AreEqual(0f, w.Normalize(0.02f, true), 1e-5); Assert.AreEqual(1f, w.Normalize(1f, true), 1e-5);
-        var h = new AxisCal { half = AxisHalf.Positive }; h.ApplyCapture(-1f, 1f, 0f, false); Assert.IsFalse(h.hasRest); Assert.AreEqual(0.5f, h.Normalize(0.5f, false), 1e-5);
+        var w = new AxisCalibration(); w.ApplyCapture(-1f, 1f, 0.02f, true); Assert.IsFalse(w.hasRest); Assert.AreEqual(0f, w.Normalize(0.02f, true), 1e-5); Assert.AreEqual(1f, w.Normalize(1f, true), 1e-5);
+        var h = new AxisCalibration { half = AxisHalf.Positive }; h.ApplyCapture(-1f, 1f, 0f, false); Assert.IsFalse(h.hasRest); Assert.AreEqual(0.5f, h.Normalize(0.5f, false), 1e-5);
     }
+    // @description - Multi device.
+    // @return {BindingProfile} - the multi device
     BindingProfile MultiDevice()
     {
         var p = InputMapper.Defaults();
         p.Get(InAction.Steer).Add(InputMapper.FromControl(A(wheel, "stick/x"), true));
-        var thr = InputMapper.FromControl(A(pedals, "stick/y"), true); thr.cal = new AxisCal { min = -1f, max = 1f, center = 0f, half = AxisHalf.Positive }; p.Get(InAction.Throttle).Add(thr);
-        var brk = InputMapper.FromControl(A(pedals, "stick/y"), true); brk.cal = new AxisCal { min = -1f, max = 1f, center = 0f, half = AxisHalf.Negative }; p.Get(InAction.Brake).Add(brk);
+        var thr = InputMapper.FromControl(A(pedals, "stick/y"), true); thr.calibration = new AxisCalibration { min = -1f, max = 1f, center = 0f, half = AxisHalf.Positive }; p.Get(InAction.Throttle).Add(thr);
+        var brk = InputMapper.FromControl(A(pedals, "stick/y"), true); brk.calibration = new AxisCalibration { min = -1f, max = 1f, center = 0f, half = AxisHalf.Negative }; p.Get(InAction.Brake).Add(brk);
         p.Get(InAction.Gear1).Add(InputMapper.FromControl(shifter.TryGetChildControl("trigger"), true));
         return p;
     }
+    // @description - Multi device wheel pedals shifter gamepad.
+    // @return {Void} - nothing
     [Test] public void MultiDevice_Wheel_Pedals_Shifter_Gamepad()
     {
         var m = NM(MultiDevice());
@@ -77,6 +102,8 @@ public class InputBindingTests : InputTestFixture
         Set(pad.rightTrigger, 1f); Assert.AreEqual(1f, m.Axis(InAction.Throttle), 1e-3);   // gamepad default binding coexists (max of slots)
         m.Dispose();
     }
+    // @description - Steering 1to1 soft lock and scaled.
+    // @return {Void} - nothing
     [Test] public void Steering_1to1_SoftLock_And_Scaled()
     {
         var m = NM(MultiDevice()); m.profile.wheelRotationDeg = 900f;
@@ -88,6 +115,8 @@ public class InputBindingTests : InputTestFixture
         m.profile.mapping = SteerMapping.RealColumn1to1; m.profile.wheelRotationDeg = 1440f; Assert.AreEqual(630f, m.StepSteer(0.01f, 630f, 90f, 17.32f), 0.5f); Assert.AreEqual(720f, m.wheelDegUnclamped, 0.5f);   // rack stop; FFB soft lock sees overtravel
         m.Dispose();
     }
+    // @description - Capture finds moved axis on any device.
+    // @return {Void} - nothing
     [Test] public void Capture_Finds_Moved_Axis_On_Any_Device()
     {
         var m = NM(InputMapper.Defaults()); m.BeginCapture();
@@ -96,6 +125,8 @@ public class InputBindingTests : InputTestFixture
         m.Dispose();
     }
     // ---------- gear-up spam regression (pedal axis resting at -1/+1 captured as a button) ----------
+    // @description - Capture button action ignores axis resting deflected and held buttons.
+    // @return {Void} - nothing
     [Test] public void Capture_ButtonAction_Ignores_Axis_Resting_Deflected_And_Held_Buttons()
     {
         var y = A(pedals, "stick/y"); Set(y, 1f);                                      // pedal resting at +1 (inverted Heusinkveld style)
@@ -106,12 +137,14 @@ public class InputBindingTests : InputTestFixture
         Press(WheelBtn); var c = m.PollCapture(false); Assert.AreEqual(WheelBtn, c, "a fresh button press binds");
         m.Dispose();
     }
+    // @description - Capture button action from pedal uses rest baseline no spam.
+    // @return {Void} - nothing
     [Test] public void Capture_ButtonAction_From_Pedal_Uses_Rest_Baseline_No_Spam()
     {
         var y = A(pedals, "stick/y"); Set(y, -1f);                                     // rests at -1
         var m = NM(InputMapper.Defaults()); m.BeginCapture();
         Set(y, 1f); var c = m.PollCapture(false); Assert.AreEqual(y, c);
-        var b = m.CompleteCapture(InAction.ShiftUp, c); Assert.IsTrue(b.cal.hasRest); Assert.AreEqual(-1f, b.cal.rest, 1e-5);
+        var b = m.CompleteCapture(InAction.ShiftUp, c); Assert.IsTrue(b.calibration.hasRest); Assert.AreEqual(-1f, b.calibration.rest, 1e-5);
         Set(y, -1f); InputSystem.Update(); m.Pressed(InAction.ShiftUp);
         int fires = 0;
         for (int i = 0; i < 30; i++) { Set(y, -1f + 0.02f * (i % 3)); if (m.Pressed(InAction.ShiftUp)) fires++; }   // resting with noise
@@ -122,6 +155,8 @@ public class InputBindingTests : InputTestFixture
         Set(y, -1f); Assert.IsFalse(m.Pressed(InAction.ShiftUp)); Set(y, 1f); Assert.IsTrue(m.Pressed(InAction.ShiftUp), "release then press fires again");
         m.Dispose();
     }
+    // @description - Legacy axis on button action reads relative to rest.
+    // @return {Void} - nothing
     [Test] public void Legacy_Axis_On_Button_Action_Reads_Relative_To_Rest()
     {
         var y = A(pedals, "stick/y"); Set(y, 1f);                                      // old saved profile: pedal axis on ShiftUp, no rest recorded, resting at +1
@@ -130,12 +165,16 @@ public class InputBindingTests : InputTestFixture
         Assert.AreEqual(0, fires);
         m.Dispose();
     }
+    // @description - Button held fires once.
+    // @return {Void} - nothing
     [Test] public void Button_Held_Fires_Once()
     {
         var m = WheelShiftUp(); m.Pressed(InAction.ShiftUp); Press(WheelBtn); Assert.IsTrue(m.Pressed(InAction.ShiftUp));
         for (int i = 0; i < 50; i++) { InputSystem.Update(); Assert.IsFalse(m.Pressed(InAction.ShiftUp)); }
         m.Dispose();
     }
+    // @description - Escape always works and clear bindings.
+    // @return {Void} - nothing
     [Test] public void Escape_Always_Works_And_Clear_Bindings()
     {
         Assert.AreEqual(InputRouter.EscResult.CancelCapture, InputRouter.EscapeAction(true, true, true, true));
@@ -149,8 +188,18 @@ public class InputBindingTests : InputTestFixture
         m.Dispose();
     }
     // ---------- debounce (Simucube 2 paddles chattering 0/1 while held) ----------
+    // @description - Chattery.
+    // @param {float} ms - value of type float
+    // @return {InputMapper} - the chattery
     InputMapper Chattery(float ms) { now = 0; InputMapper.Clock = () => now; var p = InputMapper.Defaults(); p.debounceMs = ms; p.Get(InAction.ShiftUp).Add(InputMapper.FromControl(WheelBtn, true)); var m = new InputMapper(p); m.Pressed(InAction.ShiftUp); return m; }
+    // @description - Step (see the body for details).
+    // @param {InputMapper} m - value of type InputMapper
+    // @param {bool} down - down
+    // @param {double} dtMs - dt ms
+    // @return {int} - the step
     int Step(InputMapper m, bool down, double dtMs) { now += dtMs * 1e-3; if (down) Press(WheelBtn); else Release(WheelBtn); return m.Pressed(InAction.ShiftUp) ? 1 : 0; }
+    // @description - Debounce chatter while held fires exactly once.
+    // @return {Void} - nothing
     [Test] public void Debounce_Chatter_While_Held_Fires_Exactly_Once()
     {
         var m = Chattery(8f); int fires = 0;
@@ -158,11 +207,13 @@ public class InputBindingTests : InputTestFixture
         fires += Step(m, true, 4); fires += Step(m, true, 5); Assert.AreEqual(1, fires, "registers after 8 ms stable");
         for (int i = 0; i < 200; i++) fires += Step(m, i % 3 != 0, 2);    // held with 0/1 twitches every few ms (gaps of 2 ms)
         Assert.AreEqual(1, fires, "chatter while held must not re-shift");
-        Assert.Greater(m.profile.Get(InAction.ShiftUp)[^1].chatter, 50, "chatter counted");
+        Assert.Greater(m.profile.Get(InAction.ShiftUp)[^1].chatterCount, 50, "chatter counted");
         for (int i = 0; i < 6; i++) fires += Step(m, false, 2); Assert.IsFalse(m.Held(InAction.ShiftUp), "released after stable 0");
         for (int i = 0; i < 6; i++) fires += Step(m, true, 2); Assert.AreEqual(2, fires, "second physical press = second shift");
         m.Dispose();
     }
+    // @description - Debounce release chatter and short glitch ignored.
+    // @return {Void} - nothing
     [Test] public void Debounce_Release_Chatter_And_Short_Glitch_Ignored()
     {
         var m = Chattery(8f); int fires = 0;
@@ -175,6 +226,8 @@ public class InputBindingTests : InputTestFixture
         Assert.AreEqual(1, fires);
         m.Dispose();
     }
+    // @description - Debounce uses real time not update count and is saved.
+    // @return {Void} - nothing
     [Test] public void Debounce_Uses_Real_Time_Not_Update_Count_And_Is_Saved()
     {
         var m = Chattery(20f); int fires = 0;
@@ -184,14 +237,18 @@ public class InputBindingTests : InputTestFixture
         Assert.AreEqual(13f, InputMapper.LoadOrDefault(path).debounceMs, 1e-4); Assert.AreEqual(0f, new BindingProfile().debounceMs, 1e-4);
         m.Dispose();
     }
+    // @description - Debounce sub frame chatter does not retrigger.
+    // @return {Void} - nothing
     [Test] public void Debounce_SubFrame_Chatter_Does_Not_Retrigger()   // release+press inside one input update while held (old 'tap' path re-fired)
     {
         var m = Chattery(8f); int fires = 0; fires += Step(m, true, 1); fires += Step(m, true, 10); Assert.AreEqual(1, fires);
         for (int i = 0; i < 20; i++)
         { now += 0.004; Release(WheelBtn, queueEventOnly: true); Press(WheelBtn, queueEventOnly: true); InputSystem.Update(); if (m.Pressed(InAction.ShiftUp)) fires++; }
-        Assert.AreEqual(1, fires); Assert.Greater(m.profile.Get(InAction.ShiftUp)[^1].chatter, 10);
+        Assert.AreEqual(1, fires); Assert.Greater(m.profile.Get(InAction.ShiftUp)[^1].chatterCount, 10);
         m.Dispose();
     }
+    // @description - Persistence and reconnect by product.
+    // @return {Void} - nothing
     [Test] public void Persistence_And_Reconnect_By_Product()
     {
         string path = System.IO.Path.Combine(Application.temporaryCachePath, "bind_test.json");
@@ -205,7 +262,11 @@ public class InputBindingTests : InputTestFixture
     }
     // ---------- menu / binding-capture regressions (wheel button bound to Gear Up flipped tabs and queued 4 upshifts) ----------
     ButtonControl WheelBtn => (ButtonControl)wheel.TryGetChildControl("trigger");
+    // @description - Wheel shift up.
+    // @return {InputMapper} - the wheel shift up
     InputMapper WheelShiftUp() { var p = InputMapper.Defaults(); p.Get(InAction.ShiftUp).Add(InputMapper.FromControl(WheelBtn, true)); return NM(p); }
+    // @description - Menu suppresses gameplay and discards queued presses.
+    // @return {Void} - nothing
     [Test] public void Menu_Suppresses_Gameplay_And_Discards_Queued_Presses()
     {
         var m = WheelShiftUp(); m.Pressed(InAction.ShiftUp);
@@ -219,6 +280,8 @@ public class InputBindingTests : InputTestFixture
         InputSystem.Update(); Assert.IsFalse(m.Pressed(InAction.ShiftUp), "held must not repeat");
         m.Dispose();
     }
+    // @description - Menu tab navigation ignores gameplay buttons and is edge triggered.
+    // @return {Void} - nothing
     [Test] public void Menu_Tab_Navigation_Ignores_Gameplay_Buttons_And_Is_EdgeTriggered()
     {
         var kb = InputSystem.AddDevice<Keyboard>();
@@ -232,6 +295,8 @@ public class InputBindingTests : InputTestFixture
         Press(free); Assert.IsTrue(m.Pressed(InAction.MenuTabPrev), "non-gameplay wheel button may switch tabs"); InputSystem.Update(); Assert.IsFalse(m.Pressed(InAction.MenuTabPrev));
         m.Dispose();
     }
+    // @description - Capture finishes on first press and consumes it.
+    // @return {Void} - nothing
     [Test] public void Capture_Finishes_On_First_Press_And_Consumes_It()
     {
         var m = NM(InputMapper.Defaults()); m.profile.Get(InAction.MenuSelect).Add(InputMapper.FromControl(WheelBtn, true)); m.MarkDirty();
@@ -246,31 +311,46 @@ public class InputBindingTests : InputTestFixture
         m.CompleteCapture(InAction.ShiftUp, c); Assert.AreEqual(before + 1, m.profile.Get(InAction.ShiftUp).Count, "re-capture of same control does not duplicate");
         m.Dispose();
     }
-    [Test] public void Defaults_Tab_Keys_Not_Shared_With_Gameplay_And_Migration()
+    // @description - Defaults tab keys not shared with gameplay.
+    // @return {Void} - nothing
+    [Test] public void Defaults_Tab_Keys_Not_Shared_With_Gameplay()
     {
         var m = NM(InputMapper.Defaults()); InputSystem.AddDevice<Keyboard>(); m.MarkDirty();
         var gp = m.GameplayControls(); foreach (var a in new[] { InAction.MenuTabNext, InAction.MenuTabPrev }) foreach (var b in m.profile.Get(a)) { Assert.NotNull(b.resolved); Assert.IsFalse(gp.Contains(b.resolved), b.Label); }
-        var old = new BindingProfile { version = 3 }; old.Get(InAction.ShiftUp).Add(new Binding { layout = "Keyboard", control = "e" }); InputMapper.Migrate(old);
-        Assert.AreEqual(8, old.version); Assert.Greater(old.Get(InAction.MenuTabNext).Count, 0); Assert.Greater(old.Get(InAction.MenuTabPrev).Count, 0);
+        Assert.Greater(InputMapper.Defaults().Get(InAction.MenuTabNext).Count, 0); Assert.Greater(InputMapper.Defaults().Get(InAction.MenuTabPrev).Count, 0);
         m.Dispose();
     }
-    [Test] public void ResetToStart_DefaultBackspace_AndMigratedIntoOldProfiles()
+    // @description - Settings file of another version is discarded and defaults used.
+    // @return {Void} - nothing
+    [Test] public void Settings_File_Of_Another_Version_Is_Discarded_And_Defaults_Used()
+    {
+        var old = InputMapper.Defaults(); old.version = BindingProfile.CurrentVersion - 1; old.audioVolume = 0.11f;
+        string path = System.IO.Path.Combine(Application.temporaryCachePath, "other_version_bindings.json"); System.IO.File.WriteAllText(path, JsonUtility.ToJson(old));
+        UnityEngine.TestTools.LogAssert.Expect(LogType.Warning, new System.Text.RegularExpressions.Regex("settings version"));
+        var loaded = InputMapper.LoadOrDefault(path);
+        Assert.AreEqual(BindingProfile.CurrentVersion, loaded.version); Assert.AreEqual(InputMapper.Defaults().audioVolume, loaded.audioVolume, 1e-6);
+        loaded.audioVolume = 0.22f; InputMapper.Save(loaded, path); Assert.AreEqual(0.22f, InputMapper.LoadOrDefault(path).audioVolume, 1e-6, "current-version files round-trip");
+    }
+    // @description - Resets the to start default backspace.
+    // @return {Void} - nothing
+    [Test] public void ResetToStart_DefaultBackspace()
     {
         var d = InputMapper.Defaults(); Assert.IsTrue(d.Get(InAction.ResetToStart).Exists(b => b.layout == "Keyboard" && b.control == "backspace"));
         Assert.IsTrue(d.Get(InAction.Reset).Count > 0, "R reset kept");
-        var old = new BindingProfile { version = 4 }; InputMapper.Migrate(old);
-        Assert.IsTrue(old.Get(InAction.ResetToStart).Exists(b => b.control == "backspace")); Assert.AreEqual(8, old.version);
         Assert.IsTrue(d.hudVisible, "info HUD visible by default");
         var q = JsonUtility.FromJson<BindingProfile>(JsonUtility.ToJson(new BindingProfile { hudVisible = false })); Assert.IsFalse(q.hudVisible, "H hide setting persists");
     }
 
-    // 2026-10-14 regression (acdb0e1): with the gamepad assist object present (InputRouter always creates it) a device bound as 'wheel'
-    // never moved the column, assist on or off. Simulates the wheel axis with the router's assist wiring.
+    // @description - 2026-10-14 regression (acdb0e1): with the gamepad assist object present (InputRouter always creates it) a device bound as 'wheel' never moved the column, assist on or off. Simulates the wheel axis with the router's assist wiring.
+    // @param {InputMapper} m - value of type InputMapper
+    // @return {Void} - nothing
     static void WireAssist(InputMapper m)
     {
         m.assist = new GamepadSteering(m.profile.gamepadSteer); m.meanToHandwheel = mean => mean * 17.32f;
         m.assistCtx = new GamepadSteerContext { speed = 20f, lockRoadDeg = 630f / 17.32f, peakSlipDeg = 6f };
     }
+    // @description - Wheel steers directly with assist on and off.
+    // @return {Void} - nothing
     [Test] public void Wheel_Steers_Directly_With_Assist_On_And_Off()
     {
         foreach (bool assistOn in new[] { true, false })
@@ -284,6 +364,8 @@ public class InputBindingTests : InputTestFixture
             m.Dispose();
         }
     }
+    // @description - Gamepad assist applies only to stick.
+    // @return {Void} - nothing
     [Test] public void Gamepad_Assist_Applies_Only_To_Stick()
     {
         var m = NM(InputMapper.Defaults()); WireAssist(m); m.profile.gamepadSteer.enabled = true;
@@ -293,18 +375,5 @@ public class InputBindingTests : InputTestFixture
         var m2 = NM(InputMapper.Defaults()); WireAssist(m2); m2.profile.gamepadSteer.enabled = false;
         Assert.AreEqual(90f * 17.32f * 0.01f, m2.StepSteer(0.01f, 630f, 90f, 17.32f), 0.5f, "assist off: direct rate-limited stick");
         m.Dispose(); m2.Dispose();
-    }
-    [Test] public void Migration_Keeps_Wheel_Binding()
-    {
-        foreach (int ver in new[] { 5, 6, 7 })
-        {
-            var p = MultiDevice(); var w = p.Get(InAction.Steer)[^1]; w.cal = new AxisCal { min = 0f, max = 1f, center = 0.5f, calibrated = true };
-            p.version = ver; p.wheelRotationDeg = 1260f;
-            var q = JsonUtility.FromJson<BindingProfile>(JsonUtility.ToJson(p)); InputMapper.Migrate(q);
-            Assert.AreEqual(8, q.version);
-            var qw = q.Get(InAction.Steer).Find(b => b.product == "BrandA Wheel 900");
-            Assert.NotNull(qw, $"v{ver}: wheel steer binding kept"); Assert.AreEqual(SteerSource.Wheel, qw.steerSource); Assert.IsTrue(qw.cal.calibrated); Assert.AreEqual(0.5f, qw.cal.center, 1e-5);
-            Assert.AreEqual(1260f, q.wheelRotationDeg, 1e-3);
-        }
     }
 }

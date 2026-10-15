@@ -37,13 +37,25 @@ public class GamepadSteering
     // speed band over which the grip limit fades in (m/s): below ~2 m/s the travel angle is undefined (slip-regularisation floor); by 6 m/s
     // the kinematic angle at full lock already exceeds the peak slip angle, so the blend is invisible at parking speed and complete before it matters
     public const float BlendLo = 2f, BlendHi = 6f;
+    // @description - Gamepad steering.
+    // @param {GamepadSteerSettings} settings - settings
+    // @return {Void} - nothing
     public GamepadSteering(GamepadSteerSettings settings) { s = settings; }
+    // @description - Shape.
+    // @param {float} stick - stick
+    // @param {float} deadzone - deadzone
+    // @param {float} gamma - gamma
+    // @return {float} - the shape
     public static float Shape(float stick, float deadzone, float gamma)
     {
         float m = Mathf.Abs(stick); if (m <= deadzone) return 0f;
         float r = Mathf.Clamp01((m - deadzone) / Mathf.Max(1e-4f, 1f - deadzone));
         return Mathf.Sign(stick) * Mathf.Pow(r, Mathf.Max(0.1f, gamma));
     }
+    // @description - Target.
+    // @param {float} shaped - shaped
+    // @param {in GamepadSteerContext} c - value of type GamepadSteerContext
+    // @return {float} - the target
     public float Target(float shaped, in GamepadSteerContext c)
     {
         float w = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(BlendLo, BlendHi, c.speed));
@@ -51,21 +63,27 @@ public class GamepadSteering
         float t = shaped * range + w * Mathf.Clamp01(s.casterFollow) * c.frontTravelDeg;
         return Mathf.Clamp(t, -c.lockRoadDeg, c.lockRoadDeg);
     }
-    /// one step; returns the commanded mean road-wheel angle (deg)
-    public float Step(float dt, float stick, in GamepadSteerContext c)
+    // @description - one step; returns the commanded mean road-wheel angle (deg)
+    // @param {float} deltaTime - delta time
+    // @param {float} stick - stick
+    // @param {in GamepadSteerContext} c - value of type GamepadSteerContext
+    // @return {float} - the step
+    public float Step(float deltaTime, float stick, in GamepadSteerContext c)
     {
         float shaped = Shape(stick, s.deadzone, s.gamma);
-        filtered = s.smoothing > 0f ? filtered + (shaped - filtered) * (1f - Mathf.Exp(-dt / s.smoothing)) : shaped;
+        filtered = s.smoothing > 0f ? filtered + (shaped - filtered) * (1f - Mathf.Exp(-deltaTime / s.smoothing)) : shaped;
         float target = lastTarget = Target(filtered, c);
         float d = target - roadDeg;
         bool unwinding = Mathf.Abs(target) < Mathf.Abs(roadDeg) || target * roadDeg < 0f;
         bool intoSlide = Mathf.Abs(c.rearTravelDeg) > c.peakSlipDeg && d * c.rearTravelDeg > 0f && c.speed > BlendHi;
         countersteering = unwinding || intoSlide;
         float rate = s.steerSpeed * (countersteering ? Mathf.Max(1f, s.countersteer) : 1f);
-        roadDeg = Mathf.Clamp(Mathf.MoveTowards(roadDeg, target, rate * dt), -c.lockRoadDeg, c.lockRoadDeg);
+        roadDeg = Mathf.Clamp(Mathf.MoveTowards(roadDeg, target, rate * deltaTime), -c.lockRoadDeg, c.lockRoadDeg);
         return roadDeg;
     }
-    /// vehicle state for the assist, read from the simulated tires (travel angle = wheel steer angle + its slip angle, see WheelCorner)
+    // @description - vehicle state for the assist, read from the simulated tires (travel angle = wheel steer angle + its slip angle, see WheelCorner)
+    // @param {CarController} car - car
+    // @return {GamepadSteerContext} - the context
     public static GamepadSteerContext Context(CarController car)
     {
         var p = car.carParams; var rb = car.GetComponent<Rigidbody>();
@@ -77,11 +95,14 @@ public class GamepadSteering
             peakSlipDeg = PeakSlipDeg(p, 0.5f * (car.frontLeftWheel.verticalLoad + car.frontRightWheel.verticalLoad)),
         };
     }
-    /// peak lateral-force slip angle (deg) of the tire model at load Fz (scan 0..20 deg at 0.1 deg)
-    public static float PeakSlipDeg(CarParams p, float Fz)
+    // @description - peak lateral-force slip angle (deg) of the tire model at load Fz (scan 0..20 deg at 0.1 deg)
+    // @param {CarParams} carParams - car params
+    // @param {float} verticalLoad - vertical load
+    // @return {float} - the peak slip deg
+    public static float PeakSlipDeg(CarParams carParams, float verticalLoad)
     {
-        float best = 0f, at = 0f; Fz = Mathf.Max(Fz, 200f);
-        for (int i = 1; i <= 200; i++) { float a = i * 0.1f; float f = Mathf.Abs(PacejkaTire.PureLat(p, a * Mathf.Deg2Rad, Fz, 0f)); if (f > best) { best = f; at = a; } }
+        float best = 0f, at = 0f; verticalLoad = Mathf.Max(verticalLoad, 200f);
+        for (int i = 1; i <= 200; i++) { float a = i * 0.1f; float f = Mathf.Abs(PacejkaTire.PureLat(carParams, a * Mathf.Deg2Rad, verticalLoad, 0f)); if (f > best) { best = f; at = a; } }
         return at;
     }
 }

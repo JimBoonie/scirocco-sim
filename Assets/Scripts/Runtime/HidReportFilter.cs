@@ -16,6 +16,8 @@ public static class HidReportFilter
     static bool installed; static readonly FourCC HidFormat = new FourCC('H', 'I', 'D');
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+    // @description - Install.
+    // @return {Void} - nothing
     public static void Install()
     {
         if (installed) return; installed = true;
@@ -23,9 +25,13 @@ public static class HidReportFilter
         InputSystem.onDeviceChange += (d, c) => { if (c == InputDeviceChange.Added || c == InputDeviceChange.Removed || c == InputDeviceChange.Reconnected) { infos.Remove(d.deviceId); LogDevices($"device {c}: {d.displayName}"); } };
         LogDevices("startup");
     }
+    // @description - Uninstall.
+    // @return {Void} - nothing
     public static void Uninstall() { if (!installed) return; installed = false; InputSystem.onEvent -= OnEvent; infos.Clear(); }
 
-    /// Analyse a HID descriptor: returns the report ID to keep (joystick X axis report), or -1 if the device has only one input report.
+    // @description - Analyse a HID descriptor: returns the report ID to keep (joystick X axis report), or -1 if the device has only one input report.
+    // @param {string} capabilitiesJson - capabilities json
+    // @return {Info} - the analyse
     public static Info Analyse(string capabilitiesJson)
     {
         var info = new Info();
@@ -44,24 +50,35 @@ public static class HidReportFilter
         else info.note = "single input report";
         return info;
     }
+    // @description - Get (see the body for details).
+    // @param {InputDevice} d - value of type InputDevice
+    // @return {Info} - the get
     public static Info Get(InputDevice d)
     {
         if (infos.TryGetValue(d.deviceId, out var i)) return i;
         i = d.description.interfaceName == "HID" && !IsSpecificLayout(d) ? Analyse(d.description.capabilities) : new Info { note = d.description.interfaceName == "HID" ? "device-specific layout (not filtered)" : "not HID" };
         infos[d.deviceId] = i; return i;
     }
-    // Layouts written for a specific device (DualShock, Xbox HID, ...) handle report IDs themselves; only the auto-generated ones need this.
-    static bool IsSpecificLayout(InputDevice d) => !(d.layout.StartsWith("HID::") || d.layout.Contains("::"));
+    // @description - Layouts written for a specific device (DualShock, Xbox HID, ...) handle report IDs themselves; only the auto-generated ones need this.
+    // @param {InputDevice} device - device
+    // @return {bool} - the is specific layout
+    static bool IsSpecificLayout(InputDevice device) => !(device.layout.StartsWith("HID::") || device.layout.Contains("::"));
 
-    static unsafe void OnEvent(InputEventPtr ev, InputDevice d)
+    // @description - Handles the event.
+    // @param {InputEventPtr} inputEvent - input event
+    // @param {InputDevice} device - device
+    // @return {Void} - nothing
+    static unsafe void OnEvent(InputEventPtr inputEvent, InputDevice device)
     {
-        if (d == null || !ev.IsA<StateEvent>()) return;
-        var se = StateEvent.From(ev); if (se->stateFormat != HidFormat || se->stateSizeInBytes < 1) return;
-        var info = Get(d); if (info.expectedId < 0) return;
+        if (device == null || !inputEvent.IsA<StateEvent>()) return;
+        var se = StateEvent.From(inputEvent); if (se->stateFormat != HidFormat || se->stateSizeInBytes < 1) return;
+        var info = Get(device); if (info.expectedId < 0) return;
         byte id = *(byte*)se->state;
-        if (id == info.expectedId) info.passed++; else { info.dropped++; ev.handled = true; }   // foreign report (e.g. PID state): never touches the state
+        if (id == info.expectedId) info.passed++; else { info.dropped++; inputEvent.handled = true; }   // foreign report (e.g. PID state): never touches the state
     }
 
+    // @description - Device report.
+    // @return {string} - the device report
     public static string DeviceReport()
     {
         var sb = new StringBuilder(); var products = new Dictionary<string, int>();
@@ -78,5 +95,8 @@ public static class HidReportFilter
         }
         return sb.ToString();
     }
+    // @description - Log devices.
+    // @param {string} why - why
+    // @return {Void} - nothing
     public static void LogDevices(string why) { Debug.Log($"[Input] devices ({why}):\n{DeviceReport()}"); }
 }

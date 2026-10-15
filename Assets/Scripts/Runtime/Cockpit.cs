@@ -6,49 +6,96 @@ public class Cockpit : MonoBehaviour
     public CarController car;
     public Transform eyeAnchor, recenter, wheelSpin, speedNeedle, rpmNeedle, root; public TextMesh speedText, rpmText, gearText;
     public Vector3 eyeDefault, hPoint, wheelCentre;
-    public float seatFwd, seatUp;   // user offsets (m), saved in the input profile
+    public float seatForwardOffset, seatUpOffset;   // user offsets (m), saved in the input profile
     static readonly Dictionary<Color, Material> mats = new Dictionary<Color, Material>();
 
-    public static float GroundY(CarParams p) => -(p.hubDropDesign + p.wheelRadius);
-    public static Vector3 HPoint(CarParams p) => new Vector3(-p.driverLateral, GroundY(p) + p.hipPointHeight, p.wheelbase * 0.5f - p.hipPointBehindFrontAxle);
-    public static Vector3 EyePoint(CarParams p)
+    // @description - Ground y.
+    // @param {CarParams} carParams - car params
+    // @return {float} - the ground y
+    public static float GroundY(CarParams carParams) => -(carParams.hubDropDesign + carParams.wheelRadius);
+    // @description - H point.
+    // @param {CarParams} carParams - car params
+    // @return {Vector3} - the h point
+    public static Vector3 HPoint(CarParams carParams) => new Vector3(-carParams.driverLateral, GroundY(carParams) + carParams.hipPointHeight, carParams.wheelbase * 0.5f - carParams.hipPointBehindFrontAxle);
+    // @description - Eye point.
+    // @param {CarParams} carParams - car params
+    // @return {Vector3} - the eye point
+    public static Vector3 EyePoint(CarParams carParams)
     {
-        float torso = p.sittingEyeRatio * p.driverStature - p.hipPointAboveSeat, a = p.seatBackAngle * Mathf.Deg2Rad;   // H-point -> eye along the reclined torso
-        return HPoint(p) + new Vector3(0f, torso * Mathf.Cos(a), -torso * Mathf.Sin(a));
+        float torso = carParams.sittingEyeRatio * carParams.driverStature - carParams.hipPointAboveSeat, a = carParams.seatBackAngle * Mathf.Deg2Rad;   // H-point -> eye along the reclined torso
+        return HPoint(carParams) + new Vector3(0f, torso * Mathf.Cos(a), -torso * Mathf.Sin(a));
     }
-    public static Vector3 WheelCentre(CarParams p) => HPoint(p) + new Vector3(0f, p.wheelCentreAboveHipPoint, p.wheelCentreAheadOfHipPoint);
-    public void ApplySeat(float fwd, float up)
+    // @description - Wheel centre.
+    // @param {CarParams} carParams - car params
+    // @return {Vector3} - the wheel centre
+    public static Vector3 WheelCentre(CarParams carParams) => HPoint(carParams) + new Vector3(0f, carParams.wheelCentreAboveHipPoint, carParams.wheelCentreAheadOfHipPoint);
+    // @description - Applies the seat.
+    // @param {float} forwardOffset - forward offset
+    // @param {float} upOffset - up offset
+    // @return {Void} - nothing
+    public void ApplySeat(float forwardOffset, float upOffset)
     {
-        var p = car.carParams; seatFwd = Mathf.Clamp(fwd, -p.seatTravelAft, p.seatTravelFore); seatUp = Mathf.Clamp(up, -p.seatTravelDown, p.seatTravelUp);
-        if (eyeAnchor) eyeAnchor.localPosition = eyeDefault + new Vector3(0f, seatUp, seatFwd);
+        var p = car.carParams; seatForwardOffset = Mathf.Clamp(forwardOffset, -p.seatTravelAft, p.seatTravelFore); seatUpOffset = Mathf.Clamp(upOffset, -p.seatTravelDown, p.seatTravelUp);
+        if (eyeAnchor) eyeAnchor.localPosition = eyeDefault + new Vector3(0f, seatUpOffset, seatForwardOffset);
     }
+    // @description - Recenter.
+    // @param {Transform} head - head
+    // @return {Void} - nothing
     public void Recenter(Transform head)   // head = tracked camera under 'recenter'; puts the current head pose on the eye point, facing forward
     {
         if (!head || !recenter) return;
         float yaw = head.localEulerAngles.y; recenter.localRotation = Quaternion.Euler(0f, -yaw, 0f);
         recenter.localPosition = -(recenter.localRotation * head.localPosition);
     }
+    // @description - Mat.
+    // @param {Color} c - value of type Color
+    // @return {Material} - the mat
     static Material Mat(Color c)
     {
         if (mats.TryGetValue(c, out var m) && m) return m;
         m = new Material(Shader.Find("Standard")) { color = c }; m.SetFloat("_Glossiness", 0.2f); mats[c] = m; return m;   // one shared simple material per colour
     }
-    Transform Box(string n, Transform parent, Vector3 pos, Vector3 scale, Color c, Quaternion? rot = null)
+    // @description - Box.
+    // @param {string} objectName - object name
+    // @param {Transform} parent - parent
+    // @param {Vector3} pos - pos
+    // @param {Vector3} scale - scale
+    // @param {Color} color - color
+    // @param {Quaternion?} rot - rot
+    // @return {Transform} - the box
+    Transform Box(string objectName, Transform parent, Vector3 pos, Vector3 scale, Color color, Quaternion? rot = null)
     {
-        var g = GameObject.CreatePrimitive(PrimitiveType.Cube); g.name = n; Destroy(g.GetComponent<Collider>()); g.layer = 2;
+        var g = GameObject.CreatePrimitive(PrimitiveType.Cube); g.name = objectName; Destroy(g.GetComponent<Collider>()); g.layer = 2;
         g.transform.SetParent(parent, false); g.transform.localPosition = pos; g.transform.localScale = scale; g.transform.localRotation = rot ?? Quaternion.identity;
-        var r = g.GetComponent<MeshRenderer>(); r.sharedMaterial = Mat(c); r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; r.receiveShadows = false; return g.transform;   // the placeholder body box would otherwise shade the whole interior
+        var r = g.GetComponent<MeshRenderer>(); r.sharedMaterial = Mat(color); r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; r.receiveShadows = false; return g.transform;   // the placeholder body box would otherwise shade the whole interior
     }
-    Transform Strut(string n, Transform parent, Vector3 a, Vector3 b, float t, Color c)
+    // @description - Strut.
+    // @param {string} objectName - object name
+    // @param {Transform} parent - parent
+    // @param {Vector3} a - value of type Vector3
+    // @param {Vector3} b - value of type Vector3
+    // @param {float} t - value of type float
+    // @param {Color} color - color
+    // @return {Transform} - the strut
+    Transform Strut(string objectName, Transform parent, Vector3 a, Vector3 b, float t, Color color)
     {
-        var d = b - a; return Box(n, parent, (a + b) * 0.5f, new Vector3(t, t, d.magnitude), c, Quaternion.LookRotation(d));
+        var d = b - a; return Box(objectName, parent, (a + b) * 0.5f, new Vector3(t, t, d.magnitude), color, Quaternion.LookRotation(d));
     }
-    TextMesh Text(string n, Transform parent, Vector3 pos, float size, Color c)
+    // @description - Text.
+    // @param {string} objectName - object name
+    // @param {Transform} parent - parent
+    // @param {Vector3} pos - pos
+    // @param {float} size - size
+    // @param {Color} color - color
+    // @return {TextMesh} - the text
+    TextMesh Text(string objectName, Transform parent, Vector3 pos, float size, Color color)
     {
-        var g = new GameObject(n); g.transform.SetParent(parent, false); g.transform.localPosition = pos;
+        var g = new GameObject(objectName); g.transform.SetParent(parent, false); g.transform.localPosition = pos;
         var t = g.AddComponent<TextMesh>(); var f = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-        t.font = f; t.GetComponent<MeshRenderer>().sharedMaterial = f.material; t.fontSize = 64; t.characterSize = size; t.anchor = TextAnchor.MiddleCenter; t.color = c; return t;
+        t.font = f; t.GetComponent<MeshRenderer>().sharedMaterial = f.material; t.fontSize = 64; t.characterSize = size; t.anchor = TextAnchor.MiddleCenter; t.color = color; return t;
     }
+    // @description - Build (see the body for details).
+    // @return {Void} - nothing
     public void Build()
     {
         if (root) return; var p = car.carParams;
@@ -89,16 +136,24 @@ public class Cockpit : MonoBehaviour
         gearText = Text("Gear", g, new Vector3(0f, -0.02f, -0.006f), 0.006f, new Color(1f, 0.8f, 0.2f));
         eyeAnchor = new GameObject("EyeAnchor").transform; eyeAnchor.SetParent(car.transform, false);
         recenter = new GameObject("RecenterOffset").transform; recenter.SetParent(eyeAnchor, false);
-        ApplySeat(seatFwd, seatUp);
+        ApplySeat(seatForwardOffset, seatUpOffset);
     }
-    Transform Gauge(Transform g, float x, string label, out TextMesh txt)
+    // @description - Gauge.
+    // @param {Transform} transform - transform
+    // @param {float} x - value of type float
+    // @param {string} label - label
+    // @param {out TextMesh} txt - txt
+    // @return {Transform} - the gauge
+    Transform Gauge(Transform transform, float x, string label, out TextMesh txt)
     {
-        Box("Face", g, new Vector3(x, 0f, 0f), new Vector3(0.14f, 0.14f, 0.005f), new Color(0.02f, 0.02f, 0.02f));
-        var pivot = new GameObject("NeedlePivot").transform; pivot.SetParent(g, false); pivot.localPosition = new Vector3(x, 0f, -0.004f);
+        Box("Face", transform, new Vector3(x, 0f, 0f), new Vector3(0.14f, 0.14f, 0.005f), new Color(0.02f, 0.02f, 0.02f));
+        var pivot = new GameObject("NeedlePivot").transform; pivot.SetParent(transform, false); pivot.localPosition = new Vector3(x, 0f, -0.004f);
         Box("Needle", pivot, new Vector3(0f, 0.03f, 0f), new Vector3(0.004f, 0.06f, 0.002f), new Color(1f, 0.35f, 0.1f));
-        Text(label, g, new Vector3(x, -0.045f, -0.004f), 0.0022f, Color.white);
-        txt = Text(label + "Value", g, new Vector3(x, -0.022f, -0.004f), 0.0035f, Color.white); return pivot;
+        Text(label, transform, new Vector3(x, -0.045f, -0.004f), 0.0022f, Color.white);
+        txt = Text(label + "Value", transform, new Vector3(x, -0.022f, -0.004f), 0.0035f, Color.white); return pivot;
     }
+    // @description - Late update.
+    // @return {Void} - nothing
     void LateUpdate()
     {
         if (!root || car == null || car.engine == null) return;

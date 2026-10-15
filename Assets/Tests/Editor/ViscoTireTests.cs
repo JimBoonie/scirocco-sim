@@ -87,14 +87,6 @@ public class ViscoTireTests
         double L = 0.1; Assert.AreEqual(1.0, ViscoTire.StiffnessFactor(ViscoTire.ReferenceSpeed, L, L), 1e-12);
         Assert.Greater(ViscoTire.StiffnessFactor(40, L, L), 1.0); Assert.Less(ViscoTire.StiffnessFactor(5, L, L), 1.0);
     }
-    [Test] public void SettingsMigrationV7ToV8()
-    {
-        var p = InputMapper.Defaults(); p.version = 7; p.audioVolume = 0.42f; p.tireThermal = true;
-        var path = System.IO.Path.Combine(Application.temporaryCachePath, "v7.json"); System.IO.File.WriteAllText(path, JsonUtility.ToJson(p));
-        var q = InputMapper.LoadOrDefault(path);
-        Assert.AreEqual(8, q.version); Assert.AreEqual(0, q.tireCompound); Assert.AreEqual(0.42f, q.audioVolume, 1e-6); Assert.IsTrue(q.tireThermal);
-        q.tireCompound = 1; InputMapper.Save(q, path); Assert.AreEqual(1, InputMapper.LoadOrDefault(path).tireCompound);
-    }
     [Test] public void RealTimeCost()
     {
         var f = All; double vr = 0.5; ViscoTire.MuHys(0, true); ViscoTire.MuHys(0, false);

@@ -2,6 +2,8 @@
 using NUnit.Framework; using UnityEngine;
 public class VrCockpitTests
 {
+    // @description - Eye point inside cabin.
+    // @return {Void} - nothing
     [Test] public void EyePoint_Inside_Cabin()
     {
         var p = ScriptableObject.CreateInstance<CarParams>(); var e = Cockpit.EyePoint(p); float g = Cockpit.GroundY(p);
@@ -11,6 +13,8 @@ public class VrCockpitTests
         Assert.Less(e.x, 0f);                                                     // LHD: left of centreline
         var w = Cockpit.WheelCentre(p); Assert.Greater(w.z, e.z); Assert.Less(w.y, e.y);   // wheel ahead of and below the eye
     }
+    // @description - Leaving vr restores flat fov and projection.
+    // @return {Void} - nothing
     [Test] public void Leaving_VR_Restores_Flat_Fov_And_Projection()
     {
         var go = new GameObject("cam"); var c = go.AddComponent<Camera>(); c.aspect = 16f / 9f;
@@ -27,35 +31,32 @@ public class VrCockpitTests
         Assert.AreEqual(60f, new BindingProfile().flatFovDeg);
         Object.DestroyImmediate(go);
     }
+    // @description - Tire volume saved.
+    // @return {Void} - nothing
     [Test] public void Tire_Volume_Saved()
     {
         Assert.AreEqual(1f, new BindingProfile().tireVolume); Assert.IsTrue(JsonUtility.ToJson(new BindingProfile()).Contains("tireVolume"));
     }
-    [Test] public void Profile_Migration_Adds_V2_Actions_Without_Overwriting()
-    {
-        var p = InputMapper.Defaults(); p.version = 1; p.Get(InAction.Recenter).Clear(); p.Get(InAction.MenuSelect).Clear();
-        p.Get(InAction.MenuSelect).Add(new Binding { layout = "Joystick", control = "button5" });
-        var q = JsonUtility.FromJson<BindingProfile>(JsonUtility.ToJson(p)); InputMapper.Migrate(q);
-        Assert.AreEqual(8, q.version); Assert.Greater(q.Get(InAction.Starter).Count, 0); Assert.IsTrue(q.autoClutch); Assert.Greater(q.Get(InAction.Recenter).Count, 0);
-        Assert.AreEqual(1, q.Get(InAction.MenuSelect).Count); Assert.AreEqual("button5", q.Get(InAction.MenuSelect)[0].control);
-        Assert.IsFalse(q.vrEnabled);
-    }
 }
 public class UncalibratedPedalTests : UnityEngine.InputSystem.InputTestFixture
 {
+    // @description - Uncalibrated clutch resting at plus1 reads zero keyboard throttle wins.
+    // @return {Void} - nothing
     [Test] public void Uncalibrated_Clutch_Resting_At_Plus1_Reads_Zero_Keyboard_Throttle_Wins()
     {
         UnityEngine.InputSystem.InputSystem.RegisterLayout<UnityEngine.InputSystem.Joystick>("FakeSprint", new UnityEngine.InputSystem.Layouts.InputDeviceMatcher().WithProduct("Fake Sprint"));
         var ped = UnityEngine.InputSystem.InputSystem.AddDevice(new UnityEngine.InputSystem.Layouts.InputDeviceDescription { product = "Fake Sprint" });
         var kb = UnityEngine.InputSystem.InputSystem.AddDevice<UnityEngine.InputSystem.Keyboard>();
         var pr = InputMapper.Defaults(); var ax = (UnityEngine.InputSystem.Controls.AxisControl)ped["stick/x"];
-        pr.Get(InAction.Clutch).Add(new Binding { layout = ped.layout, product = "Fake Sprint", control = "stick/x", cal = new AxisCal { min = -1f, max = 1f } });   // bound, never calibrated
-        pr.Get(InAction.Throttle).Add(new Binding { layout = ped.layout, product = "Fake Sprint", control = "stick/y", cal = new AxisCal { min = -1f, max = 1f } });
+        pr.Get(InAction.Clutch).Add(new Binding { layout = ped.layout, product = "Fake Sprint", control = "stick/x", calibration = new AxisCalibration { min = -1f, max = 1f } });   // bound, never calibrated
+        pr.Get(InAction.Throttle).Add(new Binding { layout = ped.layout, product = "Fake Sprint", control = "stick/y", calibration = new AxisCalibration { min = -1f, max = 1f } });
         var m = new InputMapper(pr);
         Set(ax, 1f); InputSystemUpdate(); Assert.AreEqual(0f, m.Axis(InAction.Clutch), 1e-3f);   // rest at +1 -> 0 %, not 100 %
         Set(ax, -1f); InputSystemUpdate(); Assert.AreEqual(1f, m.Axis(InAction.Clutch), 1e-3f);  // fully pressed
         Press(kb.wKey); InputSystemUpdate(); Assert.AreEqual(1f, m.Axis(InAction.Throttle), 1e-3f); // idle pedal at rest does not hold keyboard throttle at 0
         m.Dispose();
     }
+    // @description - Input system update.
+    // @return {Void} - nothing
     static void InputSystemUpdate() => UnityEngine.InputSystem.InputSystem.Update();
 }

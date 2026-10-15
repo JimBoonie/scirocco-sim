@@ -27,21 +27,4 @@ public class SingleBaselineTests
         Assert.AreEqual(0.596f, k.rearBeamAntiLiftCoefficient, 0.01f);
         Assert.Greater(k.rackGrid.Length, 10, "steering grid present"); Assert.AreEqual(k.rackGrid.Length * k.travel.Length, k.frontToeTravelRack.Length);
     }
-    [Test] public void Old_Saved_Profile_Toggle_Binding_Is_Dropped_On_Load()
-    {
-        // v5 file as written by the previous build: P key and d-pad up on slot 14 (the old ProfileToggle)
-        var old = InputMapper.Defaults(); old.version = 5;
-        old.Get(InAction.RetiredProfileToggle).Add(new Binding { layout = "Keyboard", control = "p" });
-        old.Get(InAction.RetiredProfileToggle).Add(new Binding { layout = "Gamepad", control = "dpad/up" });
-        old.coldPsiFront = 26f; old.track = "LagunaSeca";
-        string json = JsonUtility.ToJson(old);
-        string path = System.IO.Path.Combine(Application.temporaryCachePath, "sb_old_bindings.json"); System.IO.File.WriteAllText(path, json);
-        var q = InputMapper.LoadOrDefault(path);
-        Assert.AreEqual(8, q.version); Assert.AreEqual(0, q.Get(InAction.RetiredProfileToggle).Count, "profile toggle bindings removed");
-        Assert.AreEqual(26f, q.coldPsiFront); Assert.AreEqual("LagunaSeca", q.track, "other saved settings kept");
-        Assert.Greater(q.Get(InAction.Reset).Count, 0); Assert.Greater(q.Get(InAction.MenuUp).Count, 0);
-        Assert.AreEqual(0, InputMapper.Defaults().Get(InAction.RetiredProfileToggle).Count, "no default binding");
-        Assert.IsTrue(InputMapper.IsRetired(InAction.RetiredProfileToggle)); Assert.AreEqual(14, (int)InAction.RetiredProfileToggle, "int slot kept for old files");
-        System.IO.File.Delete(path);
-    }
 }
