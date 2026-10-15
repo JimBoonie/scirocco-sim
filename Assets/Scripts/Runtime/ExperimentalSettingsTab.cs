@@ -1,19 +1,21 @@
 // The "Experimental" tab of the settings menu: options that may change how the car handles. Each option lives only here (they were on the Quick tab before).
-// Settings are stored in BindingProfile (tireThermal, frontColdPressurePsi, rearColdPressurePsi, tireCompound, experimentalDrivelineEnabled, experimentalTransmissionEnabled) and applied to CarParams by InputRouter.
+// Settings are stored in BindingProfile (tireThermal, frontColdPressurePsi, rearColdPressurePsi, tireCompound, experimentalDrivelineEnabled, experimentalTransmissionEnabled, experimentalBrakesEnabled, loadCellBrakePedalEnabled, loadCellBrakePedalMaxForcePounds) and applied to CarParams by InputRouter.
 // Drawing uses IMGUI, so the VR cursor menu (clicks and slider drags) works unchanged.
 using UnityEngine;
 public class ExperimentalSettingsTab
 {
     public const int TabIndex = 6;   // position of "Experimental" in the settings tab bar
-    public const int ItemCount = 6;   // navigable options: 0 tire temperature model, 1 front cold pressure, 2 rear cold pressure, 3 tire compound, 4 driveline shuffle model, 5 transmission and synchronizer model
+    public const int ItemCount = 9;   // navigable options: 0 tire temperature model, 1 front cold pressure, 2 rear cold pressure, 3 tire compound, 4 driveline shuffle model, 5 transmission and synchronizer model, 6 brake model, 7 load-cell brake pedal, 8 load-cell full-scale force
     public const float VolkswagenColdPressurePsi = 24.7f;   // psi, VW 1.7 bar cold tire pressure (S): the default and the Select-reset value
     public const float MinimumColdPressurePsi = 15f, MaximumColdPressurePsi = 45f, ColdPressureStepPsi = 0.5f;   // psi, slider range; 0.5 psi = gauge resolution
+    public const float DefaultLoadCellMaxForcePounds = 70f;   // lbf, default full-scale force of a load-cell brake pedal (U: user-reported, Heusinkveld Sprint; about 311 N); also the Select-reset value
+    public const float MinimumLoadCellMaxForcePounds = 10f, MaximumLoadCellMaxForcePounds = 150f, LoadCellMaxForceStepPounds = 1f;   // lbf, entry range (the Sprint hardware maximum is 65 kg = 143 lbf, S) and the step of one menu press
     public const string Warning = "Experimental options are work in progress and may change how the car handles. The defaults reproduce the standard handling exactly.";
     public int selectedItem;   // highlighted option for keyboard / gamepad navigation
     public Rect selectedRowRect;   // layout rectangle of the highlighted row (lets the menu scroll to it)
     GUIStyle labelStyle, highlightStyle;
 
-    // @description - Applies one left, right or select action to an option. Item 0 toggles the tire temperature model (select flips, right = on, left = off); items 1 and 2 step a cold pressure by 0.5 psi within 15..45 psi (select = VW 24.7 psi); item 3 chooses the tire compound (select flips); item 4 toggles the experimental driveline shuffle model (select flips, right = on, left = off). Other items are ignored (the driveline placeholder is disabled).
+    // @description - Applies one left, right or select action to an option. Item 0 toggles the tire temperature model (select flips, right = on, left = off); items 1 and 2 step a cold pressure by 0.5 psi within 15..45 psi (select = VW 24.7 psi); item 3 chooses the tire compound (select flips); item 4 toggles the experimental driveline shuffle model, item 5 the transmission model, item 6 the brake model and item 7 the load-cell brake pedal checkbox (select flips, right = on, left = off); item 8 steps the load-cell full-scale force by 1 lbf within 10..150 lbf (select = 70 lbf). Out-of-range items are ignored.
     // @param {BindingProfile} profile - settings profile to change
     // @param {int} item - option index, 0..ItemCount-1
     // @param {int} direction - -1 for left, +1 for right, 0 for none
@@ -29,6 +31,9 @@ public class ExperimentalSettingsTab
             case 3: profile.tireCompound = isSelect ? 1 - profile.tireCompound : (direction > 0 ? 1 : 0); break;
             case 4: profile.experimentalDrivelineEnabled = isSelect ? !profile.experimentalDrivelineEnabled : direction > 0; break;
             case 5: profile.experimentalTransmissionEnabled = isSelect ? !profile.experimentalTransmissionEnabled : direction > 0; break;
+            case 6: profile.experimentalBrakesEnabled = isSelect ? !profile.experimentalBrakesEnabled : direction > 0; break;
+            case 7: profile.loadCellBrakePedalEnabled = isSelect ? !profile.loadCellBrakePedalEnabled : direction > 0; break;
+            case 8: profile.loadCellBrakePedalMaxForcePounds = isSelect ? DefaultLoadCellMaxForcePounds : StepLoadCellMaxForce(profile.loadCellBrakePedalMaxForcePounds, direction); break;
         }
     }
     // @description - Steps a cold tire pressure by one gauge step and clamps it to the allowed range.
@@ -36,6 +41,11 @@ public class ExperimentalSettingsTab
     // @param {int} direction - -1 to lower, +1 to raise, 0 to keep
     // @return {float} - new cold pressure, psi
     static float StepColdPressure(float pressurePsi, int direction) => Mathf.Clamp(pressurePsi + direction * ColdPressureStepPsi, MinimumColdPressurePsi, MaximumColdPressurePsi);
+    // @description - Steps the load-cell pedal full-scale force by one press and clamps it to the entry range.
+    // @param {float} forcePounds - current full-scale force, lbf
+    // @param {int} direction - -1 to lower, +1 to raise, 0 to keep
+    // @return {float} - new full-scale force, lbf
+    static float StepLoadCellMaxForce(float forcePounds, int direction) => Mathf.Clamp(forcePounds + direction * LoadCellMaxForceStepPounds, MinimumLoadCellMaxForcePounds, MaximumLoadCellMaxForcePounds);
     // @description - Handles one frame of menu navigation: up and down move the highlight (wrapping), left, right and select change the highlighted option.
     // @param {BindingProfile} profile - settings profile being edited
     // @param {bool} up - Menu Up pressed this frame
@@ -69,6 +79,9 @@ public class ExperimentalSettingsTab
         DrawCompoundSelector(profile);
         DrawDrivelineToggle(profile);
         DrawTransmissionToggle(profile);
+        DrawBrakesToggle(profile);
+        DrawLoadCellToggle(profile);
+        DrawLoadCellForceRow(profile);
     }
     // @description - Creates the normal and highlighted (bold yellow) label styles from the menu's label style, once.
     // @param {GUIStyle} baseLabelStyle - the menu's normal label style
@@ -148,5 +161,34 @@ public class ExperimentalSettingsTab
     {
         DrawRow(5, () => { profile.experimentalTransmissionEnabled = GUILayout.Toggle(profile.experimentalTransmissionEnabled, profile.experimentalTransmissionEnabled ? " Transmission and synchronizer model ON" : " Transmission and synchronizer model off", StyleFor(5)); },
             "Models the gearbox: synchronizer cones and blocking rings, grinding and crunching when you shift without matching speeds, gears that only leave under light torque, oil drag, mesh losses and neutral rattle. Estimated parameters: you must test-drive it. The keyboard auto-clutch then opens longer for each shift. Separate from the driveline model above (any combination works). Off = the standard gearbox exactly.");
+    }
+    // @description - Draws the experimental brake model toggle with its description.
+    // @param {BindingProfile} profile - settings profile being edited
+    // @return {Void} - nothing
+    void DrawBrakesToggle(BindingProfile profile)
+    {
+        DrawRow(6, () => { profile.experimentalBrakesEnabled = GUILayout.Toggle(profile.experimentalBrakesEnabled, profile.experimentalBrakesEnabled ? " Brake model (master cylinder, vacuum booster, discs and drums) ON" : " Brake model (master cylinder, vacuum booster, discs and drums) off", StyleFor(6)); },
+            "Replaces the fixed brake torques by a physical chain: pedal, vacuum booster with its lag and limited vacuum, tandem master cylinder, rear pressure limiter, front discs and rear drums. Keyboard and gamepad presses move the pedal at foot speed instead of jumping. Booster vacuum use gives a small idle bump when you release hard. No ABS and no brake fade. Estimated parameters: you must test-drive it. The handbrake is unchanged. Off = the standard brakes exactly.");
+    }
+    // @description - Draws the load-cell brake pedal checkbox with its description.
+    // @param {BindingProfile} profile - settings profile being edited
+    // @return {Void} - nothing
+    void DrawLoadCellToggle(BindingProfile profile)
+    {
+        DrawRow(7, () => { profile.loadCellBrakePedalEnabled = GUILayout.Toggle(profile.loadCellBrakePedalEnabled, profile.loadCellBrakePedalEnabled ? " Load-cell brake pedal ON" : " Load-cell brake pedal off", StyleFor(7)); },
+            "Check this if your brake pedal measures force (for example a Heusinkveld Sprint). The brake axis is then read as pedal force over the full-scale force below and goes into the brake model directly, with no foot-speed limit. Only used with the brake model on. Leave it off for keyboard, gamepad and travel-based pedals.");
+    }
+    // @description - Draws the load-cell full-scale force row: label with value in lbf and newtons, a slider (10..150 lbf, 1 lbf steps) and a reset button.
+    // @param {BindingProfile} profile - settings profile being edited
+    // @return {Void} - nothing
+    void DrawLoadCellForceRow(BindingProfile profile)
+    {
+        DrawRow(8, () =>
+        {
+            GUILayout.Label($"Load-cell pedal full-scale force: {profile.loadCellBrakePedalMaxForcePounds:0} lb ({profile.loadCellBrakePedalMaxForcePounds * BrakeSystemParameters.NewtonsPerPoundForce:0} N)", StyleFor(8), GUILayout.Width(380));
+            float sliderForce = GUILayout.HorizontalSlider(profile.loadCellBrakePedalMaxForcePounds, MinimumLoadCellMaxForcePounds, MaximumLoadCellMaxForcePounds, GUILayout.Width(220));
+            if (sliderForce != profile.loadCellBrakePedalMaxForcePounds) profile.loadCellBrakePedalMaxForcePounds = Mathf.Round(sliderForce / LoadCellMaxForceStepPounds) * LoadCellMaxForceStepPounds;
+            if (GUILayout.Button($"{DefaultLoadCellMaxForcePounds:0} lb", GUILayout.Width(60))) profile.loadCellBrakePedalMaxForcePounds = DefaultLoadCellMaxForcePounds;
+        }, "The pedal force that gives brake axis 100 %: the \"Brake force\" set in your pedal software (default entry 70 lb, about 311 N, as reported for a Heusinkveld Sprint). Must equal the pedal's own setting, with a linear output curve and no dead zone.");
     }
 }

@@ -43,6 +43,9 @@ public class CarParams : ScriptableObject
     public float combinedSlipLongitudinalCoefficient = 12f, combinedSlipLateralCoefficient = 9f, relaxationLength = 0.45f, camberThrustCoefficient = 0.9f, rollingResistanceCoefficient = 0.012f;
     public bool experimentalDrivelineEnabled = false;   // Experimental tab: driveline shuffle model (Driveline/*.cs). false = the default Drivetrain.Clutch + Engine.Step path, untouched
     public bool experimentalTransmissionEnabled = false;   // Experimental tab: transmission and synchronizer model (Transmission/*.cs). false = the default Drivetrain path, untouched. Independent of experimentalDrivelineEnabled (any of the four combinations works)
+    public bool experimentalBrakesEnabled = false;   // Experimental tab: physics-derived braking model (Brakes/*.cs). false = the fixed brakeTorqueFront / brakeTorqueRear path, untouched
+    public bool loadCellBrakePedalEnabled = false;   // Experimental tab: the brake axis is a force fraction of a load-cell pedal (only read by the experimental brakes)
+    public float loadCellBrakePedalMaxForcePounds = 70f;   // lbf pedal force at brake axis 1 (U: user-reported Heusinkveld Sprint setting; about 311 N)
     public bool tireThermal = false;      // tire thermal + pressure model (settings option; off = original handling)
     public float frontColdPressure = 170000f, rearColdPressure = 170000f;   // Pa gauge, set cold at 18.9 C: VW 1.7 bar for 185/60R14 (SD: 1.7 x3 sources, 1.8 x1)
     public float rollingResistanceSpeedSquaredCoefficient = 4e-8f;   // per (km/h)^2: radial passenger tire f = f0 + 0.4e-7 v^2 (Wong, Theory of Ground Vehicles; E). Added for top-speed check

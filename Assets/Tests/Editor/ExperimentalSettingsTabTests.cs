@@ -84,6 +84,31 @@ public class ExperimentalSettingsTabTests
         ExperimentalSettingsTab.Adjust(drivelineOnly, 4, 0, true); Assert.IsFalse(drivelineOnly.experimentalDrivelineEnabled); Assert.IsTrue(drivelineOnly.experimentalTransmissionEnabled, "item 4 flips only the driveline flag");
         ExperimentalSettingsTab.Adjust(transmissionOnly, 5, 0, true); Assert.IsFalse(transmissionOnly.experimentalTransmissionEnabled); Assert.IsFalse(transmissionOnly.experimentalDrivelineEnabled);
     }
+    // @description - Verifies the brake rows: the brake model toggle (item 6), the load-cell checkbox (item 7) and the full-scale force entry (item 8) default to off, off and 70 lb, change only their own field, clamp to 10..150 lb, reset to 70 lb with Select, and survive a JSON round trip; an old file without the fields loads the defaults.
+    // @return {Void} - nothing
+    [Test] public void BrakeRowsAreIndependentAndRoundTrip()
+    {
+        var profile = new BindingProfile();
+        Assert.IsFalse(profile.experimentalBrakesEnabled); Assert.IsFalse(profile.loadCellBrakePedalEnabled); Assert.AreEqual(70f, profile.loadCellBrakePedalMaxForcePounds);
+        Assert.AreEqual(9, ExperimentalSettingsTab.ItemCount);
+        ExperimentalSettingsTab.Adjust(profile, 6, 0, true); Assert.IsTrue(profile.experimentalBrakesEnabled); Assert.IsFalse(profile.loadCellBrakePedalEnabled); Assert.IsFalse(profile.experimentalDrivelineEnabled); Assert.IsFalse(profile.experimentalTransmissionEnabled);
+        ExperimentalSettingsTab.Adjust(profile, 6, -1, false); Assert.IsFalse(profile.experimentalBrakesEnabled, "Left switches the brake model off"); ExperimentalSettingsTab.Adjust(profile, 6, 1, false); Assert.IsTrue(profile.experimentalBrakesEnabled, "Right switches it on");
+        ExperimentalSettingsTab.Adjust(profile, 7, 0, true); Assert.IsTrue(profile.loadCellBrakePedalEnabled); Assert.IsTrue(profile.experimentalBrakesEnabled, "the checkbox leaves the brake toggle alone");
+        ExperimentalSettingsTab.Adjust(profile, 7, -1, false); Assert.IsFalse(profile.loadCellBrakePedalEnabled);
+        ExperimentalSettingsTab.Adjust(profile, 8, 1, false); Assert.AreEqual(71f, profile.loadCellBrakePedalMaxForcePounds); ExperimentalSettingsTab.Adjust(profile, 8, -1, false); ExperimentalSettingsTab.Adjust(profile, 8, -1, false); Assert.AreEqual(69f, profile.loadCellBrakePedalMaxForcePounds);
+        for (int stepIndex = 0; stepIndex < 300; stepIndex++) ExperimentalSettingsTab.Adjust(profile, 8, 1, false); Assert.AreEqual(150f, profile.loadCellBrakePedalMaxForcePounds);
+        for (int stepIndex = 0; stepIndex < 300; stepIndex++) ExperimentalSettingsTab.Adjust(profile, 8, -1, false); Assert.AreEqual(10f, profile.loadCellBrakePedalMaxForcePounds);
+        ExperimentalSettingsTab.Adjust(profile, 8, 0, true); Assert.AreEqual(70f, profile.loadCellBrakePedalMaxForcePounds);
+        profile.loadCellBrakePedalEnabled = true; profile.loadCellBrakePedalMaxForcePounds = 85f;
+        var loaded = JsonUtility.FromJson<BindingProfile>(JsonUtility.ToJson(profile));
+        Assert.IsTrue(loaded.experimentalBrakesEnabled); Assert.IsTrue(loaded.loadCellBrakePedalEnabled); Assert.AreEqual(85f, loaded.loadCellBrakePedalMaxForcePounds);
+        var oldJson = System.Text.RegularExpressions.Regex.Replace(JsonUtility.ToJson(InputMapper.Defaults()), "\"(experimentalBrakesEnabled|loadCellBrakePedalEnabled|loadCellBrakePedalMaxForcePounds)\":[a-z0-9.]+,?", "");
+        StringAssert.DoesNotContain("loadCellBrakePedal", oldJson);
+        var oldLoaded = JsonUtility.FromJson<BindingProfile>(oldJson);
+        Assert.IsFalse(oldLoaded.experimentalBrakesEnabled); Assert.IsFalse(oldLoaded.loadCellBrakePedalEnabled); Assert.AreEqual(70f, oldLoaded.loadCellBrakePedalMaxForcePounds); Assert.AreEqual(BindingProfile.CurrentVersion, oldLoaded.version);
+        Assert.AreEqual(InputMapper.Defaults().actions.Count, oldLoaded.actions.Count, "bindings are not reset");
+        var carParams = ScriptableObject.CreateInstance<CarParams>(); Assert.IsFalse(carParams.experimentalBrakesEnabled); Assert.IsFalse(carParams.loadCellBrakePedalEnabled);
+    }
     // @description - Runs one IMGUI pass headlessly as an IMGUIContainer would, through the VR mouse dispatch.
     // @param {EventType} eventType - IMGUI event type of this pass
     // @param {VrPointerQueue} queue - queued VR pointer events

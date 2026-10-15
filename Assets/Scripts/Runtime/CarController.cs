@@ -9,6 +9,9 @@ public class CarController : MonoBehaviour
     public WheelCorner rearRightWheel;
     ExperimentalTransmission experimentalTransmission;   // created on first use of the experimental transmission toggle; null while it was never on
     public ExperimentalTransmission ExperimentalTransmissionModel => experimentalTransmission;   // read-only view for the HUD
+    ExperimentalBrakes experimentalBrakes;   // created on first use of the experimental brakes toggle; null while it was never on
+    public ExperimentalBrakes ExperimentalBrakesModel => experimentalBrakes;   // read-only view for the HUD and tests
+    [HideInInspector] public BoosterFault brakeBoosterFault;   // booster fault state of the experimental brakes (all zero = healthy); set by tests, later by a fault menu
     ExperimentalDriveline experimentalDriveline;   // created on first use of the experimental driveline toggle; null while it was never on
     [Tooltip("Tire/drivetrain substeps per FixedUpdate (FixedUpdate itself runs at 500 Hz)")] public int substeps = 2;
     public Engine engine; public Drivetrain drivetrain; Rigidbody body;
@@ -188,8 +191,13 @@ public class CarController : MonoBehaviour
                 frontLeftWheel.driveTorque = frontRightWheel.driveTorque = wheelTorque;
             }
             rearLeftWheel.driveTorque = rearRightWheel.driveTorque = 0f;
-            frontLeftWheel.brakeTorque = frontRightWheel.brakeTorque = brake * carParams.brakeTorqueFront;
-            float handbrakeFraction = Mathf.Max(handbrake ? 1f : 0f, handbrakeInput); rearLeftWheel.brakeTorque = rearRightWheel.brakeTorque = Mathf.Max(handbrakeFraction * carParams.handbrakeTorque, brake * carParams.brakeTorqueRear);   // analog handbrake lever supported
+            if (carParams.experimentalBrakesEnabled) ApplyExperimentalBrakes(substep);
+            else
+            {
+                if (experimentalBrakes != null) experimentalBrakes.Reset();
+                frontLeftWheel.brakeTorque = frontRightWheel.brakeTorque = brake * carParams.brakeTorqueFront;
+                float handbrakeFraction = Mathf.Max(handbrake ? 1f : 0f, handbrakeInput); rearLeftWheel.brakeTorque = rearRightWheel.brakeTorque = Mathf.Max(handbrakeFraction * carParams.handbrakeTorque, brake * carParams.brakeTorqueRear);   // analog handbrake lever supported
+            }
             foreach (var wheel in allWheels) wheel.TireStep(substep, substepForceScale);
         }
         if (carParams.tireThermal || ThermalForced)
@@ -199,5 +207,22 @@ public class CarController : MonoBehaviour
         else foreach (var wheel in allWheels) if (wheel.thermal != null) wheel.ThermalOff();
         Vector3 bodyVelocity = body.velocity;
         body.AddForce(-bodyVelocity * (0.5f * carParams.airDensity * carParams.dragCoefficient * carParams.frontalArea * bodyVelocity.magnitude));
+    }
+    // @description - EXPERIMENTAL brakes (Brakes/*.cs): one substep of the physics-derived brake model. Sets the four wheel brake torques (the handbrake stays as it is: the larger of handbrake and hydraulic torque acts on the rear wheels) and hands the air mass the booster returned to the intake manifold back to the engine.
+    // @param {float} substep - substep length in s
+    // @return {Void} - nothing
+    void ApplyExperimentalBrakes(float substep)
+    {
+        if (experimentalBrakes == null) experimentalBrakes = new ExperimentalBrakes(carParams, null);
+        var input = new BrakeStepInput
+        {
+            pedalAxis = brake, loadCellPedal = carParams.loadCellBrakePedalEnabled, loadCellMaxForceNewtons = carParams.loadCellBrakePedalMaxForcePounds * BrakeSystemParameters.NewtonsPerPoundForce,
+            manifoldPressurePascals = engine.ManifoldPressurePascals, manifoldVolumeCubicMeters = carParams.manifoldVolume, boosterFault = brakeBoosterFault
+        };
+        BrakeStepResult result = experimentalBrakes.Step(input, substep);
+        engine.AddExternalManifoldMass((float)result.manifoldMassReturnedKilograms);
+        float handbrakeFraction = Mathf.Max(handbrake ? 1f : 0f, handbrakeInput), handbrakeRearTorque = handbrakeFraction * carParams.handbrakeTorque;
+        frontLeftWheel.brakeTorque = (float)result.frontLeftTorqueNewtonMeters; frontRightWheel.brakeTorque = (float)result.frontRightTorqueNewtonMeters;
+        rearLeftWheel.brakeTorque = Mathf.Max(handbrakeRearTorque, (float)result.rearLeftTorqueNewtonMeters); rearRightWheel.brakeTorque = Mathf.Max(handbrakeRearTorque, (float)result.rearRightTorqueNewtonMeters);
     }
 }

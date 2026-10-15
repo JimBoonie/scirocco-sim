@@ -327,6 +327,14 @@ public class Engine
         angularVelocity = Mathf.Max(0f, crankAngularVelocity); previousRpm = rpm; rpm = angularVelocity * 30f / Mathf.PI;
     }
 
+    // @description - EXPERIMENTAL brake hook (additive; Step() is untouched): adds air mass to the intake manifold, for example air the brake booster check valve returns from the vacuum chamber. Never called while the experimental brakes are off.
+    // @param {float} massKilograms - air mass added to the manifold in kg (isothermal: dp = R T / V x mass)
+    // @return {Void} - nothing
+    public void AddExternalManifoldMass(float massKilograms)
+    {
+        manifoldPressure = Mathf.Clamp(manifoldPressure + carParams.airGasConstant * carParams.ambientTemperature / carParams.manifoldVolume * massKilograms, 1f, carParams.ambientPressure);
+        manifoldPressureRatio = manifoldPressure / carParams.ambientPressure;
+    }
     // @description - manifold absolute pressure for the firing-pulse model
     // @return {float} - Pa
     public float ManifoldPressurePascals => manifoldPressure;

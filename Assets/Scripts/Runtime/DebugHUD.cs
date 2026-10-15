@@ -14,7 +14,7 @@ public class DebugHUD : MonoBehaviour
         bool info = HudVisible(car);   // H toggles the gray info boxes (telemetry / FFB / joints); the bottom input strip is always shown
         var body = car.GetComponent<Rigidbody>();
         string gearText = car.drivetrain.gear == 0 ? "N" : car.drivetrain.gear < 0 ? "R" : car.drivetrain.gear.ToString();
-        string text = $"handling baseline (single)  tire {car.carParams.tirePreset} {(car.carParams.tireCompound == CarParams.TireCompound.ExperimentalViscoelastic ? "[Experimental viscoelastic]" : "")}{TransmissionTag(car)}\n" + $"{body.velocity.magnitude * MphPerMs,3:0} mph  {car.engine.rpm,4:0} rpm  gear {gearText}  MAP {car.engine.manifoldPressureRatio:0.00}  thr {car.engine.throttleArea:0.000}\n" +
+        string text = $"handling baseline (single)  tire {car.carParams.tirePreset} {(car.carParams.tireCompound == CarParams.TireCompound.ExperimentalViscoelastic ? "[Experimental viscoelastic]" : "")}{TransmissionTag(car)}{BrakeTag(car)}\n" + $"{body.velocity.magnitude * MphPerMs,3:0} mph  {car.engine.rpm,4:0} rpm  gear {gearText}  MAP {car.engine.manifoldPressureRatio:0.00}  thr {car.engine.throttleArea:0.000}\n" +
                    $"T {car.throttle:0.00} B {car.brake:0.00} C {car.clutch:0.00}  starter {car.engine.starterTorque,3:0}  cslip {car.drivetrain.clutchSlip:0.0}  steer {car.steer:0.0}°\n";
         foreach (var wheel in new[] { car.frontLeftWheel, car.frontRightWheel, car.rearLeftWheel, car.rearRightWheel })
             text += $"{wheel.name}: Fz {wheel.verticalLoad,5:0} SR {wheel.slipRatio,6:0.000} SA {wheel.relaxedSlipAngle * Mathf.Rad2Deg,5:0.0} Fx {wheel.force.x,5:0} Fy {wheel.force.y,5:0} trv {wheel.travel * 1000f,3:0}mm\n";
@@ -135,6 +135,16 @@ public class DebugHUD : MonoBehaviour
         return text + "\n(antiCoef F " + car.frontLeftWheel.antiCoef.ToString("0.000") + " R " + car.rearLeftWheel.antiCoef.ToString("0.000") + $")  unsprung {(car.carParams.useUnsprungMass ? "on" : "off")}  front {car.carParams.frontModel}  rear {car.carParams.rearModel}";
     }
 
+    // @description - HUD tag of the experimental brake model: master pressure, booster assist, vacuum chamber pressure and the pedal source; empty while the model is off
+    // @param {CarController} car - the car
+    // @return {string} - tag text or an empty string
+    static string BrakeTag(CarController car)
+    {
+        const double PascalsPerKilopascal = 1000.0;   // Pa/kPa (S: definition)
+        var brakes = car.ExperimentalBrakesModel; if (!car.carParams.experimentalBrakesEnabled || brakes == null) return "";
+        BrakeStepResult result = brakes.LastResult;
+        return $" [Experimental brakes: {(car.carParams.loadCellBrakePedalEnabled ? "load cell" : "travel")} pedal {result.pedalForceNewtons:0} N, master {result.masterPressurePascals / brakes.Parameters.pascalsPerBar:0} bar, assist {result.boosterAssistForceNewtons:0} N, vacuum {(car.carParams.ambientPressure - brakes.Booster.VacuumPressurePascals) / PascalsPerKilopascal:0} kPa]";
+    }
     // @description - HUD tag of the experimental transmission model: requested gear versus the gear the gearbox really has, and the gate phase; empty while the model is off
     // @param {CarController} car - car
     // @return {string} - tag text
