@@ -7,6 +7,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added (second Experimental placeholder, PT 2026-10-15 00:10)
+
+- Experimental tab: a second disabled placeholder toggle, "Transmission and synchronizer model (coming soon)", with a short explanation, wired to `BindingProfile.experimentalTransmissionEnabled` and `CarParams.experimentalTransmissionEnabled` (default false; nothing reads them yet). It is independent of the driveline shuffle toggle (separate fields, separate row). The new JSON field defaults to false when absent, so the settings version stays 10 and bindings are not reset. Test `DrivelineAndTransmissionPlaceholdersAreIndependent` added.
+
 ## [2026-10-14] (PT)
 
 ### Added (Experimental settings tab, PT 2026-10-14 23:50)

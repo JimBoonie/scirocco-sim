@@ -15,9 +15,9 @@ public class ExperimentalSettingsTabTests
     {
         var profile = new BindingProfile();
         Assert.IsFalse(profile.tireThermal); Assert.AreEqual(24.7f, profile.frontColdPressurePsi); Assert.AreEqual(24.7f, profile.rearColdPressurePsi);
-        Assert.AreEqual(0, profile.tireCompound); Assert.IsFalse(profile.experimentalDrivelineEnabled);
+        Assert.AreEqual(0, profile.tireCompound); Assert.IsFalse(profile.experimentalDrivelineEnabled); Assert.IsFalse(profile.experimentalTransmissionEnabled);
         var carParams = ScriptableObject.CreateInstance<CarParams>();
-        Assert.IsFalse(carParams.tireThermal); Assert.AreEqual(CarParams.TireCompound.Default, carParams.tireCompound); Assert.IsFalse(carParams.experimentalDrivelineEnabled);
+        Assert.IsFalse(carParams.tireThermal); Assert.AreEqual(CarParams.TireCompound.Default, carParams.tireCompound); Assert.IsFalse(carParams.experimentalDrivelineEnabled); Assert.IsFalse(carParams.experimentalTransmissionEnabled);
         Assert.AreEqual(ExperimentalSettingsTab.VolkswagenColdPressurePsi, profile.frontColdPressurePsi);
     }
     // @description - Verifies that every option changes through Adjust as the old Quick menu did: toggle on/off and flip, pressure 0.5 psi steps clamped to 15..45 with select = 24.7, compound select and left/right.
@@ -60,6 +60,22 @@ public class ExperimentalSettingsTabTests
         var oldLoaded = JsonUtility.FromJson<BindingProfile>(oldJson);
         Assert.AreEqual(BindingProfile.CurrentVersion, oldLoaded.version); Assert.IsFalse(oldLoaded.experimentalDrivelineEnabled);
         Assert.AreEqual(InputMapper.Defaults().actions.Count, oldLoaded.actions.Count, "bindings are not reset");
+    }
+    // @description - Verifies the driveline and transmission placeholders are independent settings: each round-trips through JSON without affecting the other, an old file without either field loads both as false, and the menu cannot change either.
+    // @return {Void} - nothing
+    [Test] public void DrivelineAndTransmissionPlaceholdersAreIndependent()
+    {
+        var drivelineOnly = new BindingProfile { experimentalDrivelineEnabled = true };
+        var loadedDriveline = JsonUtility.FromJson<BindingProfile>(JsonUtility.ToJson(drivelineOnly));
+        Assert.IsTrue(loadedDriveline.experimentalDrivelineEnabled); Assert.IsFalse(loadedDriveline.experimentalTransmissionEnabled);
+        var transmissionOnly = new BindingProfile { experimentalTransmissionEnabled = true };
+        var loadedTransmission = JsonUtility.FromJson<BindingProfile>(JsonUtility.ToJson(transmissionOnly));
+        Assert.IsTrue(loadedTransmission.experimentalTransmissionEnabled); Assert.IsFalse(loadedTransmission.experimentalDrivelineEnabled);
+        var oldJson = System.Text.RegularExpressions.Regex.Replace(JsonUtility.ToJson(InputMapper.Defaults()), "\"experimental(Driveline|Transmission)Enabled\":(true|false),?", "");
+        var oldLoaded = JsonUtility.FromJson<BindingProfile>(oldJson);
+        Assert.IsFalse(oldLoaded.experimentalDrivelineEnabled); Assert.IsFalse(oldLoaded.experimentalTransmissionEnabled); Assert.AreEqual(BindingProfile.CurrentVersion, oldLoaded.version);
+        for (int item = 0; item <= ExperimentalSettingsTab.ItemCount + 1; item++) { ExperimentalSettingsTab.Adjust(drivelineOnly, item, 1, true); ExperimentalSettingsTab.Adjust(transmissionOnly, item, 1, true); }
+        Assert.IsFalse(transmissionOnly.experimentalDrivelineEnabled, "menu actions never touch the driveline placeholder"); Assert.IsFalse(drivelineOnly.experimentalTransmissionEnabled, "menu actions never touch the transmission placeholder");
     }
     // @description - Runs one IMGUI pass headlessly as an IMGUIContainer would, through the VR mouse dispatch.
     // @param {EventType} eventType - IMGUI event type of this pass
@@ -114,6 +130,6 @@ public class ExperimentalSettingsTabTests
             queue.Sample(true, dragStart, 0f); Frame(queue, dragStart, Draw); queue.Sample(true, dragEnd, 0f); Frame(queue, dragEnd, Draw); queue.Sample(false, dragEnd, 0f); Frame(queue, dragEnd, Draw);
         }
         Assert.IsTrue(profile.frontColdPressurePsi != 24.7f || profile.rearColdPressurePsi != 24.7f, "a VR drag on a pressure slider must change it");
-        Assert.IsFalse(profile.experimentalDrivelineEnabled, "the disabled placeholder ignores clicks");
+        Assert.IsFalse(profile.experimentalDrivelineEnabled, "the disabled placeholder ignores clicks"); Assert.IsFalse(profile.experimentalTransmissionEnabled, "the disabled transmission placeholder ignores clicks");
     }
 }
