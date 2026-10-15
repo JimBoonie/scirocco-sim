@@ -7,6 +7,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added / Changed (US spelling pass, part 2: tools, docs and the spelling audit, PT 2026-10-15 01:30)
+
+- New `tools/us_spelling.py`: `check` lists British spellings left in a directory or file (exit 1 if any), `fix` rewrites them (protecting URLs, sourced quotes and titles in the notes, Blender object names, external API names), `yaml-keys` renames serialized keys in Unity YAML files. Repo result: `check .` reports 0 British lines.
+- Python tools (`export_unity.py`, `solve_kinematics.py`, `params_io.py`, `visco_*.py`), `suspension_params.json` and all markdown notes use American spelling. JSON keys changed end to end (reader and writer): for example `roll_centre_height` -> `roll_center_height`, `wheel_centre` -> `wheel_center`, `tyre_loaded_radius` -> `tire_loaded_radius`. Results are unchanged: every generated JSON, CSV and text output is identical after translating the key spelling, and every plot is byte-identical except `kinematics.png`, whose axis labels now read "center".
+- `tools/sync_tools.sh` also refuses to copy a dev-box file that still has British spelling.
+- `docs/RENAMES.md`: new "US spelling pass" section with the stem table and every changed identifier and key.
+
 ### Changed (US spelling pass, part 1: Unity C# and serialized fields, PT 2026-10-15 00:50)
 
 - All C# identifiers, comments and UI strings use American spelling (center, tire, color, curb, meter, behavior, normalized, regularization, initialized, ...). Old -> new names are listed in `docs/RENAMES.md` ("US spelling pass"). Includes the scenario `lagunakerb` -> `lagunacurb` and `SurfaceType.Kerb` -> `Curb`, the Laguna Seca centerline field `centrelineCsv` -> `centerlineCsv`, and the serialized field keys in `SciroccoParams.asset`, `SuspensionTables.asset`, `TestTrack.unity` and `LagunaSeca.unity` (values kept; only the keys were renamed).

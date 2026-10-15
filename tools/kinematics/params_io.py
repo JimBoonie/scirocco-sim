@@ -4,7 +4,7 @@ Environment:
   KINEMATICS_OUTPUT_DIRECTORY - directory for generated files (default '.')
   MULTIBODY_PERTURBATIONS_JSON - JSON dict of perturbations:
     front_pivot_delta_z (m, both lower-arm pivots), rear_pivot_delta_z (m, trailing-arm pivot), front_bush_scale, rear_bush_scale (factors),
-    shear_centre_x (m, absolute beam shear-centre x), roll_scale (factor on the rear beam torsion/roll stiffness)."""
+    shear_center_x (m, absolute beam shear-center x), roll_scale (factor on the rear beam torsion/roll stiffness)."""
 import json
 import os
 
@@ -14,7 +14,7 @@ FRONT_BUSHING_NAMES = ('front_arm_front_N_per_mm', 'front_arm_rear_N_per_mm')
 REAR_BUSHING_NAMES = ('rear_beam_pivot_N_per_mm',)
 
 
-# @description - Moves both front lower-arm pivots up or down by the perturbation, when one is requested (metres, vehicle z up).
+# @description - Moves both front lower-arm pivots up or down by the perturbation, when one is requested (meters, vehicle z up).
 # @param {dict} front - the 'front_macpherson' section of the parameters, modified in place
 # @return {Void} - nothing
 def perturb_front_pivot_height(front):
@@ -24,7 +24,7 @@ def perturb_front_pivot_height(front):
         front[pivot_name][0][2] += PERTURBATIONS['front_pivot_delta_z']
 
 
-# @description - Moves the rear trailing-arm pivot up or down by the perturbation, when one is requested (metres, vehicle z up).
+# @description - Moves the rear trailing-arm pivot up or down by the perturbation, when one is requested (meters, vehicle z up).
 # @param {dict} rear - the 'rear_twist_beam' section of the parameters, modified in place
 # @return {Void} - nothing
 def perturb_rear_pivot_height(rear):
@@ -44,12 +44,12 @@ def perturb_bushing_rates(bushings):
                 bushings[bushing_name][direction][0] *= PERTURBATIONS[perturbation_key]
 
 
-# @description - Applies the beam shear-centre and roll-stiffness perturbations (x in metres, stiffness in N m/deg).
+# @description - Applies the beam shear-center and roll-stiffness perturbations (x in meters, stiffness in N m/deg).
 # @param {dict} parameters - the whole parameter dictionary, modified in place
 # @return {Void} - nothing
 def perturb_rear_beam(parameters):
-    if 'shear_centre_x' in PERTURBATIONS:
-        parameters['rear_twist_beam']['beam_shear_centre_x'][0] = PERTURBATIONS['shear_centre_x']
+    if 'shear_center_x' in PERTURBATIONS:
+        parameters['rear_twist_beam']['beam_shear_center_x'][0] = PERTURBATIONS['shear_center_x']
     if 'roll_scale' in PERTURBATIONS:
         parameters['anti_roll']['rear_roll_stiffness_total_Nm_per_deg'][0] *= PERTURBATIONS['roll_scale']
 

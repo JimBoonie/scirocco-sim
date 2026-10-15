@@ -1,7 +1,7 @@
 {
  "_meta": {
-  "coords": "vehicle frame, metres: origin on ground plane at front axle centreline, x forward, y left, z up; left side given, mirror y for right",
-  "ride_state": "unladen kerb (VW alignment condition), estimated ride height",
+  "coords": "vehicle frame, meters: origin on ground plane at front axle centerline, x forward, y left, z up; left side given, mirror y for right",
+  "ride_state": "unladen curb (VW alignment condition), estimated ride height",
   "tags": "S=sourced, SD=sources disagree, D=derived (method in suspension_data.md), E=estimated",
   "variant": "1984 Scirocco II EU 1.8 GTI/GTX, 185/60HR14 on 6Jx14"
  },
@@ -18,11 +18,11 @@
    1.372,
    "S"
   ],
-  "tyre_loaded_radius": [
+  "tire_loaded_radius": [
    0.2768,
    "D"
   ],
-  "tyre_free_radius": [
+  "tire_free_radius": [
    0.2888,
    "D"
   ]
@@ -34,7 +34,7 @@
     0.5525,
     0.7
    ],
-   "D (x shifted +0.0089 m 2026-10-12: derived correction so steering axis passes through wheel centre longitudinally, zero caster offset; keeps sourced caster/KPI/scrub)"
+   "D (x shifted +0.0089 m 2026-10-12: derived correction so steering axis passes through wheel center longitudinally, zero caster offset; keeps sourced caster/KPI/scrub)"
   ],
   "lower_ball_joint": [
    [
@@ -42,7 +42,7 @@
     0.6744,
     0.165
    ],
-   "D (x shifted +0.0089 m 2026-10-12: derived correction so steering axis passes through wheel centre longitudinally, zero caster offset; keeps sourced caster/KPI/scrub)"
+   "D (x shifted +0.0089 m 2026-10-12: derived correction so steering axis passes through wheel center longitudinally, zero caster offset; keeps sourced caster/KPI/scrub)"
   ],
   "lower_arm_front_pivot": [
    [
@@ -60,7 +60,7 @@
    ],
    "E (re-solve 2026-10-13: 3df3038's +20 mm estimate DROPPED: conflicted with the sourced 379 mm tie rod / inner point (-0.09949, +/-0.22160, 0.35594), fitted for ~zero bump steer at this height; with +20 mm bump steer was -18.4 deg/m)"
   ],
-  "wheel_centre": [
+  "wheel_center": [
    [
     0.0,
     0.702,
@@ -141,7 +141,7 @@
   },
   "unsprung_mass_kg": [
    34.0,
-   "E (hub, 239mm vented disc, caliper, wheel 6x14, tyre, half strut/arm/driveshaft)"
+   "E (hub, 239mm vented disc, caliper, wheel 6x14, tire, half strut/arm/driveshaft)"
   ]
  },
  "rear_twist_beam": {
@@ -153,11 +153,11 @@
    ],
    "E (pivot ~0.415 m ahead of rear axle): z -30 mm (single baseline 2026-10-13: within the estimated range, chosen by Taylor for the understeer balance; estimate, not sourced); was z 0.3; kept in the re-solve 2026-10-13: no sourced conflict; rear roll steer with shear -2.06 becomes slight understeer (+0.0033 deg/deg, E target 'slight understeer') vs -0.0112 at z 0.3; rear anti-lift coeff 0.66 -> 0.60"
   ],
-  "beam_shear_centre_x": [
+  "beam_shear_center_x": [
    -2.06,
    "E (beam close to pivots on A1 = more torsion-like) (re-solve 2026-10-13: 3df3038's -2.00 estimate DROPPED: moved ground camber-vs-roll 0.80 -> 0.96 and solved rear RC 55 -> 11 mm, both away from the D targets 0.85 / 180 mm)"
   ],
-  "wheel_centre": [
+  "wheel_center": [
    [
     -2.4,
     0.686,
@@ -280,11 +280,11 @@
   ]
  },
  "kinematics_targets": {
-  "front_roll_centre_height_m": [
+  "front_roll_center_height_m": [
    0.07,
    "D (graphical from hardpoints above)"
   ],
-  "rear_roll_centre_height_m": [
+  "rear_roll_center_height_m": [
    0.18,
    "D (twist beam ~ pivot-height line)"
   ],
@@ -528,7 +528,7 @@
    ]
   },
   "knuckle_hub": {
-   "lbj_to_wheel_centre_z_m": [
+   "lbj_to_wheel_center_z_m": [
     0.112,
     "D"
    ],
@@ -543,7 +543,7 @@
    "part": "171 419 804 (manual; right one adjustable), M12x1.5/M22x1.5",
    "rod_length_m": [
     0.379,
-    "SD Bentley 1985-93 US manual p.10-33 Fig. 7-7 dimension c = 379 mm (14.921 in), outer stud centre to inner joint housing end; unconfirmed for 1984. Was 0.3751 (S TOPRAN/SKF listing via wortox.com)"
+    "SD Bentley 1985-93 US manual p.10-33 Fig. 7-7 dimension c = 379 mm (14.921 in), outer stud center to inner joint housing end; unconfirmed for 1984. Was 0.3751 (S TOPRAN/SKF listing via wortox.com)"
    ],
    "pivot_to_pivot_m": [
     0.379,
@@ -555,7 +555,7 @@
      69.0,
      67.0
     ],
-    "SD Bentley 1985-93 US manual p.10-33 Figs 7-8/7-9 (rack centred). NOT applied: both sides modelled at the mean (Taylor 2026-10-13)"
+    "SD Bentley 1985-93 US manual p.10-33 Figs 7-8/7-9 (rack centered). NOT applied: both sides modeled at the mean (Taylor 2026-10-13)"
    ]
   },
   "rear_damper": {
@@ -591,7 +591,7 @@
   },
   "front_arb": {
    "diam_mm": 16,
-   "layout": "U-bar: centre clamped to body/subframe, ends bolted to lower arms near rear bush (no drop links, so it also locates arms)",
+   "layout": "U-bar: center clamped to body/subframe, ends bolted to lower arms near rear bush (no drop links, so it also locates arms)",
    "lever_m": [
     0.2,
     "E"

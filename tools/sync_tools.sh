@@ -1,5 +1,5 @@
 #!/bin/bash
-# @description - Compares tools/ with the dev-box working tree (default /workspace/scirocco_sim) and, only with --apply, copies the files that differ. A file is refused (never copied) when the dev-box copy still contains an old pre-rename identifier, so stale copies cannot overwrite the renamed repo files.
+# @description - Compares tools/ with the dev-box working tree (default /workspace/scirocco_sim) and, only with --apply, copies the files that differ. A file is refused (never copied) when the dev-box copy still contains an old pre-rename identifier or a British spelling (tools/us_spelling.py), so stale copies cannot overwrite the renamed repo files.
 # Usage: sync_tools.sh [--apply] [source_directory]
 # @param {String} --apply - optional first argument: really copy (default is a dry run that only lists differences)
 # @param {String} source_directory - optional dev-box tree, default /workspace/scirocco_sim
@@ -8,7 +8,7 @@
 # Blocks a copy: old identifiers (see docs/RENAMES.md: rb*/fc*/kp* SuspensionTables field names, Kkin, us_grad, steer_geom, Fx_brake) or a python file without the #!/usr/bin/python3 shebang and # @description header.
 set -euo pipefail
 
-SYNCED_FILES="suspension_params.json kinematics/export_unity.py kinematics/solve_kinematics.py kinematics/params_io.py visco_fit.py visco_metrics.py visco_plots.py visco_smoke.py suspension_data.md tire_thermal_research.md service_manual_findings.md online_research_findings.md proposed_geometry_fix.md viscoelastic_tyre_research.md"
+SYNCED_FILES="us_spelling.py suspension_params.json kinematics/export_unity.py kinematics/solve_kinematics.py kinematics/params_io.py visco_fit.py visco_metrics.py visco_plots.py visco_smoke.py suspension_data.md tire_thermal_research.md service_manual_findings.md online_research_findings.md proposed_geometry_fix.md viscoelastic_tyre_research.md"
 LEGACY_PATTERN='\b(rb|fc|kp)[A-Z][A-Za-z0-9]*\b|\bKkin\b|\bus_grad\b|\bsteer_geom\b|\bFx_brake\b|\bMuOfT\b|\bTCross\b|\bMuRoad\b|\bMuBench\b'
 
 # @description - Tells whether a file still uses an old pre-rename identifier.
@@ -17,6 +17,14 @@ LEGACY_PATTERN='\b(rb|fc|kp)[A-Z][A-Za-z0-9]*\b|\bKkin\b|\bus_grad\b|\bsteer_geo
 contains_legacy_identifier() {
     local path=$1
     grep -Eq "$LEGACY_PATTERN" "$path"
+}
+
+# @description - Tells whether a file still contains British spellings (tools/us_spelling.py check reports them). A dev-box copy with British spelling is stale and must not overwrite the American-spelled repo file.
+# @param {String} path - file to scan
+# @return {Int} - 0 when British spellings are present, 1 when the file is clean
+contains_british_spelling() {
+    local path=$1
+    ! python3 "$(dirname "$0")/us_spelling.py" check "$path" > /dev/null
 }
 
 # @description - Tells whether a script meets the readability standard well enough to be copied: python files need the #!/usr/bin/python3 shebang and a "# @description" header; other file types are always acceptable.
@@ -41,8 +49,8 @@ sync_file() {
     local source_path="$source_directory/$relative_path" destination_path="$destination_directory/$relative_path"
     [ -f "$source_path" ] || return 0
     cmp -s "$source_path" "$destination_path" && return 0
-    if contains_legacy_identifier "$source_path" || ! meets_script_standard "$source_path"; then
-        echo "REFUSED (dev-box copy uses old identifiers or lacks the shebang/header, update it first): $relative_path"
+    if contains_legacy_identifier "$source_path" || contains_british_spelling "$source_path" || ! meets_script_standard "$source_path"; then
+        echo "REFUSED (dev-box copy uses old identifiers or British spelling, or lacks the shebang/header; update it first): $relative_path"
         return 1
     fi
     echo "differs: $relative_path"

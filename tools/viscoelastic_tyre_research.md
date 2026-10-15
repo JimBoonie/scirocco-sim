@@ -1,11 +1,11 @@
-# Experimental (viscoelastic) tyre compound: research basis and design
+# Experimental (viscoelastic) tire compound: research basis and design
 
 Date: 2026-10-13 (PT). Code: `Assets/Scripts/Runtime/ViscoTire.cs`, hooks in `WheelCorner.cs` / `TireThermal.cs`. Fit: `tools/visco_fit.py`.
 Smoke / ablation harness: `tools/visco_smoke.py`, `tools/visco_metrics.py`. Plots: `tools/visco_plots.py`.
 Tags: **S** sourced, **SD** sources disagree / range, **D** derived, **E** estimated.
 
 The **Default** compound (sourced Pacejka coefficients + `TireThermal`) is unchanged. The Experimental compound is selected in
-Quick settings ("Tyre compound"); the settings file is v8 (v7 files migrate to Default).
+Quick settings ("Tire compound"); the settings file is v8 (v7 files migrate to Default).
 
 ## 1. Literature summary
 
@@ -18,15 +18,15 @@ Quick settings ("Tyre compound"); the settings file is v8 (v7 files migrate to D
 | Adhesive (real-contact) contribution | mu_adh = tau_f(v) A(v)/(A0 sigma0); tau_f = tau_f0 exp(-c log10^2(v/v0)); tread compound on road: tau_f0 = 6.5 MPa (5.3-8.5 across compounds), c = 0.1, v0 = 6e-3 m/s; q1 cutoff at cumulative rms slope 1.3 | Lorenz, Oh, Persson, J. Chem. Phys. 142 (2015) 194701 (**S**); filled SBR: Lorenz, Persson, Dieluweit, Tada, Eur. Phys. J. E 34 (2011) 129 (**S**) |
 | Asperity strain | Relevant rubber strain ~ rms slope / 2 (large: nonlinear, Payne-softened modulus) | Persson 2006; Lorenz 2011 (**S**) |
 | Payne effect | Storage modulus of filled rubber drops from E0 to E_inf with strain amplitude; Kraus model E'(eps) = E_inf + (E0 - E_inf)/(1 + (eps/eps_c)^(2m)), m ~0.5-0.6; filler-network (cluster-cluster aggregation) origin | Payne, J. Appl. Polym. Sci. 6 (1962) 57; Kraus, J. Appl. Polym. Sci. Appl. Polym. Symp. 39 (1984) 75; Heinrich & Kluppel, Adv. Polym. Sci. 160 (2002) 1 (**S**) |
-| Mullins effect | First-load stress softening of filled rubber; recovers only partly; relevant for a new tyre, not a run-in one | Mullins, Rubber Chem. Technol. 42 (1969) 339 (**S**) - **not modelled** (run-in tyre assumed, E) |
+| Mullins effect | First-load stress softening of filled rubber; recovers only partly; relevant for a new tire, not a run-in one | Mullins, Rubber Chem. Technol. 42 (1969) 339 (**S**) - **not modeled** (run-in tire assumed, E) |
 | DMA indicators | CB-filled E-SBR tread: tan d(0 C, 10 Hz) = 0.206, tan d(60 C, 10 Hz) = 0.160 (E-SBR/BR 70/30: 0.181 / 0.151) | Sae-oui et al., Adv. Mater. Sci. Eng. 2017, 2476101, Table 4 (**S**) |
 | Polymer Tg | cold E-SBR, 23.5 % styrene: Tg about -50 C (DSC midpoint -45 C, range -55..-35 C) | AZoM E-SBR article; NETZSCH SBR data (**S / SD**) |
 | Rolling resistance and hysteresis | RR of a tread is an energy-controlled loss ~ tan d at the rolling deformation frequency; tan d(60 C) is the industry RR indicator; ISO temperature correction Fr25 = Fr [1 + Kt (t - 25)], Kt = 0.008 /C (passenger) | Schuring, Rubber Chem. Technol. 53 (1980) 600; ISO 28580:2018 sec. 9.2 (**S**) |
 | Transient response / relaxation length | sigma_alpha = C_Falpha / c_Fy (cornering stiffness over lateral carcass stiffness), so sigma grows with load like C_Falpha; brush model C_Falpha = 2 c_p a^2, C_Fkappa = 2 c_px a^2 | Pacejka, *Tire and Vehicle Dynamics* 3rd ed. (2012) ch. 3 (brush), ch. 7 (transient, stretched-string) (**S**) |
 | Relaxation length measurement | step steer / sine sweep: "you create a slip angle but the grip has some delay" | Rouelle (OptimumG) lecture transcript `transcripts/496pDIeu7Mk.txt` (**S**, qualitative) |
 
-Not found / not available: the Niels Heusinkveld tyre-physics transcripts in the queue (`transcripts/STATUS.md`) were not fetched
-(YouTube 429); available transcripts are throttle-model videos and the OptimumG tyre lectures.
+Not found / not available: the Niels Heusinkveld tire-physics transcripts in the queue (`transcripts/STATUS.md`) were not fetched
+(YouTube 429); available transcripts are throttle-model videos and the OptimumG tire lectures.
 
 ## 2. Design (what is computed, where)
 
@@ -59,7 +59,7 @@ Not found / not available: the Niels Heusinkveld tyre-physics transcripts in the
     pi tan d half-cycle loss **E**), is deposited in the TireThermal bulk node instead of the 1 mm surface (energy unchanged, clamped to
     the friction power). RR heat already went to tread/carcass.
 
-Not modelled: Mullins (run-in tyre), wet friction, wear, viscoelastic damping of the low-speed stick model (kept critically damped).
+Not modeled: Mullins (run-in tire), wet friction, wear, viscoelastic damping of the low-speed stick model (kept critically damped).
 
 ## 3. Validation (2026-10-14, Linux headless players built from origin/main e4004aa and from this change)
 
@@ -71,7 +71,7 @@ simulated second for 4 wheels at 2 kHz).
 
 Default compound bit-identity: the CSV logs of skidpad, step steer, threshold brake, lift-off (thermal off and on) are byte-identical
 between the origin/main build and the new build. The Laguna run differs from the first sample on (spawn drop Fz) because the Laguna scene
-and terrain are regenerated by every build (`TrackSetup.Build`, new object ids); lap times (182.5/181.7/180.7 s) and tyre temperatures are
+and terrain are regenerated by every build (`TrackSetup.Build`, new object ids); lap times (182.5/181.7/180.7 s) and tire temperatures are
 identical to 0.1 s / 1 F. (Tooling note: some SciroccoSetup.BuildLinux runs produce a player whose level0 is "corrupted"; rebuilding fixes it.)
 
 Smoke metrics (thermal model on; skidpad R 40 m; step steer 80 km/h 2.5 deg; threshold brake 0.85 pedal from 105 km/h; lift-off at 0.69 g):

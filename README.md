@@ -77,7 +77,7 @@ You start in **neutral**: press E for 1st, blip the throttle, and go. Shifting g
   (60.4 % front), with no oscillation. 0–100 km/h in **9.41 s** (factory claim 8.6 s). About 198 km/h after 60 s and still rising slightly (claimed Vmax 200).
 - Not yet tested: cornering, braking, or interactive play with a screen and keyboard.
 ## Known simplifications / next steps
-Suspension forces are computed once per 500 Hz step, while the tire and drivetrain substeps reuse that step's chassis velocity. The bushings aren't modelled as compliance. Roll camber is approximate, with no toe or roll-steer curves. There is no tire thermal/pressure model or force feedback yet, and no torque steer.
+Suspension forces are computed once per 500 Hz step, while the tire and drivetrain substeps reuse that step's chassis velocity. The bushings aren't modeled as compliance. Roll camber is approximate, with no toe or roll-steer curves. There is no tire thermal/pressure model or force feedback yet, and no torque steer.
 
 ## Running the build (Windows / Linux)
 - Windows: unzip `SciroccoSimDemo_Windows_x64.zip` and run `SciroccoSimDemo.exe` (1280x720, windowed).
@@ -101,7 +101,7 @@ The car starts in neutral: press E (or select 1st) to drive.
 ### Steering wheel, pedals, shifter (multiple devices/brands)
 1. Plug in all devices **before** starting the game. Reconnects are handled: bindings are stored by product name + layout (+ index for identical devices) and re-resolved whenever a device is added or removed.
 2. Press F1. For each action press **+ Bind**, then move the axis fully or press the button on any device. Esc cancels.
-3. Press **Calibrate** for each axis. For a wheel, turn it fully both ways, centre it, then press **Done (centred)**. For a pedal, press it fully, release it, then press **Done (released)**. Min/max are captured, and inversion is detected from the rest position.
+3. Press **Calibrate** for each axis. For a wheel, turn it fully both ways, center it, then press **Done (centered)**. For a pedal, press it fully, release it, then press **Done (released)**. Min/max are captured, and inversion is detected from the rest position.
 4. Per axis you can set:
    - **inv**: invert;
    - **dz**: deadzone;
@@ -113,9 +113,9 @@ The car starts in neutral: press E (or select 1st) to drive.
 Axis ranges: a raw axis can report 0..1 or -1..1. Calibration maps whatever it reports to 0..1 (pedals) or -1..1 (steer/look). The layout's own deadzone processors are bypassed (unprocessed values are read), so the only deadzone is the one you set.
 
 ### Steering mapping: no assists
-Your wheel angle is treated as the car's steering-wheel (column) angle, and the column drives the rack through a constant pinion (0.1081 mm rack per degree, ±68.6 mm at the 634.7° stop), and each front wheel's angle comes from the suspension kinematics (40.4°/32.9° at full lock, ~5.2° mean at 100°; on-centre ratio 19.26:1).
+Your wheel angle is treated as the car's steering-wheel (column) angle, and the column drives the rack through a constant pinion (0.1081 mm rack per degree, ±68.6 mm at the 634.7° stop), and each front wheel's angle comes from the suspension kinematics (40.4°/32.9° at full lock, ~5.2° mean at 100°; on-center ratio 19.26:1).
 - **1:1 column (default).** The real car turns ~3.5 turns lock-to-lock (±630° column → ±36.4° road wheel). A 900° wheel (±450°) reaches ±26.0° road wheel, which is a soft lock at your wheel's limit. The last 180° each side of the real car's lock is not reachable, but every degree on your wheel equals a real degree. Set rotation to 1260° on wheels that support it for full lock. Above 1260°, the car's rack stop (±630°) applies.
-- **Scale to car lock (option).** Your lock maps to the car's lock. With 900° the effective wheel→road ratio becomes about 13.6:1 on centre instead of 19.26:1, so the menu shows the effective ratio.
+- **Scale to car lock (option).** Your lock maps to the car's lock. With 900° the effective wheel→road ratio becomes about 13.6:1 on center instead of 19.26:1, so the menu shows the effective ratio.
 - There is no speed-sensitive steering, filtering, counter-steer or other assist. Keys and gamepad stick approach full lock at the existing 90°/s road-wheel rate (E), as before.
 - The HUD shows the steering-wheel angle (top right) and the road-wheel angle.
 
@@ -146,7 +146,7 @@ Not implemented. The Input System has no generic DirectInput force-feedback API,
   - `steeringStiffness` 12000 Nm/rad (was 20000 E);
   - `pneumaticTrail0` 0.035 m (was 0.025 E);
   - in suspension_params.json: front arm bush rates x2, rear trailing-arm pivot z -30 mm.
-  - Dropped in the re-solve (2026-10-13) because they conflicted with sourced/derived data: front lower-arm pivots z +20 mm (with the sourced 0.379 m tie rod, inner point (-0.09949, +-0.22160, 0.35594), bump steer went to -18 deg/m; back at the original height it is +0.55 deg/m) and beam shear centre x -2.00 m (moved rear camber-vs-roll to 0.96 and rear RC to 11 mm, away from the D targets 0.85 / 180 mm; back at -2.06: 0.80 / 55 mm).
+  - Dropped in the re-solve (2026-10-13) because they conflicted with sourced/derived data: front lower-arm pivots z +20 mm (with the sourced 0.379 m tie rod, inner point (-0.09949, +-0.22160, 0.35594), bump steer went to -18 deg/m; back at the original height it is +0.55 deg/m) and beam shear center x -2.00 m (moved rear camber-vs-roll to 0.96 and rear RC to 11 mm, away from the D targets 0.85 / 180 mm; back at -2.06: 0.80 / 55 mm).
   - The kinematic/compliance tables are re-solved from these on top of the current geometry (caster-trail fix, tie rod above, steering linkage grid). Lock at the +-68.6 mm rack stop is 40.34/32.91 deg (sourced 40d22'/32d55').
   - Result (thermal off): understeer gradient 1.84 deg/g (3df3038: 2.40; old baseline 1.06).
   - Spring and wheel rates are unchanged.

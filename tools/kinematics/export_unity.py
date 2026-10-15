@@ -9,7 +9,7 @@ FRONT_BODY_JOINT_ORDER = ('arm_front_bush', 'arm_rear_bush', 'tie_rod', 'top_mou
 REAR_LOAD_CASE_ORDER = ('longitudinal_force', 'lateral_force', 'vertical_force')
 REAR_BODY_JOINT_ORDER = ('pivot_bush_left', 'pivot_bush_right', 'spring_damper_left', 'spring_damper_right')
 GENERATED_CLASS_NAME = 'SuspensionTablesData'
-GENERATED_FILE_DESCRIPTION = "Copies the baked suspension kinematic and compliance tables (solved offline by solve_kinematics.py) into a SuspensionTables asset: travel in metres, angles in degrees, forces in newtons, rack travel in metres. Called by SciroccoSetup when the test scene is built so the asset always matches the generated data."
+GENERATED_FILE_DESCRIPTION = "Copies the baked suspension kinematic and compliance tables (solved offline by solve_kinematics.py) into a SuspensionTables asset: travel in meters, angles in degrees, forces in newtons, rack travel in meters. Called by SciroccoSetup when the test scene is built so the asset always matches the generated data."
 
 
 # @description - Flattens a list of rows into one list (row-major), the layout of the 2-D tables in the SuspensionTables asset.
@@ -24,7 +24,7 @@ def flatten(rows):
 # @param {dict} rear_compliance - the rear 'compliance' section of compliance.json
 # @return {tuple} - (front joint reactions: 4 load cases x (4 body joints + ball joint) x 3 N per N, rear beam joint reactions: 3 load cases x 4 joints x 3 N per N)
 def joint_reactions(front, rear_compliance):
-    # joint reaction maps: force ON THE CAR BODY (left-corner frame x forward, y left, z up) per unit tyre load
+    # joint reaction maps: force ON THE CAR BODY (left-corner frame x forward, y left, z up) per unit tire load
     front_reactions = []
     for load_case in LOAD_CASE_ORDER_FRONT:
         for joint_name in FRONT_BODY_JOINT_ORDER:
@@ -37,7 +37,7 @@ def joint_reactions(front, rear_compliance):
     return front_reactions, rear_reactions
 
 
-# @description - Maps solved kinematic tables and compliance results to the SuspensionTables field names and values (degrees, metres, N per N).
+# @description - Maps solved kinematic tables and compliance results to the SuspensionTables field names and values (degrees, meters, N per N).
 # @param {dict} tables - contents of tables.json (written by solve_kinematics.py)
 # @param {dict} compliance - contents of compliance.json (written by multibody_compliance.py)
 # @return {dict} - SuspensionTables field name to a float or a list of floats, in the order they are written
@@ -47,13 +47,13 @@ def fields(tables, compliance):
     front = compliance['front']
     suspension_fields = dict(
         travel=tables['travel'], frontCamberBody=tables['front_camber_body'], frontBumpSteer=tables['front_bumpsteer_toe'], frontTrackChange=tables['front_track_change'],
-        frontRollCentreHeight=tables['front_roll_centre_height'], frontMotionRatio=tables['front_motion_ratio'], rearMotionRatio=tables['rear_motion_ratio'], steerGrid=tables['front_steer_vs_rack'],
-        frontCamberTravelSteer=flatten(tables['front_camber_travel_rack']), rearCamberRollFraction=tables['rear_camber_roll_fraction'], rearRollCentreHeight=tables['rear_roll_centre_height'],
+        frontRollCenterHeight=tables['front_roll_center_height'], frontMotionRatio=tables['front_motion_ratio'], rearMotionRatio=tables['rear_motion_ratio'], steerGrid=tables['front_steer_vs_rack'],
+        frontCamberTravelSteer=flatten(tables['front_camber_travel_rack']), rearCamberRollFraction=tables['rear_camber_roll_fraction'], rearRollCenterHeight=tables['rear_roll_center_height'],
         rearBeamCamberPerOwnTravel=kinematic_coefficients[0][0], rearBeamCamberPerOtherTravel=kinematic_coefficients[0][1], rearBeamToePerOwnTravel=kinematic_coefficients[2][0], rearBeamToePerOtherTravel=kinematic_coefficients[2][1],
         rearBeamToePerOwnLateralForce=rear_compliance['lateral_force']['toe_own'], rearBeamToePerOtherLateralForce=rear_compliance['lateral_force']['toe_other'],
         rearBeamCamberPerOwnLateralForce=rear_compliance['lateral_force']['camber_own'], rearBeamCamberPerOtherLateralForce=rear_compliance['lateral_force']['camber_other'],
         rearBeamToePerOwnLongitudinalForce=rear_compliance['longitudinal_force']['toe_own'], rearBeamToePerOtherLongitudinalForce=rear_compliance['longitudinal_force']['toe_other'],
-        rearBeamRollCentreHeight=compliance['rear']['roll_centre_height'], rearBeamAntiLiftCoefficient=compliance['rear']['anti_lift_coefficient'],
+        rearBeamRollCenterHeight=compliance['rear']['roll_center_height'], rearBeamAntiLiftCoefficient=compliance['rear']['anti_lift_coefficient'],
         frontToePerLateralForce=front['lateral_force']['toe'], frontCamberPerLateralForce=front['lateral_force']['camber'],
         frontToePerBrakeForce=front['brake_force']['toe'], frontCamberPerBrakeForce=front['brake_force']['camber'],
         frontToePerDriveForce=front['drive_force']['toe'], frontCamberPerDriveForce=front['drive_force']['camber'],
@@ -66,7 +66,7 @@ def fields(tables, compliance):
     kingpin = compliance['kingpin_geometry']
     suspension_fields['kingpinAxis'] = kingpin['kingpin_axis']
     suspension_fields['kingpinContactPatchOffset'] = kingpin['contact_patch_offset']
-    suspension_fields['kingpinWheelCentreOffset'] = kingpin['wheel_centre_offset']
+    suspension_fields['kingpinWheelCenterOffset'] = kingpin['wheel_center_offset']
     return suspension_fields
 
 

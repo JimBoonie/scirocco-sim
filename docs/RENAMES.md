@@ -236,3 +236,103 @@ Dev-box scripts (`/workspace/scirocco_sim`) and `tools/` now share the same name
 
 ### Python functions (dev-box and `tools/`)
 `sensitivity.us_grad` -> `understeer_gradient`; `export_unity.fmt` -> `format_value`; `solve_kinematics` module constants (`STRUT_AXIS`, `SPIN_AXIS`, `WHEEL_CENTRE`, `LOADED_RADIUS`, ...) replace the single-letter globals; `multibody_compliance.Model` methods and `diagnostics/throttle_model/model.py` `idle_bypass_area(idle_rpm, upper_bound)` (shared by `percurve`, `plot`, `plot_v2`) are new/renamed. Environment variables `SENSITIVITY_ROOT` and `SIMULATION_PLAYER_DIRECTORY` replace hard-coded paths in `sensitivity.py`.
+
+## US spelling pass (2026-10-15)
+
+Everything (identifiers, comments, UI strings, docs, scripts, data-file keys) now uses American spelling. `tools/us_spelling.py check .` reports any British spelling left (exit 1 if any) and `fix` rewrites it; `yaml-keys` renames serialized field keys in Unity YAML (scene/asset values are kept). Not changed on purpose: URLs, sourced quotes and titles in the markdown notes, Blender object/material/texture names (`COL_Kerbs`, `M_Kerb`, `T_Kerb_RedWhite`, `Track_Kerbs`), the file names `centreline.csv`, `viscoelastic_tyre_research.md` and `analyse.py` (other files refer to them), and external API names (`MonoBehaviour`, `Mathf.MoveTowards`, matplotlib `Greys`). Saves and settings written before this pass lose the renamed serialized fields (accepted).
+
+### Word stems (applied everywhere, also inside camelCase and snake_case names)
+
+| Old | New |
+|---|---|
+| `centre / centred / centres / centreline` | `center / centered / centers / centerline` |
+| `tyre / tyres` | `tire / tires` |
+| `colour` | `color` |
+| `behaviour` | `behavior` |
+| `neighbour` | `neighbor` |
+| `grey` | `gray` |
+| `kerb / kerbs` | `curb / curbs` |
+| `metre / metres / millimetre` | `meter / meters / millimeter` |
+| `analogue` | `analog` |
+| `analyse / analysed / analysing` | `analyze / analyzed / analyzing` |
+| `aluminium` | `aluminum` |
+| `artefact` | `artifact` |
+| `catalogue` | `catalog` |
+| `manoeuvre` | `maneuver` |
+| `cancelled, labelled, modelled, modelling, travelling, tunnelling` | `canceled, labeled, modeled, modeling, traveling, tunneling` |
+| `normalis-, regularis-, initialis-, linearis-, quantis-, optimis-, maximis-, minimis-, summaris-, synthesis(er/es/ed), utilis-` | `normaliz-, regulariz-, initializ-, linearize-, quantiz-, optimiz-, maximiz-, minimiz-, summariz-, synthesiz-, utiliz-` |
+
+### Identifiers and keys that changed (old -> new)
+
+| Old | New |
+|---|---|
+| `AluminiumSpecificHeat` | `AluminumSpecificHeat` |
+| `Analyse_Finds_Joystick_Report_When_Multiple_Input_Reports` | `Analyze_Finds_Joystick_Report_When_Multiple_Input_Reports` |
+| `BandCentreHz` | `BandCenterHz` |
+| `Calibration_WheelAndCombinedAxis_UseCentre` | `Calibration_WheelAndCombinedAxis_UseCenter` |
+| `CentreRatio` | `CenterRatio` |
+| `KerbReport` | `CurbReport` |
+| `KerbSample` | `CurbSample` |
+| `Laguna_Centreline_Length_Spawn_And_Corkscrew` | `Laguna_Centerline_Length_Spawn_And_Corkscrew` |
+| `OffsetFromCentreline` | `OffsetFromCenterline` |
+| `RollCentreHeightAt` | `RollCenterHeightAt` |
+| `Synthesises` | `Synthesizes` |
+| `WHEEL_CENTRE` | `WHEEL_CENTER` |
+| `WheelCentre` | `WheelCenter` |
+| `beam_shear_centre_x` | `beam_shear_center_x` |
+| `cancelledAction` | `canceledAction` |
+| `centreDeflection` | `centerDeflection` |
+| `centreRatio` | `centerRatio` |
+| `centreX` | `centerX` |
+| `centre_column` | `center_column` |
+| `centre_rack_index` | `center_rack_index` |
+| `centre_solutions` | `center_solutions` |
+| `centrelineCsv` | `centerlineCsv` |
+| `centrelineMissCount` | `centerlineMissCount` |
+| `columnFrictionRegularisationSpeed` | `columnFrictionRegularizationSpeed` |
+| `crestCentreline` | `crestCenterline` |
+| `debounceInitialised` | `debounceInitialized` |
+| `extentMetres` | `extentMeters` |
+| `frontRollCentreHeight` | `frontRollCenterHeight` |
+| `front_roll_centre_height` | `front_roll_center_height` |
+| `front_roll_centre_height_m` | `front_roll_center_height_m` |
+| `heightRangeMetres` | `heightRangeMeters` |
+| `instant_centre` | `instant_center` |
+| `kerbHitObjects` | `curbHitObjects` |
+| `kerbMode` | `curbMode` |
+| `kerbRate` | `curbRate` |
+| `kerbSampleCounts` | `curbSampleCounts` |
+| `kerbSamples` | `curbSamples` |
+| `kingpinWheelCentreOffset` | `kingpinWheelCenterOffset` |
+| `lbj_to_wheel_centre_z_m` | `lbj_to_wheel_center_z_m` |
+| `normalisedHeight` | `normalizedHeight` |
+| `normalisedLoadChange` | `normalizedLoadChange` |
+| `normalisingStress` | `normalizingStress` |
+| `rearBeamRollCentreHeight` | `rearBeamRollCenterHeight` |
+| `rearRollCentreHeight` | `rearRollCenterHeight` |
+| `rear_roll_centre_height` | `rear_roll_center_height` |
+| `rear_roll_centre_height_m` | `rear_roll_center_height_m` |
+| `rimColour` | `rimColor` |
+| `riseAtOneMetre` | `riseAtOneMeter` |
+| `riseAtThreeMetres` | `riseAtThreeMeters` |
+| `rollCentreHeight` | `rollCenterHeight` |
+| `roll_centre` | `roll_center` |
+| `roll_centre_height` | `roll_center_height` |
+| `shear_centre_x` | `shear_center_x` |
+| `tyre_free_radius` | `tire_free_radius` |
+| `tyre_loaded_radius` | `tire_loaded_radius` |
+| `wheelCentre` | `wheelCenter` |
+| `wheelCentreAboveHipPoint` | `wheelCenterAboveHipPoint` |
+| `wheelCentreAheadOfHipPoint` | `wheelCenterAheadOfHipPoint` |
+| `wheelCentreHeight` | `wheelCenterHeight` |
+| `wheelCentreOffset` | `wheelCenterOffset` |
+| `wheelCentrePosition` | `wheelCenterPosition` |
+| `wheelCentreVelocity` | `wheelCenterVelocity` |
+| `wheelHeightInitialised` | `wheelHeightInitialized` |
+| `wheel_centre` | `wheel_center` |
+| `wheel_centre_offset` | `wheel_center_offset` |
+| `wheel_centre_y` | `wheel_center_y` |
+| `wheel_centre_z` | `wheel_center_z` |
+| `worstGapMetres` | `worstGapMeters` |
+
+Scenario name: `lagunakerb` -> `lagunacurb` (player argument and `LAGUNAKERB RESULT` log line -> `LAGUNACURB RESULT`). Log tags `KERB on kerb` -> `CURB on curb`.

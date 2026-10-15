@@ -9,15 +9,15 @@ Confidence: H = official or manufacturer data for this car; M = reputable second
 | Track F/R | 1404 / 1372 mm | '85 EU 1.8 8V injection (GT/GTL/GTX brochure) | https://driversfound.com/scirocco/history/thescirocco/specs1.html | M-H | agrees (S) |
 | Track F/R | 1390/1358 mm; "GTI and later models from 1984: 1404/1372" | Scirocco II | https://de.wikipedia.org/wiki/VW_Scirocco_II | M | agrees |
 | Track F/R | 1389 / 1359 mm | '84 US 1.8 | driversfound (same page) | M | US car only |
-| Unladen (kerb) weight | 920 kg | '85 EU 1.8 8V injection, 82 kW (DX) | driversfound (VW brochure data) | M-H | new; JSON has no curb weight |
-| Kerb weight, other sources | 895 kg (GTI); 882 kg (GT II); 830-1000 kg range | various | ultimatespecs; cars-data.com; de.wikipedia | L-M | SD among sources |
+| Unladen (curb) weight | 920 kg | '85 EU 1.8 8V injection, 82 kW (DX) | driversfound (VW brochure data) | M-H | new; JSON has no curb weight |
+| Curb weight, other sources | 895 kg (GTI); 882 kg (GT II); 830-1000 kg range | various | ultimatespecs; cars-data.com; de.wikipedia | L-M | SD among sources |
 | GVW | 1290 kg | '85 EU 1.8 | driversfound | M | new |
-| Axle load **limits** F/R | 730 / 590 kg | '85 EU (all engines) | driversfound | M | these are permissible maximums, not static kerb axle loads |
-| Static kerb axle loads | **NOT FOUND** | | | | |
+| Axle load **limits** F/R | 730 / 590 kg | '85 EU (all engines) | driversfound | M | these are permissible maximums, not static curb axle loads |
+| Static curb axle loads | **NOT FOUND** | | | | |
 | Ground clearance | 110 mm | '85 EU | driversfound | M | |
 | Ground clearance at GVW | 121 mm | Mk1 Golf/Jetta/Scirocco (proxy) | https://workshop-manuals.com/volkswagen/golf-mk1/running_gear/technical_data/wheels_tyres/running_gear/ | M (proxy) | |
-| Turning circle (kerb to kerb) | 10.5 m | '85 EU Scirocco II | driversfound | M | A1 manual gives 9.6 m (Golf Mk1); US '84 is 9.5 m |
-| Ride height (wheel centre to arch, etc.) | **NOT FOUND** | | | | |
+| Turning circle (curb to curb) | 10.5 m | '85 EU Scirocco II | driversfound | M | A1 manual gives 9.6 m (Golf Mk1); US '84 is 9.5 m |
+| Ride height (wheel center to arch, etc.) | **NOT FOUND** | | | | |
 
 ## 2. Brakes
 | Item | Value | Applies to | Source | Conf |

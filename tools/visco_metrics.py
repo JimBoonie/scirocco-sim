@@ -6,7 +6,7 @@ import re
 import numpy as np
 import pandas as pd
 
-SKIDPAD_RADIUS = 40.0   # m skidpad circle radius centred at x = radius, z = 0 (S: scenario definition)
+SKIDPAD_RADIUS = 40.0   # m skidpad circle radius centered at x = radius, z = 0 (S: scenario definition)
 
 
 # @description - Reads one scenario CSV of one configuration.
@@ -74,7 +74,7 @@ def mean_temperature_and_grip(line):
     return np.mean(bulk) if bulk else np.nan, np.mean(grip) if grip else np.nan
 
 
-# @description - Lap times and tyre thermal state from the Laguna thermal log of one configuration.
+# @description - Lap times and tire thermal state from the Laguna thermal log of one configuration.
 # @param {String} smoke_directory - directory written by visco_smoke.py
 # @param {String} configuration - configuration sub-directory name
 # @return {Dict} - lap<N> times (s), bulkF_t30/t60/t120 (F), bulkF_end (F), grip_end (%), fail flag; empty when there is no log
