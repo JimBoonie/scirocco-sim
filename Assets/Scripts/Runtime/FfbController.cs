@@ -7,7 +7,7 @@ using System; using System.Runtime.InteropServices; using UnityEngine;
 public class FfbController : MonoBehaviour
 {
     public CarController car; public InputRouter router;
-    public string status = "FFB off"; public bool active; public float totalTorque, command, clippingPercent; public string deviceName = "";
+    public string status = "FFB off"; public bool active; public float totalTorque, command; [UnityEngine.Serialization.FormerlySerializedAs("clipPct")] public float clippingPercent; public string deviceName = "";
     public float stopTorque, frictionTorque, dampingTorque;
     const float rampTime = 1f;          // s, safety envelope on (re)start (not part of the physics)
     float ramp, lastWheelDeg; bool haveLastWheelAngle, forceFeedbackDisabledByFlag, focused = true, pluginOk = true;

@@ -3,7 +3,9 @@
 using System.Collections.Generic; using UnityEngine; using UnityEngine.InputSystem; using UnityEngine.InputSystem.Controls;
 public class InputRouter : MonoBehaviour
 {
-    public CarController car; public FollowCam cam; public InputMapper map; public bool menuOpen; public FfbController ffb; public VrManager vrManager; public VrPanel panel; public int navIndex;
+    public CarController car; public FollowCam cam; public InputMapper map; public bool menuOpen; public FfbController ffb;
+    [UnityEngine.Serialization.FormerlySerializedAs("vr")] public VrManager vrManager;   // renamed from "vr": the old name stays so scenes saved before the rename keep the reference (a null here silently disabled the camera toggle, recenter and flat look)
+    public VrPanel panel; public int navIndex;
     // capture / calibration state
     InAction? capturing; float captureT; Binding calibrating; float calMin, calMax; Vector2 scroll; string status = "";
     // @description - Creates the input mapper from the saved bindings. Disables the whole router in -smoketest runs because SmokeTest drives the car directly.
@@ -74,8 +76,7 @@ public class InputRouter : MonoBehaviour
         if (map.Pressed(InAction.Reset)) { car.ResetCar(); car.drivetrain.SelectGear(0); car.engine.SetRunning(!map.profile.startEngineOff);   // reset = respawn: neutral, engine as at spawn
  if (ffb) ffb.ResetRamp(); }
         if (map.Pressed(InAction.ResetToStart)) ResetToStart();
-        if (map.Pressed(InAction.Recenter) && vrManager) vrManager.Recenter();
-        if (map.Pressed(InAction.CameraToggle) && vrManager) vrManager.ToggleCamera();
+        ApplyCameraActions();
         if (map.Pressed(InAction.HudToggle)) { if (panel) panel.showHud = !panel.showHud; map.profile.hudVisible = !map.profile.hudVisible; InputMapper.Save(map.profile); status = map.profile.hudVisible ? "info HUD shown (H)" : "info HUD hidden (H)"; }
         float lookStickX = InputMapper.LookDeadzone(map.Axis(InAction.LookX)), lookStickY = InputMapper.LookDeadzone(map.Axis(InAction.LookY)); LookX = lookStickX;
         bool lookOn = Mathf.Abs(lookStickX) > 0.3f || Mathf.Abs(lookStickY) > 0.3f;
@@ -83,6 +84,13 @@ public class InputRouter : MonoBehaviour
         if (!lookOn && lookWasOn) Debug.Log("[Input] look released"); lookWasOn = lookOn; if (!lookOn) LookSource = "";
         if (vrManager) vrManager.FlatLook(lookStickX * 120f, lookStickY * 45f);   // flat cockpit head look (deg)
         if (cam) { cam.lookYaw = lookStickX * 180f; cam.lookPitch = lookStickY * 30f; }   // camera orbit only (deg)
+    }
+    // @description - Applies the camera button actions of this frame: Recenter recenters the cockpit view, CameraToggle switches between the chase and cockpit camera on the flat screen. Does nothing when no VrManager is assigned.
+    // @return {Void} - nothing
+    public void ApplyCameraActions()
+    {
+        if (map.Pressed(InAction.Recenter) && vrManager) vrManager.Recenter();
+        if (map.Pressed(InAction.CameraToggle) && vrManager) vrManager.ToggleCamera();
     }
     /// Reset to start: current track's start/finish spawn (yaw, zero velocity), neutral, engine as at spawn, FFB output cut and ramped back in
     bool lookWasOn; [HideInInspector] public float LookX; [HideInInspector] public string LookSource = "";

@@ -7,6 +7,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed (camera toggle stuck in the chase view, PT 2026-10-15 10:30)
+
+- **Root cause:** the readability pass renamed `InputRouter.vr` to `vrManager` (`1a418be`) but `TestTrack.unity` still stored the reference under `vr`, so Unity dropped it and `InputRouter.vrManager` was null in the main scene. Every camera action is guarded by `&& vrManager`, so the bound camera button was detected (the Bindings tab showed it) but did nothing; the same null also disabled Recenter, flat-screen look-around and the VR menu entries. Keyboard, gamepad and wheel buttons were all affected.
+- **Fix:** the scene key is now `vrManager`, and the field has `FormerlySerializedAs("vr")` so older scenes keep working. The same silent drop affected `Cockpit.seatFwd`/`seatUp` (now `seatForwardOffset`/`seatUpOffset`, values were 0) and `FfbController.clipPct` (now `clippingPercent`, a runtime statistic); both fixed the same way. A scan of `TestTrack.unity`, `LagunaSeca.unity`, `SciroccoParams.asset` and `SuspensionTables.asset` against the C# fields found no other orphaned keys, and the values of all other re-keyed fields match the commit before the refactor.
+- `InputRouter.ApplyCameraActions()` extracted from `Update` (no behavior change) so the camera buttons can be tested.
+- Tests: `CameraToggleTests` (default `C` binding exists; keyboard, gamepad and wheel buttons switch chase <-> cockpit through `InputRouter`; the choice is stored in the profile; a missing reference is detected) and `SceneSerializationTests` (no scene/asset key without a matching field; the router's `vrManager` is assigned).
+
 ### Added (experimental driveline efficiency consistency, PT 2026-10-15 08:00)
 - Checked the experimental driveline against the new overrun efficiency convention (`Drivetrain.TorqueScaleFromCrankSide`): its gear mesh already applies eta on power and 1/eta on overrun, so no model change was needed. New test `EfficiencyMatchesTheStandardPathOnPowerAndOverrun` compares the transmitted torque with `Drivetrain.WheelTorqueEach` in both directions (within 1 %). Added a read-only `TorsionalDriveline.ShaftTorque` for it. Default path untouched.
 

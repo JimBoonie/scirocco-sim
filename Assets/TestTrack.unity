@@ -2876,8 +2876,8 @@ MonoBehaviour:
   eyeDefault: {x: 0, y: 0, z: 0}
   hPoint: {x: 0, y: 0, z: 0}
   wheelCenter: {x: 0, y: 0, z: 0}
-  seatFwd: 0
-  seatUp: 0
+  seatForwardOffset: 0
+  seatUpOffset: 0
 --- !u!114 &1784268895
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2922,7 +2922,7 @@ MonoBehaviour:
   active: 0
   totalTorque: 0
   command: 0
-  clipPct: 0
+  clippingPercent: 0
   deviceName: 
   stopTorque: 0
   frictionTorque: 0
@@ -2944,7 +2944,7 @@ MonoBehaviour:
   cam: {fileID: 457455787}
   menuOpen: 0
   ffb: {fileID: 1784268897}
-  vr: {fileID: 1784268893}
+  vrManager: {fileID: 1784268893}
   panel: {fileID: 1784268892}
   navIndex: 0
   LookX: 0

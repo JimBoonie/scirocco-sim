@@ -6,7 +6,8 @@ public class Cockpit : MonoBehaviour
     public CarController car;
     public Transform eyeAnchor, recenter, wheelSpin, speedNeedle, rpmNeedle, root; public TextMesh speedText, rpmText, gearText;
     public Vector3 eyeDefault, hPoint, wheelCenter;
-    public float seatForwardOffset, seatUpOffset;   // user offsets (m), saved in the input profile
+    [UnityEngine.Serialization.FormerlySerializedAs("seatFwd")] public float seatForwardOffset;   // renamed from seatFwd (old scenes keep the value)
+    [UnityEngine.Serialization.FormerlySerializedAs("seatUp")] public float seatUpOffset;   // user offsets (m), saved in the input profile
     static readonly Dictionary<Color, Material> mats = new Dictionary<Color, Material>();
 
     // @description - Height of the ground plane in the car frame at design ride height (wheel-center drop plus tire radius, below the corner origin).
