@@ -107,7 +107,7 @@ public class CarParams : ScriptableObject
     public int cylinders = 4;                  // (S)
     public float mapZeroTorque = 0.22f;       // audio-only load scaling (CarAudio); no longer used by the engine physics
     [Header("Drivetrain")] public float[] gearRatios = { 3.455f, 2.118f, 1.444f, 1.129f, 0.894f }; // (S) 4Y box
-    public float reverseRatio = 3.17f, finalDrive = 3.667f, drivetrainEfficiency = 0.90f;
+    public float reverseRatio = 3.17f, finalDrive = 3.667f, drivetrainEfficiency = 0.90f; // drivetrainEfficiency (E): gearbox + final drive, applies in both power directions (eta on power, 1 / eta on overrun); value unchanged by the 2026-10-15 overrun fix
     public float clutchMaxTorque = 260f;                    // (E) ~1.7x peak
     public float shiftTime = 0.25f;                          // s neutral during shift (E)
     [Header("Brakes/Steering")] public float brakeTorqueFront = 1400f, brakeTorqueRear = 300f; // rear reduced 500->300 (E): rear drums + pressure regulator; 500 locked rears first // per wheel (E)
