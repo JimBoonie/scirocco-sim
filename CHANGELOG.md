@@ -17,6 +17,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `in`/`ref`/`out` removed from the `@param` types in WheelCorner.
 - Physics comments with equation, units and source tags added for the throttle area, orifice flow, residual-gas and backflow terms (Engine), the magic formula and combined-slip weights (PacejkaTire), the viscoelastic modulus, roughness spectrum, contact area and flash temperature (ViscoTire), the convection correlations and road conduction (TireThermal), and slip speed, slip angle and the friction ellipse (WheelCorner).
 - `tools/visco_smoke.py`: the BASE configurations now translate `carParams.` override keys to the legacy `p.` prefix.
+- InputBindings: header of `IsMenuAction`/`IsGameplay` rewritten, stale header above `DefaultPath` replaced.
 - No behaviour change (comments, names, headers only).
 
 ### Changed (second pass part 3: input, VR, audio, HUD, track, SmokeTest headers and locals, PT 2026-10-14 21:50)

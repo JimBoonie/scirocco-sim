@@ -279,13 +279,13 @@ public class InputMapper
     class Edge { public uint update = uint.MaxValue; public bool result, latched; }
     readonly Dictionary<InAction, Edge> edges = new Dictionary<InAction, Edge>();
     uint flushUpdate = uint.MaxValue; bool menuOpen;
-    // @description - Tests whether menu action.
-    // @param {InAction} action - action
-    // @return {bool} - the is menu action
+    // @description - Tells whether an action belongs to the menu (menu open/close, up/down/left/right/select, tab next/previous) as opposed to driving, so gameplay input can be suppressed while the menu is open.
+    // @param {InAction} action - input action to classify
+    // @return {bool} - true for menu actions, false for gameplay actions
     public static bool IsMenuAction(InAction action) => action == InAction.Menu || (action >= InAction.MenuUp && action <= InAction.MenuSelect) || action == InAction.MenuTabNext || action == InAction.MenuTabPrev;
-    // @description - Tests whether gameplay.
-    // @param {InAction} action - action
-    // @return {bool} - the is gameplay
+    // @description - Tells whether an action is a gameplay (driving) action, i.e. not a menu action; these are ignored while the menu is open.
+    // @param {InAction} action - input action to classify
+    // @return {bool} - true for gameplay actions, false for menu actions
     public static bool IsGameplay(InAction action) => !IsMenuAction(action);
     /// While true, Pressed() of every gameplay action returns false (shift, gears, reset, ignition, ...). Opening or closing flushes all edges:
     /// a button held (or tapped) at that moment fires nothing until it has been released and pressed again -> no queued presses.
@@ -529,9 +529,7 @@ public class InputMapper
     // @param {BindingProfile} profile - profile to add the binding to
     // @return {Void} - nothing
     static void AddResetToStartDefaults(BindingProfile profile) { profile.Get(InAction.ResetToStart).Add(new Binding { layout = "Keyboard", control = "backspace", calibration = new AxisCalibration() }); }   // v5: reset to start/finish
-    // @description - Tests whether retired.
-    // @param {InAction} action - action
-    // @return {bool} - the is retired
+    // Full path of the saved input bindings file (input_bindings.json) in the per-user persistent data folder.
     public static string DefaultPath => System.IO.Path.Combine(Application.persistentDataPath, "input_bindings.json");
     // @description - Writes a profile to disk as JSON and remembers the path in the player preferences.
     // @param {BindingProfile} profile - profile to save

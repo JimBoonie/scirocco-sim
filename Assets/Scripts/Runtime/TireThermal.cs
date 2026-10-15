@@ -263,7 +263,7 @@ public class TireThermal
         };
     }
 
-    // @description - temperature unit conversion
+    // @description - Converts a temperature from degrees Celsius to degrees Fahrenheit (F = C x 9/5 + 32), used for the HUD and the test logs.
     // @param {double} celsius - temperature in degC
     // @return {double} - temperature in degF
     public static double CelsiusToFahrenheit(double celsius) => celsius * 9.0 / 5.0 + 32.0;

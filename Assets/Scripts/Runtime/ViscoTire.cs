@@ -219,7 +219,7 @@ public static class ViscoTire
     // @description - flashTemperature temperature rise of the macro-asperity contacts (Tian & Kennedy 1994, circular source, all Peclet numbers):
     //   dT = 2 q a / (k sqrt(pi) sqrt(1.273 + Pe)), Pe = v a / (2 kappa); q = mu sigma v / contact ratio (all heat into the rubber, as TireThermal)
     // @param {double} slidingSpeed - v in m/s
-    // @param {double} frictionCoefficient - mu
+    // @param {double} frictionCoefficient - friction coefficient mu (dimensionless) at the contact
     // @param {double} contactPressure - sigma in Pa
     // @return {double} - temperature rise in K
     public static double Flash(double slidingSpeed, double frictionCoefficient, double contactPressure)

@@ -67,7 +67,7 @@ public class SuspensionTables : ScriptableObject
 
     // @description - fractional grid index of position in an ascending grid (clamped to 0 .. count-1)
     // @param {float[]} grid - ascending grid positions
-    // @param {float} position - position
+    // @param {float} position - position to find in the grid, in the grid units
     // @return {float} - index of the lower grid point plus the fraction towards the next
     static float GridIndex(float[] grid, float position)
     {
