@@ -73,7 +73,7 @@ public enum SteerMapping { RealColumn1to1, ScaleToCarLock }
     public GamepadSteerSettings gamepadSteer = new GamepadSteerSettings();   // v7: gamepad/keyboard steering assist preferences (input layer)
     public bool startEngineOff = false, starterInterlock = false, autoClutch = true;
     public int tireCompound = 0;   // v8: 0 = Default (sourced model), 1 = Experimental (viscoelastic) (CarParams.TireCompound)
-    public bool experimentalDrivelineEnabled = false;   // Experimental tab: driveline shuffle model placeholder (not implemented yet; the toggle is disabled). A new JSON field: files without it load as false, so no version bump and no binding reset
+    public bool experimentalDrivelineEnabled = false;   // Experimental tab: driveline shuffle model toggle (Driveline/*.cs). A new JSON field: files without it load as false, so no version bump and no binding reset
     public bool experimentalTransmissionEnabled = false;   // Experimental tab: transmission and synchronizer model placeholder (not implemented yet; the toggle is disabled). Independent of experimentalDrivelineEnabled. New JSON field: absent in old files = false, no version bump
     public bool tireThermal = false; public float frontColdPressurePsi = 24.7f, rearColdPressurePsi = 24.7f;   // tire thermal model option; cold pressures in psi (VW 1.7 bar = 24.7 psi)
     public float audioVolume = 0.8f, tireVolume = 1f, ambientBrightness = 1.3f; public bool audioMute; public bool hudVisible = true;   // H: gray info boxes (telemetry / FFB / joints) shown   // master volume 0..1   // autoClutch: for keyboard/gamepad drivers without a clutch pedal (option)   // spawn with engine stopped; starter only with clutch fully in or neutral (1984 car had no interlock)

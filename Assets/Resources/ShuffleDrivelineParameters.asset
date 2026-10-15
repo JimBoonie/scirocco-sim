@@ -1,0 +1,74 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4d53c8e883d4745d3bbeb8f663310324, type: 3}
+  m_Name: ShuffleDrivelineParameters
+  m_EditorClassIdentifier: 
+  firingPulsesEnabled: 1
+  boreMeters: 0.081
+  strokeMeters: 0.0864
+  connectingRodLengthMeters: 0.144
+  reciprocatingMassPerCylinderKilograms: 0.64
+  wiebeEfficiencyFactor: 5
+  wiebeShapeFactor: 2
+  burnDurationDegrees: 60
+  halfBurnAngleAfterTopDeadCenterDegrees: 9
+  cylinderHeatCapacityRatio: 1.3
+  frictionFaceOuterRadiusMeters: 0.105
+  frictionFaceInnerToOuterRadiusRatio: 0.7
+  frictionFaceCount: 2
+  kineticFrictionCoefficient: 0.35
+  staticToKineticFrictionRatio: 1.1
+  frictionSlopePerMeterPerSecond: 0
+  fadeOnsetTemperatureKelvin: 573
+  fadeCompleteTemperatureKelvin: 673
+  maximumFadeFraction: 0.3
+  flywheelMassKilograms: 5.4
+  pressurePlateMassKilograms: 2
+  rubbingMassSpecificHeatJoulesPerKilogramKelvin: 490
+  clutchCoolingTimeConstantSeconds: 240
+  releaseLeverTravelAtFullPedalMeters: 0.016
+  releaseLeverFreePlayMeters: 0.006
+  diaphragmFingerLeverRatio: 2
+  cushionSpringTravelMeters: 0.001
+  damperStageStiffnessNewtonMetersPerDegree:
+  - 0.5
+  - 24
+  - 291
+  damperDriveStageEndDegrees:
+  - 5
+  - 16
+  damperCoastStageEndDegrees:
+  - 5
+  - 12
+  damperStageHysteresisNewtonMeters:
+  - 1
+  - 10
+  - 20
+  clutchDiscInertiaKilogramMetersSquared: 0.0077
+  inputShaftInertiaKilogramMetersSquared: 0.02
+  carrierInertiaKilogramMetersSquared: 0.015
+  gearMeshStiffnessAtCarrierNewtonMetersPerRadian: 1000000
+  gearMeshDampingRatio: 0.05
+  gearLashAtInputShaftDegrees: 1.6
+  leftShaftLengthMeters: 0.447
+  rightShaftLengthMeters: 0.6812
+  leftShaftDiameterMeters: 0.022
+  rightToLeftTorsionalStiffnessRatio: 0.83
+  shaftShearModulusPascals: 7.93e+10
+  shaftStructuralLossFactor: 0.01
+  dampingReferenceFrequencyHertz: 4
+  shaftAndJointLashAtWheelDegrees: 0.3
+  engineRollEnabled: 1
+  engineBlockRollInertiaKilogramMetersSquared: 4.2
+  engineRollNaturalFrequencyHertz: 11.6
+  engineRollDampingRatio: 0.15
+  maximumPhaseAdvancePerMicrostepRadians: 0.1

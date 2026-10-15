@@ -296,6 +296,41 @@ public class Engine
         previousRpm = rpm; rpm = angularVelocity * 30f / Mathf.PI; return netTorque;
     }
 
+    // @description - EXPERIMENTAL driveline hook (additive; Step() is untouched). Advances the manifold and combustion state like Step() but does NOT integrate the crank:
+    //   the torsional driveline integrates the crank itself and hands the speed back through EndExternalCrankInterval.
+    // @param {float} pedal - accelerator pedal 0..1
+    // @param {float} dt - interval in s
+    // @param {float} indicatedMeanTorque - (out) mean indicated torque, 0 when not firing, in N m
+    // @param {float} starterTorqueNow - (out) starter torque on the crank in N m
+    // @param {float} starterReflectedInertia - (out) starter armature inertia reflected to the crank in kg m^2 (0 when the starter is off)
+    // @return {float} - mean net engine torque (indicated - friction - pumping) in N m
+    public float BeginExternalCrankInterval(float pedal, float dt, out float indicatedMeanTorque, out float starterTorqueNow, out float starterReflectedInertia)
+    {
+        throttleArea = TotalFlowArea(pedal) / wideOpenThrottleArea;
+        float efficiency = VolumetricEfficiency(rpm), massFlowIn = ThrottleMassFlow(throttleArea * wideOpenThrottleArea, manifoldPressure), massFlowOut = CylinderMassFlow(rpm, manifoldPressure, efficiency);
+        manifoldPressure = Mathf.Clamp(manifoldPressure + carParams.airGasConstant * carParams.ambientTemperature / carParams.manifoldVolume * (massFlowIn - massFlowOut) * dt, 1f, carParams.ambientPressure);
+        manifoldPressureRatio = manifoldPressure / carParams.ambientPressure;
+        UpdateCombustionState();
+        limiter = rpm > carParams.revLimit;
+        ComputeTorqueParts(rpm, manifoldPressure, efficiency, out float indicated, out float friction, out float pumping);
+        indicatedMeanTorque = combusting && !limiter ? indicated : 0f;
+        starterTorque = starter ? StarterTorqueAt(angularVelocity) : 0f; starterTorqueNow = starterTorque;
+        starterReflectedInertia = starter ? carParams.starterArmatureInertia * StarterRatio * StarterRatio : 0f;
+        return indicatedMeanTorque - friction - pumping;
+    }
+
+    // @description - EXPERIMENTAL driveline hook: stores the crank speed integrated by the torsional driveline
+    // @param {float} crankAngularVelocity - rad/s at the end of the interval
+    // @return {Void}
+    public void EndExternalCrankInterval(float crankAngularVelocity)
+    {
+        angularVelocity = Mathf.Max(0f, crankAngularVelocity); previousRpm = rpm; rpm = angularVelocity * 30f / Mathf.PI;
+    }
+
+    // @description - manifold absolute pressure for the firing-pulse model
+    // @return {float} - Pa
+    public float ManifoldPressurePascals => manifoldPressure;
+
     // @description - decides whether combustion happens this step: fuel + spark only with ignition on. A stopped/stalling crank fires once it turns at
     //   the engine's firing speed, whatever drives it (the starter, or the wheels through an engaged/slipping clutch: bump/roll start).
     //   Hysteresis: a RUNNING engine dies below stallRpm (unless the starter holds it). A non-firing crank fires when driven up through FireRpm

@@ -37,7 +37,10 @@ public class ExperimentalSettingsTabTests
         ExperimentalSettingsTab.Adjust(profile, 1, 0, true); ExperimentalSettingsTab.Adjust(profile, 2, 0, true); Assert.AreEqual(24.7f, profile.frontColdPressurePsi); Assert.AreEqual(24.7f, profile.rearColdPressurePsi);
         ExperimentalSettingsTab.Adjust(profile, 3, 1, false); Assert.AreEqual(1, profile.tireCompound); ExperimentalSettingsTab.Adjust(profile, 3, -1, false); Assert.AreEqual(0, profile.tireCompound);
         ExperimentalSettingsTab.Adjust(profile, 3, 0, true); Assert.AreEqual(1, profile.tireCompound); ExperimentalSettingsTab.Adjust(profile, 3, 0, true); Assert.AreEqual(0, profile.tireCompound);
-        ExperimentalSettingsTab.Adjust(profile, ExperimentalSettingsTab.ItemCount, 1, true); Assert.IsFalse(profile.experimentalDrivelineEnabled, "the driveline placeholder cannot be changed from the menu");
+        ExperimentalSettingsTab.Adjust(profile, ExperimentalSettingsTab.ItemCount, 1, true); Assert.IsFalse(profile.experimentalDrivelineEnabled, "an out-of-range item is ignored");
+        ExperimentalSettingsTab.Adjust(profile, 4, 0, true); Assert.IsTrue(profile.experimentalDrivelineEnabled, "Select flips the driveline shuffle model on");
+        ExperimentalSettingsTab.Adjust(profile, 4, -1, false); Assert.IsFalse(profile.experimentalDrivelineEnabled, "Left switches it off");
+        ExperimentalSettingsTab.Adjust(profile, 4, 1, false); Assert.IsTrue(profile.experimentalDrivelineEnabled, "Right switches it on"); profile.experimentalDrivelineEnabled = false;
     }
     // @description - Verifies keyboard/gamepad navigation: down and up wrap around the four options, and a change applies to the highlighted option.
     // @return {Void} - nothing
@@ -130,6 +133,6 @@ public class ExperimentalSettingsTabTests
             queue.Sample(true, dragStart, 0f); Frame(queue, dragStart, Draw); queue.Sample(true, dragEnd, 0f); Frame(queue, dragEnd, Draw); queue.Sample(false, dragEnd, 0f); Frame(queue, dragEnd, Draw);
         }
         Assert.IsTrue(profile.frontColdPressurePsi != 24.7f || profile.rearColdPressurePsi != 24.7f, "a VR drag on a pressure slider must change it");
-        Assert.IsFalse(profile.experimentalDrivelineEnabled, "the disabled placeholder ignores clicks"); Assert.IsFalse(profile.experimentalTransmissionEnabled, "the disabled transmission placeholder ignores clicks");
+        Assert.IsFalse(profile.experimentalTransmissionEnabled, "the disabled transmission placeholder ignores clicks");
     }
 }

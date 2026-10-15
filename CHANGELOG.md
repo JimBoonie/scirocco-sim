@@ -24,6 +24,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - Experimental tab: a second disabled placeholder toggle, "Transmission and synchronizer model (coming soon)", with a short explanation, wired to `BindingProfile.experimentalTransmissionEnabled` and `CarParams.experimentalTransmissionEnabled` (default false; nothing reads them yet). It is independent of the driveline shuffle toggle (separate fields, separate row). The new JSON field defaults to false when absent, so the settings version stays 10 and bindings are not reset. Test `DrivelineAndTransmissionPlaceholdersAreIndependent` added.
 
+## [2026-10-15] (PT)
+
+### Added (Experimental driveline shuffle model, PT 2026-10-15 00:35)
+- New EXPERIMENTAL driveline model, selectable on the Experimental tab ("Driveline shuffle model", `experimentalDrivelineEnabled`, default off; replaces the "coming soon" placeholder). Off = the default `Drivetrain.Clutch` + `Engine.Step` path, byte-for-byte untouched.
+- Torsional chain (`Assets/Scripts/Runtime/Driveline/`): crank and flywheel, Karnopp stick-slip clutch with derived dead band, static/kinetic friction, thermal fade and rubbing-mass heat balance, physical pedal-to-clamp curve (free play, finger lever ratio, cushion spring), three-stage clutch damper with drive/coast stage angles and hysteresis, input shaft, gear mesh with lash, unequal-length halfshafts combined for the open differential with lash, engine block roll on its mounts, first-order tire longitudinal slip relaxation, minimal firing-pulse model (Wiebe burn, standard MBT spark, slider-crank, reciprocating inertia).
+- Clean seams for the planned refactor: `ICrankshaftTorqueSource` (engine side) and `ITorsionalDriveline` (driveline side).
+- Parameter asset `Assets/Resources/ShuffleDrivelineParameters.asset`; every value tagged S/SD/D/E with bounds in `docs/DrivelineShuffleSources.md`. Most values are estimates (E): the model is physics-structured, not validated against a real Scirocco.
+- Additive hooks only: `Engine.BeginExternalCrankInterval/EndExternalCrankInterval`, `WheelCorner.longitudinalRelaxationEnabled`, one dispatch branch in `CarController`.
+- Tests: `DrivelineShuffleTests` (13: shuffle frequency per gear against the research bands, linear eigenfrequency cross-check, engine-roll shift, clutch dump, tip-in/tip-out lash crossing, judder sweep, stall, step-size convergence, Wiebe phasing and peak pressure, ripple mean and frequency, pedal curve, open-differential stiffness, diagnostic trace writer) and `DrivelineToggleTests` (Off->On->Off leaves no residue; asset equals defaults); `ExperimentalSettingsTabTests` updated for the new toggle.
+- Diagnostics: `diagnostics/driveline/` (shuffle response plot per gear, clutch dump, firing ripple).
+
 ## [2026-10-14] (PT)
 
 ### Added (Experimental settings tab, PT 2026-10-14 23:50)

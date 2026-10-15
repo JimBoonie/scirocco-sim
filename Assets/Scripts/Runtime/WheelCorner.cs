@@ -26,6 +26,8 @@ public class WheelCorner : MonoBehaviour
     float lastTravel, spinDeg; bool haveLastTravel; RaycastHit hit; Rigidbody body;
     public RaycastHit Hit => hit; public float WheelY => wheelCenterHeight;   // diagnostics
     public float DriveInertia;
+    public bool longitudinalRelaxationEnabled;   // EXPERIMENTAL driveline model: relax the slip ratio used by the Pacejka force (default false = unchanged)
+    float relaxedSlipRatio;                      // relaxed longitudinal slip ratio, only used while longitudinalRelaxationEnabled
     // @description - Caches the parent Rigidbody (the car body) that every corner pushes its forces into.
     // @return {Void} - nothing
     void Awake() { body = GetComponentInParent<Rigidbody>(); }
@@ -267,7 +269,11 @@ public class WheelCorner : MonoBehaviour
         float relaxationStepFraction = Mathf.Min(1f, (Mathf.Abs(longitudinalSpeed) + 0.5f) * substep / relaxationLength);
         relaxedSlipAngle += relaxationStepFraction * (slipAngle - relaxedSlipAngle);
         float camberRadians = camberDeg * Mathf.Deg2Rad * (left ? -1f : 1f);
-        force = PacejkaTire.Combined(carParams, magicFormulaSlipRatio, -relaxedSlipAngle, verticalLoad, camberRadians, isViscoCompound ? effectiveScale : thermalScale);
+        // EXPERIMENTAL driveline model only: first-order longitudinal relaxation of the slip ratio (same relaxation-length form as the slip angle above), so the tire force
+        // follows wheel-speed changes with the carcass/contact-patch lag. Off: the field only mirrors the instantaneous slip and the force path is byte-for-byte unchanged.
+        if (longitudinalRelaxationEnabled) relaxedSlipRatio += relaxationStepFraction * (magicFormulaSlipRatio - relaxedSlipRatio); else relaxedSlipRatio = magicFormulaSlipRatio;
+        float slipRatioForForce = longitudinalRelaxationEnabled ? relaxedSlipRatio : magicFormulaSlipRatio;
+        force = PacejkaTire.Combined(carParams, slipRatioForForce, -relaxedSlipAngle, verticalLoad, camberRadians, isViscoCompound ? effectiveScale : thermalScale);
         float wheelSpeedKmh = longitudinalSpeed * 3.6f, rollingResistanceForce = (carParams.rollingResistanceCoefficient + carParams.rollingResistanceSpeedSquaredCoefficient * wheelSpeedKmh * wheelSpeedKmh) * verticalLoad * thermalScale.rollingResistance * Mathf.Clamp(longitudinalSpeed, -1f, 1f);
         if (isViscoCompound) rollingResistanceForce *= rollingResistanceScale;   // speed-dependent radial-tire RR (Wong form, E)
         force.x -= rollingResistanceForce;

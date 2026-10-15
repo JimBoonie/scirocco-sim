@@ -41,7 +41,7 @@ public class CarParams : ScriptableObject
     public float nominalVerticalLoad = 3000f, lateralShapeCoefficient = 1.30f, lateralPeakFrictionCoefficient = 1.10f, lateralPeakFrictionLoadSlope = -0.10f, lateralCurvatureCoefficient = -0.8f, lateralStiffnessCoefficient = 16f, lateralStiffnessLoadCoefficient = 1.8f;
     public float longitudinalShapeCoefficient = 1.60f, longitudinalPeakFrictionCoefficient = 1.15f, longitudinalPeakFrictionLoadSlope = -0.08f, longitudinalCurvatureCoefficient = 0.2f, longitudinalStiffnessCoefficient = 20f;
     public float combinedSlipLongitudinalCoefficient = 12f, combinedSlipLateralCoefficient = 9f, relaxationLength = 0.45f, camberThrustCoefficient = 0.9f, rollingResistanceCoefficient = 0.012f;
-    public bool experimentalDrivelineEnabled = false;   // Experimental tab placeholder for the clutch/driveline shuffle model; nothing reads it yet
+    public bool experimentalDrivelineEnabled = false;   // Experimental tab: driveline shuffle model (Driveline/*.cs). false = the default Drivetrain.Clutch + Engine.Step path, untouched
     public bool experimentalTransmissionEnabled = false;   // Experimental tab placeholder for the transmission and synchronizer model; nothing reads it yet (independent of experimentalDrivelineEnabled)
     public bool tireThermal = false;      // tire thermal + pressure model (settings option; off = original handling)
     public float frontColdPressure = 170000f, rearColdPressure = 170000f;   // Pa gauge, set cold at 18.9 C: VW 1.7 bar for 185/60R14 (SD: 1.7 x3 sources, 1.8 x1)

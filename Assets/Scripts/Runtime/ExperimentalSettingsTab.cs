@@ -5,7 +5,7 @@ using UnityEngine;
 public class ExperimentalSettingsTab
 {
     public const int TabIndex = 6;   // position of "Experimental" in the settings tab bar
-    public const int ItemCount = 4;   // navigable options: 0 tire temperature model, 1 front cold pressure, 2 rear cold pressure, 3 tire compound (the driveline and transmission placeholders are disabled and not navigable)
+    public const int ItemCount = 5;   // navigable options: 0 tire temperature model, 1 front cold pressure, 2 rear cold pressure, 3 tire compound, 4 driveline shuffle model (the transmission placeholder is disabled and not navigable)
     public const float VolkswagenColdPressurePsi = 24.7f;   // psi, VW 1.7 bar cold tire pressure (S): the default and the Select-reset value
     public const float MinimumColdPressurePsi = 15f, MaximumColdPressurePsi = 45f, ColdPressureStepPsi = 0.5f;   // psi, slider range; 0.5 psi = gauge resolution
     public const string Warning = "Experimental options are work in progress and may change how the car handles. The defaults reproduce the standard handling exactly.";
@@ -13,7 +13,7 @@ public class ExperimentalSettingsTab
     public Rect selectedRowRect;   // layout rectangle of the highlighted row (lets the menu scroll to it)
     GUIStyle labelStyle, highlightStyle;
 
-    // @description - Applies one left, right or select action to an option. Item 0 toggles the tire temperature model (select flips, right = on, left = off); items 1 and 2 step a cold pressure by 0.5 psi within 15..45 psi (select = VW 24.7 psi); item 3 chooses the tire compound (select flips). Other items are ignored (the driveline placeholder is disabled).
+    // @description - Applies one left, right or select action to an option. Item 0 toggles the tire temperature model (select flips, right = on, left = off); items 1 and 2 step a cold pressure by 0.5 psi within 15..45 psi (select = VW 24.7 psi); item 3 chooses the tire compound (select flips); item 4 toggles the experimental driveline shuffle model (select flips, right = on, left = off). Other items are ignored (the driveline placeholder is disabled).
     // @param {BindingProfile} profile - settings profile to change
     // @param {int} item - option index, 0..ItemCount-1
     // @param {int} direction - -1 for left, +1 for right, 0 for none
@@ -27,6 +27,7 @@ public class ExperimentalSettingsTab
             case 1: profile.frontColdPressurePsi = isSelect ? VolkswagenColdPressurePsi : StepColdPressure(profile.frontColdPressurePsi, direction); break;
             case 2: profile.rearColdPressurePsi = isSelect ? VolkswagenColdPressurePsi : StepColdPressure(profile.rearColdPressurePsi, direction); break;
             case 3: profile.tireCompound = isSelect ? 1 - profile.tireCompound : (direction > 0 ? 1 : 0); break;
+            case 4: profile.experimentalDrivelineEnabled = isSelect ? !profile.experimentalDrivelineEnabled : direction > 0; break;
         }
     }
     // @description - Steps a cold tire pressure by one gauge step and clamps it to the allowed range.
@@ -50,7 +51,7 @@ public class ExperimentalSettingsTab
         if (direction != 0 || isSelect) Adjust(profile, selectedItem, isSelect ? 0 : direction, isSelect);
         return moved;
     }
-    // @description - Draws the whole tab: warning note, tire temperature model toggle, front and rear cold pressure sliders, tire compound selector and the disabled driveline placeholder; each option followed by a plain-language description.
+    // @description - Draws the whole tab: warning note, tire temperature model toggle, front and rear cold pressure sliders, tire compound selector and the driveline shuffle model toggle; each option followed by a plain-language description.
     // @param {BindingProfile} profile - settings profile being edited
     // @param {GUIStyle} baseLabelStyle - the menu's normal label style
     // @return {Void} - nothing
@@ -65,7 +66,7 @@ public class ExperimentalSettingsTab
         DrawColdPressureRow(1, "Cold tire pressure front", profile.frontColdPressurePsi, value => profile.frontColdPressurePsi = value, "Starting pressure of the front tires before they warm up. Only used when the temperature model is on. VW spec 24.7 psi.");
         DrawColdPressureRow(2, "Cold tire pressure rear", profile.rearColdPressurePsi, value => profile.rearColdPressurePsi = value, "Starting pressure of the rear tires before they warm up. Only used when the temperature model is on. VW spec 24.7 psi.");
         DrawCompoundSelector(profile);
-        DrawDrivelinePlaceholder(profile);
+        DrawDrivelineToggle(profile);
         DrawTransmissionPlaceholder(profile);
     }
     // @description - Creates the normal and highlighted (bold yellow) label styles from the menu's label style, once.
@@ -131,20 +132,20 @@ public class ExperimentalSettingsTab
             profile.tireCompound = GUILayout.Toolbar(profile.tireCompound, new[] { "Default", "Experimental (viscoelastic)" }, GUILayout.Width(380));
         }, "Default = the sourced Pacejka tire model. Experimental = a viscoelastic rubber model (hysteresis, adhesion, temperature and rate effects) that changes grip and feel.");
     }
-    // @description - Draws the disabled "Driveline shuffle model (coming soon)" toggle. It shows the stored experimentalDrivelineEnabled value but cannot be changed yet.
-    // @param {BindingProfile} profile - settings profile being shown
+    // @description - Draws the experimental driveline shuffle model toggle with its description.
+    // @param {BindingProfile} profile - settings profile being edited
     // @return {Void} - nothing
-    void DrawDrivelinePlaceholder(BindingProfile profile)
+    void DrawDrivelineToggle(BindingProfile profile)
     {
-        DrawDisabledPlaceholder(ItemCount, profile.experimentalDrivelineEnabled, " Driveline shuffle model (coming soon)",
-            "Will model clutch and driveline wind-up (the lurch when you get on or off the throttle). Not available yet; the setting is stored so the later model can read it.");
+        DrawRow(4, () => { profile.experimentalDrivelineEnabled = GUILayout.Toggle(profile.experimentalDrivelineEnabled, profile.experimentalDrivelineEnabled ? " Driveline shuffle model ON" : " Driveline shuffle model off", StyleFor(4)); },
+            "Models clutch bite, judder, driveline wind-up and lash clonk (lurch when you get on or off the throttle) with a torsional chain and engine firing pulses. Estimated parameters: you must test-drive it. Off = the standard driveline exactly.");
     }
     // @description - Draws the disabled "Transmission and synchronizer model (coming soon)" toggle. It shows the stored experimentalTransmissionEnabled value (independent of the driveline toggle) but cannot be changed yet.
     // @param {BindingProfile} profile - settings profile being shown
     // @return {Void} - nothing
     void DrawTransmissionPlaceholder(BindingProfile profile)
     {
-        DrawDisabledPlaceholder(ItemCount + 1, profile.experimentalTransmissionEnabled, " Transmission and synchronizer model (coming soon)",
+        DrawDisabledPlaceholder(ItemCount, profile.experimentalTransmissionEnabled, " Transmission and synchronizer model (coming soon)",
             "Will model the gearbox: synchronizer engagement, shift effort and gear whine. Not available yet; the setting is stored so the later model can read it. Separate from the driveline model above.");
     }
     // @description - Draws one grayed-out toggle row for a model that is not implemented yet. The checkbox shows the stored value but ignores clicks.

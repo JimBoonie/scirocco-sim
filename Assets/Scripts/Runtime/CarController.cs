@@ -7,6 +7,7 @@ public class CarController : MonoBehaviour
     public WheelCorner frontRightWheel;
     public WheelCorner rearLeftWheel;
     public WheelCorner rearRightWheel;
+    ExperimentalDriveline experimentalDriveline;   // created on first use of the experimental driveline toggle; null while it was never on
     [Tooltip("Tire/drivetrain substeps per FixedUpdate (FixedUpdate itself runs at 500 Hz)")] public int substeps = 2;
     public Engine engine; public Drivetrain drivetrain; Rigidbody body;
     [HideInInspector] public float sprungMass; 
@@ -148,6 +149,7 @@ public class CarController : MonoBehaviour
         float frontAntiRollForce = (frontLeftWheel.travel - frontRightWheel.travel) * carParams.frontAntiRollBarRate, rearBeamRollForce = (rearLeftWheel.travel - rearRightWheel.travel) * carParams.twistBeamRollRate;
         frontLeftWheel.UpdateSuspension(fixedStep, frontAntiRollForce); frontRightWheel.UpdateSuspension(fixedStep, -frontAntiRollForce); rearLeftWheel.UpdateSuspension(fixedStep, rearBeamRollForce); rearRightWheel.UpdateSuspension(fixedStep, -rearBeamRollForce);
         float substep = fixedStep / substeps, substepForceScale = 1f / substeps;
+        foreach (var wheel in allWheels) wheel.longitudinalRelaxationEnabled = carParams.experimentalDrivelineEnabled;   // experimental driveline: longitudinal slip relaxation
         for (int i = 0; i < substeps; i++)
         {
             drivetrain.Tick(substep);
@@ -164,9 +166,19 @@ public class CarController : MonoBehaviour
             }
             // ...except for a bump start: engine not firing, ignition on, in gear, and the wheels would spin the crank past its firing speed -> engage
             if (autoClutch && !engine.combusting && engine.ignition && !engine.starter && drivetrain.gear != 0 && Mathf.Abs((frontLeftWheel.angularVelocity + frontRightWheel.angularVelocity) * 0.5f * drivetrain.TotalRatio) * 30f / Mathf.PI > engine.FireRpm * 1.5f) autoClutchPedal = 0f;
-            float clutchTorque = drivetrain.Clutch(engine.Omega, (frontLeftWheel.angularVelocity + frontRightWheel.angularVelocity) * 0.5f, Mathf.Max(clutch, autoClutchPedal), substep, carParams.wheelInertia, out float wheelTorque);
-            engine.Step(throttle, clutchTorque, substep);
-            frontLeftWheel.driveTorque = frontRightWheel.driveTorque = wheelTorque; rearLeftWheel.driveTorque = rearRightWheel.driveTorque = 0f;
+            if (carParams.experimentalDrivelineEnabled)
+            {   // EXPERIMENTAL driveline shuffle model (Driveline/*.cs): torsional chain with Karnopp clutch, damper, lash, halfshafts, engine roll, firing pulses
+                if (experimentalDriveline == null) experimentalDriveline = new ExperimentalDriveline(engine, carParams, null);
+                experimentalDriveline.Advance(substep, throttle, clutch, autoClutchPedal, drivetrain, frontLeftWheel, frontRightWheel);
+            }
+            else
+            {
+                if (experimentalDriveline != null) experimentalDriveline.Deactivate();
+                float clutchTorque = drivetrain.Clutch(engine.Omega, (frontLeftWheel.angularVelocity + frontRightWheel.angularVelocity) * 0.5f, Mathf.Max(clutch, autoClutchPedal), substep, carParams.wheelInertia, out float wheelTorque);
+                engine.Step(throttle, clutchTorque, substep);
+                frontLeftWheel.driveTorque = frontRightWheel.driveTorque = wheelTorque;
+            }
+            rearLeftWheel.driveTorque = rearRightWheel.driveTorque = 0f;
             frontLeftWheel.brakeTorque = frontRightWheel.brakeTorque = brake * carParams.brakeTorqueFront;
             float handbrakeFraction = Mathf.Max(handbrake ? 1f : 0f, handbrakeInput); rearLeftWheel.brakeTorque = rearRightWheel.brakeTorque = Mathf.Max(handbrakeFraction * carParams.handbrakeTorque, brake * carParams.brakeTorqueRear);   // analog handbrake lever supported
             foreach (var wheel in allWheels) wheel.TireStep(substep, substepForceScale);
