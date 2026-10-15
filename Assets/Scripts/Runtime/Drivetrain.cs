@@ -4,27 +4,62 @@ using UnityEngine;
 // explicit integration is stable (acts as a "lock" when slip is small, slips when torque > capacity).
 public class Drivetrain
 {
-    readonly CarParams p; public int gear = 0;      // -1 R, 0 N, 1..5
-    public float shiftTimer, clutchSlip;
-    public Drivetrain(CarParams p) { this.p = p; }
-    public float Ratio => gear == 0 ? 0f : (gear < 0 ? -p.reverseRatio : p.gearRatios[gear - 1]) * p.finalDrive;
-    public void Shift(int d)
+    readonly CarParams carParams;
+    public int gear = 0;                  // -1 = reverse, 0 = neutral, 1..5 = forward gears
+    public float shiftTimer;              // s remaining in neutral after a shift (no torque transmitted)
+    public float clutchSlip;              // rad/s, engine speed minus the clutch's wheel-side speed (engine side faster = positive)
+
+    // @description - creates the drivetrain for a car; starts in neutral
+    // @param {CarParams} carParams - gear ratios, final drive, clutch capacity, inertias, efficiency
+    // @return {Void} - constructor
+    public Drivetrain(CarParams carParams) { this.carParams = carParams; }
+
+    // Overall ratio crankshaft : wheel for the engaged gear (gear ratio x final drive); 0 in neutral, negative in reverse.
+    public float TotalRatio => gear == 0 ? 0f : (gear < 0 ? -carParams.reverseRatio : carParams.gearRatios[gear - 1]) * carParams.finalDrive;
+
+    // @description - moves the gear selector up or down by a number of gears and starts the shift (neutral) timer if the gear changed
+    // @param {int} gearChange - +1 = up, -1 = down
+    // @return {Void}
+    public void Shift(int gearChange)
     {
-        int ng = Mathf.Clamp(gear + d, -1, p.gearRatios.Length);
-        if (ng != gear) { gear = ng; shiftTimer = p.shiftTime; }
+        int newGear = Mathf.Clamp(gear + gearChange, -1, carParams.gearRatios.Length);
+        if (newGear != gear) { gear = newGear; shiftTimer = carParams.shiftTime; }
     }
-    public void SelectGear(int g) { g = Mathf.Clamp(g, -1, p.gearRatios.Length); if (g != gear) { gear = g; shiftTimer = p.shiftTime; } }   // H-pattern
-    public float Clutch(float engOmega, float wheelOmegaAvg, float clutchPedal, float dt, float wheelInertiaEach, out float wheelTorqueEach)
+
+    // @description - selects an absolute gear (H-pattern shifter) and starts the shift timer if the gear changed
+    // @param {int} targetGear - -1 = reverse, 0 = neutral, 1..5 = forward
+    // @return {Void}
+    public void SelectGear(int targetGear)
     {
-        wheelTorqueEach = 0f; float R = Ratio;
+        targetGear = Mathf.Clamp(targetGear, -1, carParams.gearRatios.Length);
+        if (targetGear != gear) { gear = targetGear; shiftTimer = carParams.shiftTime; }
+    }
+
+    // @description - Coulomb-capped clutch with a per-step stable coupling gain. Also updates clutchSlip.
+    //   Capacity = clutchMaxTorque x (1 - pedal). Gain k = 0.5 / (dt x (1/J_engine + R^2 x efficiency / (2 J_wheel))) [N m s/rad],
+    //   i.e. the coupling that would remove the slip in two explicit steps (critically sized), so it never overshoots.
+    // @param {float} engineAngularVelocity - crankshaft speed in rad/s
+    // @param {float} wheelAngularVelocityAverage - mean driven-wheel speed in rad/s
+    // @param {float} clutchPedal - clutch pedal position 0 (engaged) .. 1 (fully in)
+    // @param {float} dt - time step in s
+    // @param {float} wheelInertiaEach - rotational inertia of one driven wheel in kg m^2
+    // @param {float} wheelTorqueEach - (out) drive torque delivered to each driven wheel in N m (open differential: equal split)
+    // @return {float} - torque the clutch takes off the crankshaft in N m (0 in neutral or while shifting)
+    public float Clutch(float engineAngularVelocity, float wheelAngularVelocityAverage, float clutchPedal, float dt, float wheelInertiaEach, out float wheelTorqueEach)
+    {
+        wheelTorqueEach = 0f; float totalRatio = TotalRatio;
         if (gear == 0 || shiftTimer > 0f) { clutchSlip = 0f; return 0f; }
-        clutchSlip = engOmega - wheelOmegaAvg * R;
-        float cap = p.clutchMaxTorque * Mathf.Clamp01(1f - clutchPedal);
-        float invI = 1f / p.engineInertia + R * R * p.drivetrainEff / (2f * wheelInertiaEach);
-        float k = 0.5f / (dt * invI);                         // critically sized coupling gain
-        float Tc = Mathf.Clamp(clutchSlip * k, -cap, cap);
-        wheelTorqueEach = Tc * R * p.drivetrainEff * 0.5f;    // open diff: equal split
-        return Tc;
+        clutchSlip = engineAngularVelocity - wheelAngularVelocityAverage * totalRatio;
+        float clutchCapacity = carParams.clutchMaxTorque * Mathf.Clamp01(1f - clutchPedal);
+        float inverseReflectedInertia = 1f / carParams.engineInertia + totalRatio * totalRatio * carParams.drivetrainEff / (2f * wheelInertiaEach);
+        float couplingGain = 0.5f / (dt * inverseReflectedInertia);                         // critically sized coupling gain
+        float clutchTorque = Mathf.Clamp(clutchSlip * couplingGain, -clutchCapacity, clutchCapacity);
+        wheelTorqueEach = clutchTorque * totalRatio * carParams.drivetrainEff * 0.5f;       // open diff: equal split
+        return clutchTorque;
     }
+
+    // @description - counts the shift timer down
+    // @param {float} dt - time step in s
+    // @return {Void}
     public void Tick(float dt) { if (shiftTimer > 0f) shiftTimer -= dt; }
 }

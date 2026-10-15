@@ -16,17 +16,17 @@ public class EngineOverrunAudioTests
     static System.Collections.Generic.IEnumerable<(Engine e, CarParams p)> Coast()
     {
         var p = ScriptableObject.CreateInstance<CarParams>(); var e = new Engine(p);
-        typeof(Engine).GetField("omega", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).SetValue(e, 5000f * Mathf.PI / 30f); e.rpm = 5000f;
+        typeof(Engine).GetField("angularVelocity", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).SetValue(e, 5000f * Mathf.PI / 30f); e.rpm = 5000f;
         for (int i = 1; i <= 9000; i++) { float target = 5000f - i * dt * 700f; e.Step(0f, -((target - e.rpm) * 2f + e.FrictionTorque(e.rpm)), dt); if (i % 1000 == 0) yield return (e, p); }
     }
     [Test] public void Overrun_Audible_6_To_10_dB_Under_Wot_With_Real_Engine()
     {
         foreach (var (e, p) in Coast())
         {
-            float load = Mathf.Clamp01((e.map - p.mapZeroTorque) / (1f - p.mapZeroTorque));
-            float on = Db(Render(e.rpm, 1f, 1f, true)), off = Db(Render(e.rpm, load, e.map, e.combusting)), d = on - off;
-            Debug.Log($"OVERRUN rpm {e.rpm:0} map {e.map:0.000} load {load:0.00} comb {e.combusting} WOT {on:0.0} dBFS overrun {off:0.0} dBFS diff {d:0.0} dB");
-            Assert.That(e.map, Is.InRange(0.05f, 0.35f), "closed-throttle overrun MAP (leakage + residual floor; real SI overrun ~0.15-0.35 bar, aa1car MAP article)"); Assert.IsTrue(e.combusting);
+            float load = Mathf.Clamp01((e.manifoldPressureRatio - p.mapZeroTorque) / (1f - p.mapZeroTorque));
+            float on = Db(Render(e.rpm, 1f, 1f, true)), off = Db(Render(e.rpm, load, e.manifoldPressureRatio, e.combusting)), d = on - off;
+            Debug.Log($"OVERRUN rpm {e.rpm:0} map {e.manifoldPressureRatio:0.000} load {load:0.00} comb {e.combusting} WOT {on:0.0} dBFS overrun {off:0.0} dBFS diff {d:0.0} dB");
+            Assert.That(e.manifoldPressureRatio, Is.InRange(0.05f, 0.35f), "closed-throttle overrun MAP (leakage + residual floor; real SI overrun ~0.15-0.35 bar, aa1car MAP article)"); Assert.IsTrue(e.combusting);
             Assert.That(d, Is.InRange(6f, 10f), $"overrun at {e.rpm:0} rpm");
         }
     }
@@ -35,7 +35,7 @@ public class EngineOverrunAudioTests
         float prev = float.MaxValue;
         foreach (var (e, p) in Coast())
         {
-            float f0 = e.rpm / 30f, f = Pitch(Render(e.rpm, 0f, e.map, e.combusting), f0);
+            float f0 = e.rpm / 30f, f = Pitch(Render(e.rpm, 0f, e.manifoldPressureRatio, e.combusting), f0);
             Debug.Log($"PITCH rpm {e.rpm:0} expected {f0:0.0} Hz measured {f:0.0} Hz");
             Assert.AreEqual(f0, f, f0 * 0.03f, "firing frequency = rpm/60 x 2"); Assert.Less(f, prev, "pitch falls with rpm"); prev = f;
         }

@@ -132,12 +132,12 @@ public class CarController : MonoBehaviour
             // behaviour), and closes as the input shaft approaches idle. Input >= idle: the law above, unchanged (locked unless rpm < idle).
             if (autoClutch && dt.gear != 0)
             {
-                float inRpm = Mathf.Abs((FL.omega + FR.omega) * 0.5f * dt.Ratio) * 30f / Mathf.PI;
+                float inRpm = Mathf.Abs((FL.omega + FR.omega) * 0.5f * dt.TotalRatio) * 30f / Mathf.PI;
                 float fLaunch = Mathf.Clamp01((engine.rpm - p.idleRpm) / (PeakTorqueRpm - p.idleRpm)), fIn = Mathf.Clamp01(inRpm / p.idleRpm);
                 autoClutchPedal = 1f - Mathf.Min(Mathf.Max(fLaunch, fIn), 1f - autoClutchPedal);
             }
             // ...except for a bump start: engine not firing, ignition on, in gear, and the wheels would spin the crank past its firing speed -> engage
-            if (autoClutch && !engine.combusting && engine.ignition && !engine.starter && dt.gear != 0 && Mathf.Abs((FL.omega + FR.omega) * 0.5f * dt.Ratio) * 30f / Mathf.PI > engine.FireRpm * 1.5f) autoClutchPedal = 0f;
+            if (autoClutch && !engine.combusting && engine.ignition && !engine.starter && dt.gear != 0 && Mathf.Abs((FL.omega + FR.omega) * 0.5f * dt.TotalRatio) * 30f / Mathf.PI > engine.FireRpm * 1.5f) autoClutchPedal = 0f;
             float tc = dt.Clutch(engine.Omega, (FL.omega + FR.omega) * 0.5f, Mathf.Max(clutch, autoClutchPedal), h, p.wheelInertia, out float wt);
             engine.Step(throttle, tc, h);
             FL.driveTorque = FR.driveTorque = wt; RL.driveTorque = RR.driveTorque = 0f;

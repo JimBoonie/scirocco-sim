@@ -7,7 +7,7 @@ public class EngineAirPathTests
     {
         var e = Make(out var p);
         for (int i = 0; i < p.rpmPoints.Length - 1; i++) Assert.AreEqual(p.torquePoints[i], e.SteadyTorque(1f, p.rpmPoints[i]), 1f, $"WOT @ {p.rpmPoints[i]}");
-        for (int i = 1; i < p.rpmPoints.Length - 1; i++) { float v = e.VE(p.rpmPoints[i]); Assert.Greater(v, 0.5f); Assert.Less(v, 1.05f, "derived VE physical"); }
+        for (int i = 1; i < p.rpmPoints.Length - 1; i++) { float v = e.VolumetricEfficiency(p.rpmPoints[i]); Assert.Greater(v, 0.5f); Assert.Less(v, 1.05f, "derived VE physical"); }
     }
     [Test] public void Idle_Is_Stable_Steady_State()
     {

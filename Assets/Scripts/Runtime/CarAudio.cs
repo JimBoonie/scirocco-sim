@@ -61,7 +61,7 @@ public class EngineSynth : SynthBase
     {
         var e = car.engine; var p = car.p; if (e == null) return;
         rpm = e.rpm; thrArea = e.throttleArea; combusting = e.combusting; starter = e.starter; limiter = e.limiter; ignition = e.ignition;
-        load = Mathf.Clamp01((e.map - p.mapZeroTorque) / (1f - p.mapZeroTorque)); mapBar = e.map;
+        load = Mathf.Clamp01((e.manifoldPressureRatio - p.mapZeroTorque) / (1f - p.mapZeroTorque)); mapBar = e.manifoldPressureRatio;
         starterRps = e.starter ? e.rpm / 60f * e.StarterRatio : 0f;                       // armature rev/s (pinion turns ratio x crank speed)
         crankAmp = Mathf.Clamp01(e.rpm / p.idleRpm);
         if (e.ignition != wasIgn) { clicks++; wasIgn = e.ignition; }
@@ -193,6 +193,6 @@ public class AudioCoastProbe : MonoBehaviour
         float eDb = 20f * Mathf.Log10(eRms + 1e-9f), tDb = 20f * Mathf.Log10(tRms + 1e-9f); if (car.throttle > 0.99f && e.rpm > 4500f) wotDb = eDb;
         var rb = car.GetComponent<Rigidbody>();
         Debug.Log(string.Format(System.Globalization.CultureInfo.InvariantCulture, "COAST,{0:0.0},{1},{2},{3:0},{4:0.0},{5:0.000},{6:0.00},{7},{8},{9:0.0},{10:0.0},{11:0.0},{12:0.0}",
-            t, stage, car.dt.gear, e.rpm, rb ? rb.velocity.magnitude * 3.6f : 0f, e.map, Mathf.Clamp01((e.map - car.p.mapZeroTorque) / (1f - car.p.mapZeroTorque)), e.combusting, e.limiter, eDb, tDb, wotDb - eDb, car.throttle));
+            t, stage, car.dt.gear, e.rpm, rb ? rb.velocity.magnitude * 3.6f : 0f, e.manifoldPressureRatio, Mathf.Clamp01((e.manifoldPressureRatio - car.p.mapZeroTorque) / (1f - car.p.mapZeroTorque)), e.combusting, e.limiter, eDb, tDb, wotDb - eDb, car.throttle));
     }
 }

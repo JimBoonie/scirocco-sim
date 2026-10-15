@@ -9,6 +9,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [2026-10-14] (PT)
 
+### Changed (readability pass 1/6: engine / drivetrain, 19:30 PT)
+
+- `Engine.cs`, `Drivetrain.cs`: full-word identifiers, `// @description / @param / @return` header on every function, physics comments (equations, units, S/SD/D/E tags kept), and the constructor / `FreshFraction` / `Step` split into small single-purpose functions with identical arithmetic. **No behaviour change**: 117/117 edit-mode tests pass, and the 15 diagnostic scenarios match the pre-change baseline: skidpad 0.785 g, understeer gradient 1.834 deg/g, step-steer yaw 13.834 deg/s / overshoot 10.52 %, brake 100-0 47.85 m, 0-100 km/h 9.87 s, gamepad results identical; all 8 battery metrics identical to 3 decimals, and the engine-only scenarios (rev sweep, stall restart) are bit-identical row by row. (Vehicle scenarios jitter by +-1 N / <=2 % on a few rows between any two runs of the same build because the player is not frame-deterministic; see docs/RENAMES.md notes.) Old -> new names in `docs/RENAMES.md`.
+
 ### Fixed (14:55 PT)
 
 - **Wheel steering dead when a device is bound as 'wheel'** (regression from acdb0e1). In `InputMapper.StepSteer` the gamepad-assist bookkeeping was added as `else if (assist != null)` in front of the wheel branch; InputRouter always creates the assist, so the wheel angle was never applied and the column stayed put, with the assist on or off (pedals unaffected; only rebinding the wheel as a gamepad "worked"). A wheel-role device now drives the column directly again (1:1 over the full 1260 deg / scaled mapping, no rate or grip limit); the assist only shapes stick/key (gamepad-role) input and is just kept in sync with the wheel. Settings migration (v5/v6/v7 -> v8) verified to keep the wheel steer binding, its calibration and rotation. Tests: `Wheel_Steers_Directly_With_Assist_On_And_Off`, `Gamepad_Assist_Applies_Only_To_Stick`, `Migration_Keeps_Wheel_Binding`.

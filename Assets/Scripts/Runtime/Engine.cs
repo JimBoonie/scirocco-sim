@@ -20,126 +20,297 @@ using UnityEngine;
 //     and cross zero; at low rpm a small opening already fills the manifold.
 public class Engine
 {
-    readonly CarParams p; public float rpm, map = 1f, throttleArea, starterTorque; float omega, pMan;   // map = p_man / p_amb (HUD/audio); throttleArea = open area / WOT area
-    public bool ignition = true, starter, combusting = true, limiter;   // limiter = fuel cut active this step   // starter = key held in START; combusting = combustion this step
-    readonly float[] ve, pWot; float aWot, aBypass, aLeak;
-    public float IdleBypassArea => aBypass; public float LeakArea => aLeak;
-    public Engine(CarParams p)
+    readonly CarParams carParams;
+    public float rpm;                       // crankshaft speed in rpm
+    public float manifoldPressureRatio = 1f;   // manifold absolute pressure / ambient (HUD/audio)
+    public float throttleArea;              // open throttle flow area / wide-open-throttle area
+    public float starterTorque;             // N m at the crankshaft from the starter motor this step
+    float angularVelocity;                  // rad/s, crankshaft (same state as rpm, kept in SI)
+    float manifoldPressure;                 // Pa absolute
+    public bool ignition = true;            // key in ON
+    public bool starter;                    // key held in START
+    public bool combusting = true;          // combustion happening this step
+    public bool limiter;                    // fuel cut active this step
+    readonly float[] volumetricEfficiency;  // VE(rpm) table, same rpm grid as carParams.rpmPoints (derived in the constructor)
+    readonly float[] wideOpenManifoldPressure;   // Pa, steady WOT manifold pressure on the rpm grid (used as the pumping-loss reference)
+    float wideOpenThrottleArea;             // m^2, both plates fully open
+    float idleBypassAreaValue;              // m^2, idle-air bypass (sized so idle is a steady state)
+    float closedPlateLeakAreaValue;         // m^2, closed-plate leakage (stop screw + plate-to-bore annulus)
+    public float IdleBypassArea => idleBypassAreaValue;
+    public float LeakArea => closedPlateLeakAreaValue;
+
+    // @description - builds the engine: computes the WOT and leakage areas, derives VE(rpm) from the sourced torque curve and sizes the idle bypass
+    // @param {CarParams} carParams - engine, throttle body and manifold parameters
+    // @return {Void} - constructor
+    public Engine(CarParams carParams)
     {
-        this.p = p; ve = new float[p.rpmPoints.Length]; pWot = new float[p.rpmPoints.Length];
-        aWot = PlateArea(p.fullOpenPlateDeg * Mathf.Deg2Rad, p.primaryBore) + PlateArea(p.fullOpenPlateDeg * Mathf.Deg2Rad, p.secondaryBore);
-        float psi0 = p.closedPlateDeg * Mathf.Deg2Rad;
-        aLeak = PlateArea(psi0 + p.stopScrewTurns * p.stopScrewPitch / p.stopLeverArm, p.primaryBore) + Mathf.PI * (p.primaryBore + p.secondaryBore) * p.plateBoreClearance;
-        for (int i = 0; i < ve.Length; i++) { ve[i] = 1f; pWot[i] = p.ambientPressure; }
-        for (int k = 0; k < 40; k++)   // VE(rpm) fixed point: steady WOT brake torque == sourced curve (D)
-            for (int i = 0; i < ve.Length; i++)
-            {
-                float r = Mathf.Max(p.rpmPoints[i], p.rpmPoints[0]), pm = SteadyMap(1f, r, ve[i]); pWot[i] = pm; Parts(r, pm, 1f, out float ti, out float tf, out float tp);
-                ve[i] = Mathf.Max(0f, (p.torquePoints[i] + tf + tp) / ti);
-            }
-        float lo = 0f, hi = 0.02f * aWot;   // idle bypass (D): closed-pedal steady net torque = 0 at idleRpm
-        for (int k = 0; k < 50; k++) { aBypass = 0.5f * (lo + hi); if (SteadyTorque(0f, p.idleRpm) > 0f) hi = aBypass; else lo = aBypass; }
+        this.carParams = carParams; volumetricEfficiency = new float[carParams.rpmPoints.Length]; wideOpenManifoldPressure = new float[carParams.rpmPoints.Length];
+        wideOpenThrottleArea = PlateArea(carParams.fullOpenPlateDeg * Mathf.Deg2Rad, carParams.primaryBore) + PlateArea(carParams.fullOpenPlateDeg * Mathf.Deg2Rad, carParams.secondaryBore);
+        float closedPlateAngle = carParams.closedPlateDeg * Mathf.Deg2Rad;
+        // stop screw lifts the primary plate by turns x pitch / lever arm rad; the annulus pi * D * clearance exists on both plates
+        closedPlateLeakAreaValue = PlateArea(closedPlateAngle + carParams.stopScrewTurns * carParams.stopScrewPitch / carParams.stopLeverArm, carParams.primaryBore) + Mathf.PI * (carParams.primaryBore + carParams.secondaryBore) * carParams.plateBoreClearance;
+        CalibrateVolumetricEfficiency();
+        SizeIdleBypass();
         SetRunning(true);
     }
-    public void SetRunning(bool running)   // spawn state: idling, or stopped with ignition off
-    { ignition = running; combusting = running; rpm = running ? p.idleRpm : 0f; omega = rpm * Mathf.PI / 30f; pMan = running ? SteadyMap(0f, p.idleRpm, VE(p.idleRpm)) : p.ambientPressure; map = pMan / p.ambientPressure; }
-    public float StarterRatio => (float)p.ringGearTeeth / p.starterPinionTeeth;
-    public float StarterTorqueAt(float engOmega)   // at the crankshaft
+
+    // @description - fixed-point iteration for VE(rpm) so that the steady wide-open-throttle brake torque equals the sourced curve (D):
+    //   VE = (T_brake + T_friction + T_pumping) / T_indicated(VE = 1). Also stores the steady WOT manifold pressure per rpm point.
+    // @return {Void}
+    void CalibrateVolumetricEfficiency()
     {
-        float w0 = p.starterNoLoadRpm * Mathf.PI / 30f, T0 = 4f * p.starterPowerW / w0, N = StarterRatio;
-        return N * T0 * Mathf.Max(0f, 1f - engOmega * N / w0);
+        for (int i = 0; i < volumetricEfficiency.Length; i++) { volumetricEfficiency[i] = 1f; wideOpenManifoldPressure[i] = carParams.ambientPressure; }
+        for (int iteration = 0; iteration < 40; iteration++)
+            for (int i = 0; i < volumetricEfficiency.Length; i++)
+            {
+                float engineRpm = Mathf.Max(carParams.rpmPoints[i], carParams.rpmPoints[0]), pressure = SolveSteadyManifoldPressure(1f, engineRpm, volumetricEfficiency[i]);
+                wideOpenManifoldPressure[i] = pressure;
+                ComputeTorqueParts(engineRpm, pressure, 1f, out float indicated, out float friction, out float pumping);
+                volumetricEfficiency[i] = Mathf.Max(0f, (carParams.torquePoints[i] + friction + pumping) / indicated);
+            }
     }
+
+    // @description - bisection for the idle-air bypass area (D) that makes the steady net torque with the pedal released exactly zero at idleRpm
+    // @return {Void}
+    void SizeIdleBypass()
+    {
+        float low = 0f, high = 0.02f * wideOpenThrottleArea;
+        for (int iteration = 0; iteration < 50; iteration++) { idleBypassAreaValue = 0.5f * (low + high); if (SteadyTorque(0f, carParams.idleRpm) > 0f) high = idleBypassAreaValue; else low = idleBypassAreaValue; }
+    }
+
+    // @description - sets the spawn state: idling with combustion, or stopped with the ignition off
+    // @param {bool} running - true = idling, false = stopped (ignition off, ambient manifold pressure)
+    // @return {Void}
+    public void SetRunning(bool running)
+    {
+        ignition = running; combusting = running; rpm = running ? carParams.idleRpm : 0f; angularVelocity = rpm * Mathf.PI / 30f;
+        manifoldPressure = running ? SolveSteadyManifoldPressure(0f, carParams.idleRpm, VolumetricEfficiency(carParams.idleRpm)) : carParams.ambientPressure;
+        manifoldPressureRatio = manifoldPressure / carParams.ambientPressure;
+    }
+
+    // Starter reduction: ring gear teeth / pinion teeth.
+    public float StarterRatio => (float)carParams.ringGearTeeth / carParams.starterPinionTeeth;
+
+    // @description - starter torque at the crankshaft from the linear DC-motor model T_motor = T0 (1 - w/w0), T0 = 4 P / w0 (D, max power at w0/2);
+    //   the overrunning clutch means it never gives negative torque
+    // @param {float} crankAngularVelocity - crankshaft speed in rad/s
+    // @return {float} - starter torque at the crankshaft in N m
+    public float StarterTorqueAt(float crankAngularVelocity)
+    {
+        float noLoadAngularVelocity = carParams.starterNoLoadRpm * Mathf.PI / 30f, stallTorque = 4f * carParams.starterPowerW / noLoadAngularVelocity, ratio = StarterRatio;
+        return ratio * stallTorque * Mathf.Max(0f, 1f - crankAngularVelocity * ratio / noLoadAngularVelocity);
+    }
+
+    // Human-readable engine state for the HUD.
     public string State => !ignition ? (rpm > 1f ? (starter ? "CRANKING (ign off)" : "OFF (spinning down)") : "OFF") : starter ? (combusting ? "STARTING" : "CRANKING") : combusting ? "RUNNING" : (rpm > 1f ? "STALLING" : "STALLED");
-    public float Omega => omega;
+
+    // Crankshaft speed in rad/s.
+    public float Omega => angularVelocity;
+
     /// firing speed from the model: the lowest crank speed at which combustion with the pedal released (idle bypass only) gives net positive
     /// torque (indicated > friction + pumping, steady MAP), floored at minFiringRpm (the K-Jetronic start-enrichment/spark minimum, same as the starter path).
-    public float FireRpm { get { if (fireRpm < 0f) { NetPositiveRpm = -1f; for (float r = 10f; r <= 3000f; r += 5f) if (SteadyTorque(0f, r) > 0f) { NetPositiveRpm = r; break; } fireRpm = Mathf.Max(p.minFiringRpm, NetPositiveRpm < 0f ? p.stallRpm : NetPositiveRpm); } return fireRpm; } }
-    float fireRpm = -1f, prevRpm; bool catching; public float NetPositiveRpm { get; private set; }
-    static float Interp(float[] x, float[] y, float r)
+    public float FireRpm
     {
-        if (r <= x[0]) return y[0];
-        for (int i = 1; i < x.Length; i++) if (r < x[i]) return Mathf.Lerp(y[i - 1], y[i], (r - x[i - 1]) / (x[i] - x[i - 1]));
-        return y[y.Length - 1];
-    }
-    public float WotTorque(float r) => Interp(p.rpmPoints, p.torquePoints, r);
-    public float VE(float r) => Interp(p.rpmPoints, ve, r);
-    // ---- throttle body
-    /// open flow area of one butterfly at angle psi (from bore-normal), closed angle psi0: Heywood (1988) eq. 7.? incl. shaft diameter d.
-    float PlateArea(float psi, float D)
-    {
-        float psi0 = p.closedPlateDeg * Mathf.Deg2Rad; if (psi <= psi0) return 0f;
-        float a = p.throttleShaftDia / D, c = Mathf.Cos(psi), c0 = Mathf.Cos(psi0), t;
-        float tail = -a * Mathf.Sqrt(1f - a * a) + Mathf.Asin(a);
-        if (c > a * c0) t = a / c * Mathf.Sqrt(c * c - a * a * c0 * c0) - c / c0 * Mathf.Asin(a * c0 / c) + tail; else t = tail;
-        return Mathf.PI * D * D / 4f * (1f - c / c0 + 2f / Mathf.PI * t);
-    }
-    public void PlateAngles(float pedal, out float primary, out float secondary)   // rad; linear cable lever (E), progressive secondary
-    {
-        float psi0 = p.closedPlateDeg * Mathf.Deg2Rad, psiW = p.fullOpenPlateDeg * Mathf.Deg2Rad, s0 = p.secondaryStartDeg * Mathf.Deg2Rad;
-        primary = psi0 + (psiW - psi0) * Mathf.Clamp01(pedal);
-        secondary = psi0 + (psiW - psi0) * Mathf.Clamp01((primary - s0) / (psiW - s0));
-    }
-    public float Area(float pedal) { PlateAngles(pedal, out float a1, out float a2); return PlateArea(a1, p.primaryBore) + PlateArea(a2, p.secondaryBore) + aBypass + aLeak; }
-    /// isentropic orifice flow function Psi(pr) = sqrt(2g/(g-1) (pr^(2/g) - pr^((g+1)/g))), held at its choked value below the critical ratio
-    public float Psi(float pr)
-    {
-        float g = p.airGamma, crit = Mathf.Pow(2f / (g + 1f), g / (g - 1f)); pr = Mathf.Clamp(pr, crit, 1f);
-        return Mathf.Sqrt(Mathf.Max(0f, 2f * g / (g - 1f) * (Mathf.Pow(pr, 2f / g) - Mathf.Pow(pr, (g + 1f) / g))));
-    }
-    float ThrottleFlow(float area, float pm) => p.throttleDischargeCoeff * area * p.ambientPressure / Mathf.Sqrt(p.airGasConstant * p.ambientTemperature) * Psi(pm / p.ambientPressure);
-    /// fresh-charge fraction (see header): ideal-cycle residual expansion minus overlap backflow volume, both at manifold pressure
-    public float FreshFraction(float r, float pm)
-    {
-        pm = Mathf.Max(pm, 1f); float rc = p.compressionRatio;
-        float res = (rc - Mathf.Pow(p.exhaustBackPressure / pm, 1f / p.residualExpansionExponent)) / (rc - 1f);
-        if (r > 0f)
+        get
         {
-            float t = p.valveOverlapDeg * Mathf.Deg2Rad / (r * Mathf.PI / 30f), aOv = Mathf.PI * p.exhaustValveDia * p.valveLiftAtTdc / 2f;   // triangular lift -> mean curtain
-            float rt = p.airGasConstant * p.overlapGasTemperature;
-            float mBack = p.throttleDischargeCoeff * aOv * p.exhaustBackPressure / Mathf.Sqrt(rt) * Psi(Mathf.Min(1f, pm / p.exhaustBackPressure)) * t;
-            res -= mBack * rt / pm / (p.displacement / p.cylinders);
+            if (cachedFireRpm < 0f)
+            {
+                NetPositiveRpm = -1f;
+                for (float testRpm = 10f; testRpm <= 3000f; testRpm += 5f) if (SteadyTorque(0f, testRpm) > 0f) { NetPositiveRpm = testRpm; break; }
+                cachedFireRpm = Mathf.Max(carParams.minFiringRpm, NetPositiveRpm < 0f ? carParams.stallRpm : NetPositiveRpm);
+            }
+            return cachedFireRpm;
         }
-        return Mathf.Max(0f, res);
     }
-    float CylinderFlow(float r, float pm, float v) => v * FreshFraction(r, pm) * pm / (p.airGasConstant * p.ambientTemperature) * p.displacement * r / 120f;
-    float SteadyMap(float pedal, float r, float v)   // bisection on mdot_throttle = mdot_cylinders
+    float cachedFireRpm = -1f, previousRpm; bool catching;
+    public float NetPositiveRpm { get; private set; }
+
+    // @description - piecewise-linear interpolation, clamped to the end values
+    // @param {float[]} xs - ascending sample positions
+    // @param {float[]} ys - sample values (same length as xs)
+    // @param {float} x - position to evaluate
+    // @return {float} - interpolated value
+    static float InterpolateLinear(float[] xs, float[] ys, float x)
     {
-        float A = Area(pedal), lo = 1f, hi = p.ambientPressure;
-        for (int i = 0; i < 50; i++) { float m = 0.5f * (lo + hi); if (ThrottleFlow(A, m) > CylinderFlow(r, m, v)) lo = m; else hi = m; }
-        return lo;
+        if (x <= xs[0]) return ys[0];
+        for (int i = 1; i < xs.Length; i++) if (x < xs[i]) return Mathf.Lerp(ys[i - 1], ys[i], (x - xs[i - 1]) / (xs[i] - xs[i - 1]));
+        return ys[ys.Length - 1];
     }
+
+    // @description - sourced/estimated wide-open-throttle brake torque curve
+    // @param {float} engineRpm - engine speed in rpm
+    // @return {float} - WOT brake torque in N m
+    public float WotTorque(float engineRpm) => InterpolateLinear(carParams.rpmPoints, carParams.torquePoints, engineRpm);
+
+    // @description - derived volumetric efficiency (cylinder fill relative to manifold density) at an engine speed
+    // @param {float} engineRpm - engine speed in rpm
+    // @return {float} - VE (dimensionless, around 0.6..0.9)
+    public float VolumetricEfficiency(float engineRpm) => InterpolateLinear(carParams.rpmPoints, volumetricEfficiency, engineRpm);
+
+    // ---- throttle body
+    /// @description - open flow area of one butterfly at angle plateAngle (from bore-normal), closed angle closedPlateAngle: Heywood (1988) butterfly-area
+    ///   formula including the shaft of diameter d (A = pi D^2/4 (1 - cos/cos0 + 2/pi (a/cos sqrt(cos^2 - a^2 cos0^2) - cos/cos0 asin(a cos0/cos) + tail)), a = d/D)
+    // @param {float} plateAngle - plate angle from bore-normal in rad
+    // @param {float} boreDiameter - throttle bore diameter in m
+    // @return {float} - open flow area in m^2 (0 at or below the closed angle)
+    float PlateArea(float plateAngle, float boreDiameter)
+    {
+        float closedPlateAngle = carParams.closedPlateDeg * Mathf.Deg2Rad; if (plateAngle <= closedPlateAngle) return 0f;
+        float shaftToBore = carParams.throttleShaftDia / boreDiameter, cosPlate = Mathf.Cos(plateAngle), cosClosed = Mathf.Cos(closedPlateAngle), shaftTerm;
+        float tail = -shaftToBore * Mathf.Sqrt(1f - shaftToBore * shaftToBore) + Mathf.Asin(shaftToBore);
+        if (cosPlate > shaftToBore * cosClosed) shaftTerm = shaftToBore / cosPlate * Mathf.Sqrt(cosPlate * cosPlate - shaftToBore * shaftToBore * cosClosed * cosClosed) - cosPlate / cosClosed * Mathf.Asin(shaftToBore * cosClosed / cosPlate) + tail; else shaftTerm = tail;
+        return Mathf.PI * boreDiameter * boreDiameter / 4f * (1f - cosPlate / cosClosed + 2f / Mathf.PI * shaftTerm);
+    }
+
+    // @description - pedal -> plate angles: linear cable lever (E) for the primary plate, progressive link opens the secondary plate late
+    // @param {float} pedal - accelerator pedal 0..1
+    // @param {float} primary - (out) primary plate angle in rad
+    // @param {float} secondary - (out) secondary plate angle in rad
+    // @return {Void}
+    public void PlateAngles(float pedal, out float primary, out float secondary)
+    {
+        float closedAngle = carParams.closedPlateDeg * Mathf.Deg2Rad, fullOpenAngle = carParams.fullOpenPlateDeg * Mathf.Deg2Rad, secondaryStartAngle = carParams.secondaryStartDeg * Mathf.Deg2Rad;
+        primary = closedAngle + (fullOpenAngle - closedAngle) * Mathf.Clamp01(pedal);
+        secondary = closedAngle + (fullOpenAngle - closedAngle) * Mathf.Clamp01((primary - secondaryStartAngle) / (fullOpenAngle - secondaryStartAngle));
+    }
+
+    // @description - total throttle flow area: both plates + idle bypass + closed-plate leakage
+    // @param {float} pedal - accelerator pedal 0..1
+    // @return {float} - total open flow area in m^2
+    public float TotalFlowArea(float pedal) { PlateAngles(pedal, out float primaryAngle, out float secondaryAngle); return PlateArea(primaryAngle, carParams.primaryBore) + PlateArea(secondaryAngle, carParams.secondaryBore) + idleBypassAreaValue + closedPlateLeakAreaValue; }
+
+    /// @description - isentropic orifice flow function Psi(pr) = sqrt(2g/(g-1) (pr^(2/g) - pr^((g+1)/g))), held at its choked value below the critical ratio
+    // @param {float} pressureRatio - downstream / upstream absolute pressure
+    // @return {float} - dimensionless flow function Psi
+    public float OrificeFlowFunction(float pressureRatio)
+    {
+        float gamma = carParams.airGamma, criticalPressureRatio = Mathf.Pow(2f / (gamma + 1f), gamma / (gamma - 1f)); pressureRatio = Mathf.Clamp(pressureRatio, criticalPressureRatio, 1f);
+        return Mathf.Sqrt(Mathf.Max(0f, 2f * gamma / (gamma - 1f) * (Mathf.Pow(pressureRatio, 2f / gamma) - Mathf.Pow(pressureRatio, (gamma + 1f) / gamma))));
+    }
+
+    // @description - compressible mass flow through the throttle orifice: Cd A p0 / sqrt(R T0) Psi(p_man/p0)
+    // @param {float} area - open flow area in m^2
+    // @param {float} manifoldPressureNow - manifold absolute pressure in Pa
+    // @return {float} - air mass flow into the manifold in kg/s
+    float ThrottleMassFlow(float area, float manifoldPressureNow) => carParams.throttleDischargeCoeff * area * carParams.ambientPressure / Mathf.Sqrt(carParams.airGasConstant * carParams.ambientTemperature) * OrificeFlowFunction(manifoldPressureNow / carParams.ambientPressure);
+
+    /// @description - fresh-charge fraction (see header): ideal-cycle residual expansion (r_c - (p_e/p_i)^(1/n)) / (r_c - 1) minus the volume
+    ///   of exhaust gas blown back through the valve-overlap curtain, both at manifold pressure
+    // @param {float} engineRpm - engine speed in rpm
+    // @param {float} manifoldPressureNow - manifold absolute pressure in Pa
+    // @return {float} - fraction of the swept volume filled with fresh charge (never below 0)
+    public float FreshFraction(float engineRpm, float manifoldPressureNow)
+    {
+        manifoldPressureNow = Mathf.Max(manifoldPressureNow, 1f); float compressionRatio = carParams.compressionRatio;
+        float fraction = (compressionRatio - Mathf.Pow(carParams.exhaustBackPressure / manifoldPressureNow, 1f / carParams.residualExpansionExponent)) / (compressionRatio - 1f);
+        if (engineRpm > 0f) fraction -= OverlapBackflowFraction(engineRpm, manifoldPressureNow);
+        return Mathf.Max(0f, fraction);
+    }
+
+    // @description - volume fraction (at manifold pressure) of exhaust gas blown back into the intake during valve overlap:
+    //   isentropic orifice with the triangular-lift mean curtain area pi d lift / 2 over the overlap duration
+    // @param {float} engineRpm - engine speed in rpm (must be > 0)
+    // @param {float} manifoldPressureNow - manifold absolute pressure in Pa
+    // @return {float} - backflow volume as a fraction of one cylinder's displacement
+    float OverlapBackflowFraction(float engineRpm, float manifoldPressureNow)
+    {
+        float overlapTime = carParams.valveOverlapDeg * Mathf.Deg2Rad / (engineRpm * Mathf.PI / 30f), curtainArea = Mathf.PI * carParams.exhaustValveDia * carParams.valveLiftAtTdc / 2f;   // triangular lift -> mean curtain
+        float gasConstantTimesTemperature = carParams.airGasConstant * carParams.overlapGasTemperature;
+        float backflowMass = carParams.throttleDischargeCoeff * curtainArea * carParams.exhaustBackPressure / Mathf.Sqrt(gasConstantTimesTemperature) * OrificeFlowFunction(Mathf.Min(1f, manifoldPressureNow / carParams.exhaustBackPressure)) * overlapTime;
+        return backflowMass * gasConstantTimesTemperature / manifoldPressureNow / (carParams.displacement / carParams.cylinders);
+    }
+
+    // @description - air mass flow drawn by the cylinders: VE x fresh fraction x rho_man x Vd x rpm/120 (four-stroke: one intake per two revolutions)
+    // @param {float} engineRpm - engine speed in rpm
+    // @param {float} manifoldPressureNow - manifold absolute pressure in Pa
+    // @param {float} efficiency - volumetric efficiency VE
+    // @return {float} - air mass flow into the cylinders in kg/s
+    float CylinderMassFlow(float engineRpm, float manifoldPressureNow, float efficiency) => efficiency * FreshFraction(engineRpm, manifoldPressureNow) * manifoldPressureNow / (carParams.airGasConstant * carParams.ambientTemperature) * carParams.displacement * engineRpm / 120f;
+
+    // @description - bisection for the steady manifold pressure where throttle mass flow equals cylinder mass flow
+    // @param {float} pedal - accelerator pedal 0..1
+    // @param {float} engineRpm - engine speed in rpm
+    // @param {float} efficiency - volumetric efficiency VE
+    // @return {float} - steady manifold absolute pressure in Pa
+    float SolveSteadyManifoldPressure(float pedal, float engineRpm, float efficiency)
+    {
+        float area = TotalFlowArea(pedal), low = 1f, high = carParams.ambientPressure;
+        for (int iteration = 0; iteration < 50; iteration++) { float middle = 0.5f * (low + high); if (ThrottleMassFlow(area, middle) > CylinderMassFlow(engineRpm, middle, efficiency)) low = middle; else high = middle; }
+        return low;
+    }
+
     // ---- torque
-    float Fmep(float r, float pm) { float n = r / 1000f; return p.fmepA + p.fmepB * p.peakCylPressureWot * pm / p.ambientPressure + p.fmepCPerKrpm * n + p.fmepDPerKrpm2 * n * n; }
-    void Parts(float r, float pm, float v, out float ind, out float fric, out float pump)
+    // @description - Chen-Flynn friction mean effective pressure FMEP = A + B Pmax + C N + D N^2 (N in krpm; Pmax scaled by MAP)
+    // @param {float} engineRpm - engine speed in rpm
+    // @param {float} manifoldPressureNow - manifold absolute pressure in Pa
+    // @return {float} - friction mean effective pressure in Pa
+    float FrictionMeanEffectivePressure(float engineRpm, float manifoldPressureNow) { float kiloRpm = engineRpm / 1000f; return carParams.fmepA + carParams.fmepB * carParams.peakCylPressureWot * manifoldPressureNow / carParams.ambientPressure + carParams.fmepCPerKrpm * kiloRpm + carParams.fmepDPerKrpm2 * kiloRpm * kiloRpm; }
+
+    // @description - splits the engine torque into indicated, friction and extra pumping parts. Torque = mean effective pressure x Vd / (4 pi);
+    //   indicated = eta_i m_air_per_cycle LHV / AFR / (4 pi); pumping = (p_man,WOT(rpm) - p_man) Vd / (4 pi) (extra throttling loss below the WOT manifold pressure only)
+    // @param {float} engineRpm - engine speed in rpm
+    // @param {float} manifoldPressureNow - manifold absolute pressure in Pa
+    // @param {float} efficiency - volumetric efficiency VE
+    // @param {float} indicated - (out) gross indicated torque in N m
+    // @param {float} friction - (out) friction torque in N m (positive = drag)
+    // @param {float} pumping - (out) extra pumping torque in N m (positive = drag)
+    // @return {Void}
+    void ComputeTorqueParts(float engineRpm, float manifoldPressureNow, float efficiency, out float indicated, out float friction, out float pumping)
     {
-        float k = p.displacement / (4f * Mathf.PI), mCycle = v * FreshFraction(r, pm) * pm / (p.airGasConstant * p.ambientTemperature) * p.displacement;
-        ind = p.indicatedEfficiency * mCycle * p.fuelLhv / p.airFuelRatio / (4f * Mathf.PI);
-        fric = Fmep(r, pm) * k; pump = (Interp(p.rpmPoints, pWot, r) - pm) * k;
+        float torquePerPressure = carParams.displacement / (4f * Mathf.PI), airMassPerCycle = efficiency * FreshFraction(engineRpm, manifoldPressureNow) * manifoldPressureNow / (carParams.airGasConstant * carParams.ambientTemperature) * carParams.displacement;
+        indicated = carParams.indicatedEfficiency * airMassPerCycle * carParams.fuelLhv / carParams.airFuelRatio / (4f * Mathf.PI);
+        friction = FrictionMeanEffectivePressure(engineRpm, manifoldPressureNow) * torquePerPressure; pumping = (InterpolateLinear(carParams.rpmPoints, wideOpenManifoldPressure, engineRpm) - manifoldPressureNow) * torquePerPressure;
     }
-    /// friction + pumping drag (positive number) at the current manifold pressure
-    public float FrictionTorque(float r) { Parts(r, pMan, 0f, out _, out float f, out float pu); return f + pu; }
-    public float SteadyTorque(float pedal, float r) { float v = VE(r), pm = SteadyMap(pedal, r, v); Parts(r, pm, v, out float i, out float f, out float pu); return i - f - pu; }
-    public float SteadyMapRatio(float pedal, float r) => SteadyMap(pedal, r, VE(r)) / p.ambientPressure;
+
+    /// @description - friction + pumping drag at the current manifold pressure (no combustion: VE = 0)
+    // @param {float} engineRpm - engine speed in rpm
+    // @return {float} - drag torque in N m (positive number)
+    public float FrictionTorque(float engineRpm) { ComputeTorqueParts(engineRpm, manifoldPressure, 0f, out _, out float friction, out float pumping); return friction + pumping; }
+
+    // @description - steady-state net engine torque at a fixed pedal and speed (manifold pressure settled)
+    // @param {float} pedal - accelerator pedal 0..1
+    // @param {float} engineRpm - engine speed in rpm
+    // @return {float} - indicated - friction - pumping in N m
+    public float SteadyTorque(float pedal, float engineRpm) { float efficiency = VolumetricEfficiency(engineRpm), pressure = SolveSteadyManifoldPressure(pedal, engineRpm, efficiency); ComputeTorqueParts(engineRpm, pressure, efficiency, out float indicated, out float friction, out float pumping); return indicated - friction - pumping; }
+
+    // @description - steady-state manifold pressure as a fraction of ambient at a fixed pedal and speed
+    // @param {float} pedal - accelerator pedal 0..1
+    // @param {float} engineRpm - engine speed in rpm
+    // @return {float} - manifold pressure / ambient pressure
+    public float SteadyMapRatio(float pedal, float engineRpm) => SolveSteadyManifoldPressure(pedal, engineRpm, VolumetricEfficiency(engineRpm)) / carParams.ambientPressure;
+
+    // @description - advances the manifold filling, the combustion state and the crankshaft by one time step.
+    //   Manifold (isothermal): dp/dt = R T / V (mdot_throttle - mdot_cylinders). Crankshaft: J dw/dt = T_net + T_starter - T_clutch.
+    // @param {float} pedal - accelerator pedal 0..1
+    // @param {float} clutchTorque - torque the clutch takes off the crankshaft in N m
+    // @param {float} dt - time step in s
+    // @return {float} - net engine torque (before starter and clutch) in N m
     public float Step(float pedal, float clutchTorque, float dt)
     {
-        throttleArea = Area(pedal) / aWot;
-        float v = VE(rpm), mIn = ThrottleFlow(throttleArea * aWot, pMan), mOut = CylinderFlow(rpm, pMan, v);
-        pMan = Mathf.Clamp(pMan + p.airGasConstant * p.ambientTemperature / p.manifoldVolume * (mIn - mOut) * dt, 1f, p.ambientPressure);
-        map = pMan / p.ambientPressure;
-        // fuel + spark only with ignition on. A stopped/stalling crank fires once it turns at the engine's firing speed, whatever drives it:
-        // the starter, or the wheels through an engaged/slipping clutch (bump/roll start). Firing speed = FireRpm (derived below).
-        // hysteresis: a RUNNING engine dies below stallRpm (unless the starter holds it). A non-firing crank fires when driven up through FireRpm
-        // (from below), then keeps firing while it catches (until stallRpm is reached; fails if it falls back below FireRpm).
-        bool crossedUp = prevRpm < FireRpm && rpm >= FireRpm;
+        throttleArea = TotalFlowArea(pedal) / wideOpenThrottleArea;
+        float efficiency = VolumetricEfficiency(rpm), massFlowIn = ThrottleMassFlow(throttleArea * wideOpenThrottleArea, manifoldPressure), massFlowOut = CylinderMassFlow(rpm, manifoldPressure, efficiency);
+        manifoldPressure = Mathf.Clamp(manifoldPressure + carParams.airGasConstant * carParams.ambientTemperature / carParams.manifoldVolume * (massFlowIn - massFlowOut) * dt, 1f, carParams.ambientPressure);
+        manifoldPressureRatio = manifoldPressure / carParams.ambientPressure;
+        UpdateCombustionState();
+        limiter = rpm > carParams.revLimit;   // fuel-pump-relay cut (S: DX 6500-6900 rpm): no combustion, air still pumped
+        ComputeTorqueParts(rpm, manifoldPressure, efficiency, out float indicated, out float friction, out float pumping);
+        float netTorque = (combusting && !limiter ? indicated : 0f) - friction - pumping;
+        starterTorque = starter ? StarterTorqueAt(angularVelocity) : 0f;
+        float effectiveInertia = carParams.engineInertia + (starter ? carParams.starterArmatureInertia * StarterRatio * StarterRatio : 0f);
+        angularVelocity = Mathf.Max(0f, angularVelocity + (netTorque + starterTorque - clutchTorque) / effectiveInertia * dt);
+        previousRpm = rpm; rpm = angularVelocity * 30f / Mathf.PI; return netTorque;
+    }
+
+    // @description - decides whether combustion happens this step: fuel + spark only with ignition on. A stopped/stalling crank fires once it turns at
+    //   the engine's firing speed, whatever drives it (the starter, or the wheels through an engaged/slipping clutch: bump/roll start).
+    //   Hysteresis: a RUNNING engine dies below stallRpm (unless the starter holds it). A non-firing crank fires when driven up through FireRpm
+    //   (from below), then keeps firing while it catches (until stallRpm is reached; fails if it falls back below FireRpm).
+    // @return {Void} - updates combusting and the internal catching flag
+    void UpdateCombustionState()
+    {
+        bool crossedFiringSpeedUpwards = previousRpm < FireRpm && rpm >= FireRpm;
         if (!ignition) { combusting = false; catching = false; }
-        else if (combusting) { if (catching && (rpm >= p.stallRpm || rpm < FireRpm)) catching = false; combusting = rpm >= p.stallRpm || (starter && rpm >= p.minFiringRpm) || catching; }
-        else { combusting = rpm >= p.stallRpm || (starter && rpm >= FireRpm) || crossedUp; catching = combusting && rpm < p.stallRpm; }
-        limiter = rpm > p.revLimit;   // fuel-pump-relay cut (S: DX 6500-6900 rpm): no combustion, air still pumped
-        Parts(rpm, pMan, v, out float ind, out float fr, out float pu);
-        float T = (combusting && !limiter ? ind : 0f) - fr - pu;
-        starterTorque = starter ? StarterTorqueAt(omega) : 0f;
-        float J = p.engineInertia + (starter ? p.starterArmatureInertia * StarterRatio * StarterRatio : 0f);
-        omega = Mathf.Max(0f, omega + (T + starterTorque - clutchTorque) / J * dt);
-        prevRpm = rpm; rpm = omega * 30f / Mathf.PI; return T;
+        else if (combusting) { if (catching && (rpm >= carParams.stallRpm || rpm < FireRpm)) catching = false; combusting = rpm >= carParams.stallRpm || (starter && rpm >= carParams.minFiringRpm) || catching; }
+        else { combusting = rpm >= carParams.stallRpm || (starter && rpm >= FireRpm) || crossedFiringSpeedUpwards; catching = combusting && rpm < carParams.stallRpm; }
     }
 }
