@@ -74,6 +74,11 @@ Derived: `Circ/AZone/MTread/CSkin/CBulk/CCarc/CRim/HIn/GasVol/ASide/ACarcIn/ARim
 State: `Ts/Tb/Tc/Tg/Tr` -> `surfaceTemperatures/bulkTemperature/carcassTemperature/gasTemperature/rimTemperature`; `pColdGauge/TCold/gasMass/pGauge/pFricBulk/zoneW` -> `coldGaugePressure/coldTemperature/gasMassKg/gaugePressure/bulkFrictionPower/zoneLoadShare`; `EIn/EOut/EFricRoad/E0` -> `energyIn/energyOut/energyFrictionToRoad/initialStoredEnergy`.
 Methods: `Stored` -> `StoredEnergy`, `HOut/HRoad` -> `OuterConvectionCoefficient/RoadConductionCoefficient`, `MuBench/MuRoad/MuOfT` -> `BenchFriction/RoadFriction/FrictionAtTemperature`, `SolveCross` -> `SolveCrossoverTemperature`, `CToF` -> `CelsiusToFahrenheit`; new `ComputeZoneLoadShares` split out of `Step`. Call sites in WheelCorner, DebugHUD, SmokeTest and the tests updated.
 
+## Steering / suspension tables (batch 3, 2026-10-14)
+- `SteeringLinkage`: params `p/k/travelL/travelR/lo/hi/m/d` -> `carParams/tables/leftTravel/rightTravel/low/high/middle/probeAngle`; method names unchanged.
+- `SteeringTorque`: `Geo.u/rcp/rwc` -> `Geo.kingpinAxis/contactPatchOffset/wheelCentreOffset`; `V` -> `ToVector3`, `Cross` -> `CrossProduct`, `Rot` -> `RotateAboutAxis`; `KingpinMoment`/`RoadTorque` parameters spelled out (`fxPatch`->`patchLongitudinalForce`, `fy`->`lateralForce`, `tp`->`pneumaticTrail`, ...).
+- `SuspensionTables`: `S1` -> `Interpolate1D`, `Idx` -> `GridIndex`, locals spelled out. **Fields are NOT renamed** (`rb*`, `fc*`, `kp*`, `rackGrid`, ... are written by `kinematics/export_unity.py` into the serialized asset); a legend comment was added instead.
+
 ## Verification notes
 **Float rule discovered during this pass:** Unity's Mono computes float expressions in double precision and rounds only when a float is stored. Introducing new float locals/functions inside one expression changes results in the last bits. Splits are therefore limited to places where the original already stored a float or the math is `double`/`bool`/`int`.
 

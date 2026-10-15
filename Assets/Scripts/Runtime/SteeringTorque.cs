@@ -9,41 +9,95 @@
 using UnityEngine;
 public static class SteeringTorque
 {
-    public struct Geo { public Vector3 u, rcp, rwc; }
-    public static Geo FromTables(SuspensionTables k)
+    // Kingpin geometry of one (left-frame) corner.
+    public struct Geo
     {
-        var g = new Geo();
-        if (k != null && k.kpU != null && k.kpU.Length == 3) { g.u = new Vector3(k.kpU[0], k.kpU[1], k.kpU[2]).normalized; g.rcp = V(k.kpRcp); g.rwc = V(k.kpRwc); }
-        else g.u = Vector3.forward;   // (x,y,z) = (fwd,left,up) in this frame -> vertical axis fallback (no tables)
-        return g;
+        public Vector3 kingpinAxis;           // u: unit vector along the kingpin axis
+        public Vector3 contactPatchOffset;    // r_cp: contact patch relative to the axis ground point (m)
+        public Vector3 wheelCentreOffset;     // r_wc: wheel centre relative to the axis ground point (m)
     }
-    static Vector3 V(float[] a) => a != null && a.Length == 3 ? new Vector3(a[0], a[1], a[2]) : Vector3.zero;
+
+    // @description - reads the kingpin geometry from the baked tables (vertical-axis fallback when there are none)
+    // @param {SuspensionTables} tables - baked kinematic tables (may be null)
+    // @return {Geo} - kingpin geometry
+    public static Geo FromTables(SuspensionTables tables)
+    {
+        var geometry = new Geo();
+        if (tables != null && tables.kpU != null && tables.kpU.Length == 3) { geometry.kingpinAxis = new Vector3(tables.kpU[0], tables.kpU[1], tables.kpU[2]).normalized; geometry.contactPatchOffset = ToVector3(tables.kpRcp); geometry.wheelCentreOffset = ToVector3(tables.kpRwc); }
+        else geometry.kingpinAxis = Vector3.forward;   // (x,y,z) = (fwd,left,up) in this frame -> vertical axis fallback (no tables)
+        return geometry;
+    }
+
+    // @description - converts a 3-element array to a vector (zero if missing)
+    // @param {float[]} values - x, y, z
+    // @return {Vector3} - the vector
+    static Vector3 ToVector3(float[] values) => values != null && values.Length == 3 ? new Vector3(values[0], values[1], values[2]) : Vector3.zero;
+
     // NOTE: math is done in a plain right-handed (x fwd, y left, z up) frame stored in Vector3 (x,y,z) -> no Unity axis conventions.
-    static Vector3 Cross(Vector3 a, Vector3 b) => new Vector3(a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x);
-    static Vector3 Rot(Vector3 v, Vector3 k, float phi)   // Rodrigues
-    { float c = Mathf.Cos(phi), s = Mathf.Sin(phi); return v * c + Cross(k, v) * s + k * (Vector3.Dot(k, v) * (1f - c)); }
-    /// Moment about the kingpin axis (N m, + = counter-clockwise about +u, i.e. steers a LEFT-frame wheel to the left/outboard).
-    /// deltaDeg: wheel steer angle in this frame (+ = towards -y, i.e. right for the left wheel). Forces from the ground on the tire,
-    /// in the wheel frame: fxPatch (brake, at patch), fxHub (drive, at hub), fy (+ = +y/outboard), fz (+ up); tp = pneumatic trail (m).
-    public static float KingpinMoment(Geo g, float deltaDeg, float fxPatch, float fxHub, float fy, float fz, float tp)
+    // @description - cross product a x b in the right-handed frame
+    // @param {Vector3} a - first vector
+    // @param {Vector3} b - second vector
+    // @return {Vector3} - a x b
+    static Vector3 CrossProduct(Vector3 a, Vector3 b) => new Vector3(a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x);
+
+    // @description - rotates a vector about a unit axis (Rodrigues' formula: v cos + (k x v) sin + k (k.v)(1 - cos))
+    // @param {Vector3} vector - vector to rotate
+    // @param {Vector3} axis - unit rotation axis
+    // @param {float} angle - rotation angle in rad
+    // @return {Vector3} - rotated vector
+    static Vector3 RotateAboutAxis(Vector3 vector, Vector3 axis, float angle)
+    { float cosine = Mathf.Cos(angle), sine = Mathf.Sin(angle); return vector * cosine + CrossProduct(axis, vector) * sine + axis * (Vector3.Dot(axis, vector) * (1f - cosine)); }
+
+    /// @description - moment about the kingpin axis (+ = counter-clockwise about +u, i.e. steers a LEFT-frame wheel to the left/outboard) from the tyre forces:
+    ///   M = r_cp x (Fx_patch + Fz) + (r_cp - x_w t_p) x Fy + r_wc x Fx_hub, all in the steered wheel frame; forces act in the ground plane
+    // @param {Geo} geometry - kingpin geometry
+    // @param {float} deltaDeg - wheel steer angle in this frame (+ = towards -y, i.e. right for the left wheel)
+    // @param {float} patchLongitudinalForce - brake force at the contact patch in N
+    // @param {float} hubLongitudinalForce - drive force reacted at the hub in N
+    // @param {float} lateralForce - lateral force in N (+ = +y/outboard)
+    // @param {float} verticalForce - vertical load in N (+ up)
+    // @param {float} pneumaticTrail - pneumatic trail in m
+    // @return {float} - moment about the kingpin axis in N m
+    public static float KingpinMoment(Geo geometry, float deltaDeg, float patchLongitudinalForce, float hubLongitudinalForce, float lateralForce, float verticalForce, float pneumaticTrail)
     {
-        if (g.u == Vector3.forward && g.rcp == Vector3.zero) return 0f;
-        float phi = -deltaDeg * Mathf.Deg2Rad;
-        Vector3 xw = Rot(new Vector3(1f, 0f, 0f), g.u, phi), yw = Rot(new Vector3(0f, 1f, 0f), g.u, phi);
-        xw.z = 0f; xw.Normalize(); yw.z = 0f; yw.Normalize();                          // tire forces act in the ground plane
-        Vector3 rcp = Rot(g.rcp, g.u, phi), rwc = Rot(g.rwc, g.u, phi);
-        Vector3 Fp = xw * fxPatch + new Vector3(0f, 0f, fz), Fl = yw * fy;
-        Vector3 M = Cross(rcp, Fp) + Cross(rcp - xw * tp, Fl) + Cross(rwc, xw * fxHub);
-        return Vector3.Dot(M, g.u);
+        if (geometry.kingpinAxis == Vector3.forward && geometry.contactPatchOffset == Vector3.zero) return 0f;
+        float angle = -deltaDeg * Mathf.Deg2Rad;
+        Vector3 wheelX = RotateAboutAxis(new Vector3(1f, 0f, 0f), geometry.kingpinAxis, angle), wheelY = RotateAboutAxis(new Vector3(0f, 1f, 0f), geometry.kingpinAxis, angle);
+        wheelX.z = 0f; wheelX.Normalize(); wheelY.z = 0f; wheelY.Normalize();                          // tire forces act in the ground plane
+        Vector3 contactPatch = RotateAboutAxis(geometry.contactPatchOffset, geometry.kingpinAxis, angle), wheelCentre = RotateAboutAxis(geometry.wheelCentreOffset, geometry.kingpinAxis, angle);
+        Vector3 patchForce = wheelX * patchLongitudinalForce + new Vector3(0f, 0f, verticalForce), lateralForceVector = wheelY * lateralForce;
+        Vector3 moment = CrossProduct(contactPatch, patchForce) + CrossProduct(contactPatch - wheelX * pneumaticTrail, lateralForceVector) + CrossProduct(wheelCentre, wheelX * hubLongitudinalForce);
+        return Vector3.Dot(moment, geometry.kingpinAxis);
     }
-    public static float PneumaticTrail(CarParams p, float alphaRad) => p.pneumaticTrail0 * Mathf.Max(0f, 1f - Mathf.Abs(alphaRad) / p.peakSlipTrail);
-    /// Road-wheel steer torque of one corner (N m about the kingpin, + = steers the wheel to the RIGHT, car convention).
-    public static float RoadTorque(Geo g, bool left, float steerDeg, float fx, bool braking, float fyRight, float fz, float tp)
+
+    // @description - pneumatic trail t_p(alpha) = t0 max(0, 1 - |alpha| / alpha_peak) (E)
+    // @param {CarParams} carParams - holds pneumaticTrail0 and peakSlipTrail
+    // @param {float} slipAngleRad - slip angle in rad
+    // @return {float} - pneumatic trail in m
+    public static float PneumaticTrail(CarParams carParams, float slipAngleRad) => carParams.pneumaticTrail0 * Mathf.Max(0f, 1f - Mathf.Abs(slipAngleRad) / carParams.peakSlipTrail);
+
+    /// @description - road-wheel steer torque of one corner (about the kingpin; + = steers the wheel to the RIGHT, car convention). Brake force acts at the patch, drive force at the hub.
+    // @param {Geo} geometry - kingpin geometry
+    // @param {bool} left - true = left corner
+    // @param {float} steerDeg - road-wheel steer angle in deg (+ = right)
+    // @param {float} longitudinalForce - tyre longitudinal force in N
+    // @param {bool} braking - true = treat the longitudinal force as brake force (at the patch), false = drive force (at the hub)
+    // @param {float} lateralForceRight - lateral force in N (+ = right, car convention)
+    // @param {float} verticalForce - vertical load in N
+    // @param {float} pneumaticTrail - pneumatic trail in m
+    // @return {float} - steer torque in N m
+    public static float RoadTorque(Geo geometry, bool left, float steerDeg, float longitudinalForce, bool braking, float lateralForceRight, float verticalForce, float pneumaticTrail)
     {
-        float fxP = braking ? fx : 0f, fxH = braking ? 0f : fx;
-        if (left) return -KingpinMoment(g, steerDeg, fxP, fxH, -fyRight, fz, tp);   // CCW about up = steer left -> negative
-        return KingpinMoment(g, -steerDeg, fxP, fxH, fyRight, fz, tp);                // mirrored frame: mirror flips rotation sense
+        float patchForce = braking ? longitudinalForce : 0f, hubForce = braking ? 0f : longitudinalForce;
+        if (left) return -KingpinMoment(geometry, steerDeg, patchForce, hubForce, -lateralForceRight, verticalForce, pneumaticTrail);   // CCW about up = steer left -> negative
+        return KingpinMoment(geometry, -steerDeg, patchForce, hubForce, lateralForceRight, verticalForce, pneumaticTrail);                // mirrored frame: mirror flips rotation sense
     }
-    /// d(road steer of a wheel)/d(column angle): from the linkage kinematics (SteeringLinkage.Lever, D)
-    public static float Lever(CarParams p, bool left, float rack, float travel) => SteeringLinkage.Lever(p, left, rack, travel);
+
+    /// @description - d(road steer of a wheel)/d(column angle) from the linkage kinematics (SteeringLinkage.Lever, D)
+    // @param {CarParams} carParams - car parameters
+    // @param {bool} left - true = left wheel
+    // @param {float} rack - rack travel in m
+    // @param {float} travel - wheel travel in m
+    // @return {float} - lever in deg/deg
+    public static float Lever(CarParams carParams, bool left, float rack, float travel) => SteeringLinkage.Lever(carParams, left, rack, travel);
 }

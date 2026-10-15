@@ -16,8 +16,8 @@ public class WheelCorner : MonoBehaviour
     void Awake() { rb = GetComponentInParent<Rigidbody>(); }
     float Bump => front ? p.bumpTravelF : p.bumpTravelR;
     float Rebound => front ? p.reboundTravelF : p.reboundTravelR;
-    float MR(float t) { var k = p.kin; if (!k) return 1f; return SuspensionTables.S1(k.travel, front ? k.frontMotionRatio : k.rearMotionRatio, t); }
-    public float RC(float t) { var k = p.kin; if (!k) return 0f; if (front) return SuspensionTables.S1(k.travel, k.frontRcHeight, t); return p.rearModel == CarParams.RearModel.FullTwistBeam ? k.rbRcHeight : k.rearRcHeight; }
+    float MR(float t) { var k = p.kin; if (!k) return 1f; return SuspensionTables.Interpolate1D(k.travel, front ? k.frontMotionRatio : k.rearMotionRatio, t); }
+    public float RC(float t) { var k = p.kin; if (!k) return 0f; if (front) return SuspensionTables.Interpolate1D(k.travel, k.frontRcHeight, t); return p.rearModel == CarParams.RearModel.FullTwistBeam ? k.rbRcHeight : k.rearRcHeight; }
     [HideInInspector] public float antiCoef;   // vertical body force per N of +x tire force (set by controller)
     float BumpStopForce(float x)   // integrate piecewise-linear rate table
     {
@@ -35,7 +35,7 @@ public class WheelCorner : MonoBehaviour
         var V = p.damperV; var B = front ? p.damperBumpF : p.damperBumpR; var R = front ? p.damperReboundF : p.damperReboundR;
         float a = Mathf.Abs(v), f; int n = V.Length; var tab = v >= 0f ? B : R;
         if (a >= V[n - 1]) f = tab[n - 1] + (tab[n - 1] - tab[n - 2]) / (V[n - 1] - V[n - 2]) * (a - V[n - 1]);
-        else f = SuspensionTables.S1(V, tab, a);
+        else f = SuspensionTables.Interpolate1D(V, tab, a);
         return v >= 0f ? f : -f;
     }
     public float WheelRate => front ? p.wheelRateFront : p.wheelRateRear;

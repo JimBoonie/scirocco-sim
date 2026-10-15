@@ -5,29 +5,58 @@ using UnityEngine;
 // wheel travel and rack travel, so Ackermann and bump steer both come from the geometry (no linear ratio, no Ackermann fit).
 public static class SteeringLinkage
 {
-    public static float Rack(CarParams p, float handwheelDeg) => handwheelDeg * p.rackPerHandwheelDeg;
-    /// road-wheel angles (deg, + = points right, bump steer included, static toe/compliance excluded) at rack travel and wheel travels
-    public static void WheelAngles(SuspensionTables k, float rack, float travelL, float travelR, out float left, out float right)
-    { left = k.FrontSteerLeft(travelL, rack); right = -k.FrontSteerLeft(travelR, -rack); }   // right side = mirror image (rack sign flips)
-    /// mean road-wheel angle at design ride height for a handwheel angle (D)
-    public static float MeanAngle(CarParams p, float handwheelDeg)
-    { WheelAngles(p.kin, Rack(p, handwheelDeg), 0f, 0f, out float l, out float r); return 0.5f * (l + r); }
-    /// inverse of MeanAngle (monotonic -> bisection), clamped at the rack stop. Used by the test driver / keyboard, which command a road angle.
-    public static float HandwheelForMean(CarParams p, float meanDeg)
+    // @description - rack travel for a handwheel angle (constant pinion)
+    // @param {CarParams} carParams - holds rackPerHandwheelDeg
+    // @param {float} handwheelDeg - handwheel angle in deg
+    // @return {float} - rack travel in m (+ = rack to the left)
+    public static float Rack(CarParams carParams, float handwheelDeg) => handwheelDeg * carParams.rackPerHandwheelDeg;
+
+    /// @description - road-wheel angles at a rack travel and wheel travels (bump steer included, static toe/compliance excluded); the right side is the mirror image (rack sign flips)
+    // @param {SuspensionTables} tables - baked kinematic tables
+    // @param {float} rack - rack travel in m
+    // @param {float} leftTravel - left wheel travel in m (+ bump)
+    // @param {float} rightTravel - right wheel travel in m (+ bump)
+    // @param {float} left - (out) left road-wheel angle in deg (+ = points right)
+    // @param {float} right - (out) right road-wheel angle in deg (+ = points right)
+    // @return {Void}
+    public static void WheelAngles(SuspensionTables tables, float rack, float leftTravel, float rightTravel, out float left, out float right)
+    { left = tables.FrontSteerLeft(leftTravel, rack); right = -tables.FrontSteerLeft(rightTravel, -rack); }
+
+    /// @description - mean road-wheel angle at design ride height for a handwheel angle (D)
+    // @param {CarParams} carParams - car parameters with the kinematic tables
+    // @param {float} handwheelDeg - handwheel angle in deg
+    // @return {float} - mean of the left and right road-wheel angles in deg
+    public static float MeanAngle(CarParams carParams, float handwheelDeg)
+    { WheelAngles(carParams.kin, Rack(carParams, handwheelDeg), 0f, 0f, out float left, out float right); return 0.5f * (left + right); }
+
+    /// @description - inverse of MeanAngle (monotonic -> bisection), clamped at the rack stop. Used by the test driver / keyboard, which command a road angle.
+    // @param {CarParams} carParams - car parameters
+    // @param {float} meanDeg - wanted mean road-wheel angle in deg
+    // @return {float} - handwheel angle in deg
+    public static float HandwheelForMean(CarParams carParams, float meanDeg)
     {
-        float lo = -p.handwheelLockDeg, hi = p.handwheelLockDeg;
-        if (meanDeg <= MeanAngle(p, lo)) return lo; if (meanDeg >= MeanAngle(p, hi)) return hi;
-        for (int i = 0; i < 40; i++) { float m = 0.5f * (lo + hi); if (MeanAngle(p, m) < meanDeg) lo = m; else hi = m; }
-        return 0.5f * (lo + hi);
+        float low = -carParams.handwheelLockDeg, high = carParams.handwheelLockDeg;
+        if (meanDeg <= MeanAngle(carParams, low)) return low; if (meanDeg >= MeanAngle(carParams, high)) return high;
+        for (int iteration = 0; iteration < 40; iteration++) { float middle = 0.5f * (low + high); if (MeanAngle(carParams, middle) < meanDeg) low = middle; else high = middle; }
+        return 0.5f * (low + high);
     }
-    /// d(road angle of one wheel)/d(handwheel angle) at the current rack and wheel travel (deg/deg), central difference over one grid step
-    public static float Lever(CarParams p, bool left, float rack, float travel)
+
+    /// @description - d(road angle of one wheel)/d(handwheel angle) at the current rack and wheel travel, central difference over one grid step
+    // @param {CarParams} carParams - car parameters with the tables
+    // @param {bool} left - true = left wheel, false = right wheel
+    // @param {float} rack - current rack travel in m
+    // @param {float} travel - current wheel travel in m
+    // @return {float} - lever in deg/deg
+    public static float Lever(CarParams carParams, bool left, float rack, float travel)
     {
-        var k = p.kin; float h = 0.5f * (k.rackGrid[1] - k.rackGrid[0]);
-        float s = left ? 1f : -1f;   // right wheel: -FrontSteerLeft(t, -rack) -> derivative = FrontSteerLeft'(t, -rack)
-        float r0 = s * rack;
-        return (k.FrontSteerLeft(travel, r0 + h) - k.FrontSteerLeft(travel, r0 - h)) / (2f * h) * p.rackPerHandwheelDeg;
+        var tables = carParams.kin; float halfStep = 0.5f * (tables.rackGrid[1] - tables.rackGrid[0]);
+        float sideSign = left ? 1f : -1f;   // right wheel: -FrontSteerLeft(t, -rack) -> derivative = FrontSteerLeft'(t, -rack)
+        float sideRack = sideSign * rack;
+        return (tables.FrontSteerLeft(travel, sideRack + halfStep) - tables.FrontSteerLeft(travel, sideRack - halfStep)) / (2f * halfStep) * carParams.rackPerHandwheelDeg;
     }
-    /// on-centre overall ratio handwheel/mean road angle (D, for column-referred stiffness and UI only)
-    public static float CentreRatio(CarParams p) { float d = 1f; return 2f * d / (MeanAngle(p, d) - MeanAngle(p, -d)); }
+
+    /// @description - on-centre overall ratio handwheel / mean road angle (D, for column-referred stiffness and UI only)
+    // @param {CarParams} carParams - car parameters
+    // @return {float} - ratio in deg of handwheel per deg of road wheel
+    public static float CentreRatio(CarParams carParams) { float probeAngle = 1f; return 2f * probeAngle / (MeanAngle(carParams, probeAngle) - MeanAngle(carParams, -probeAngle)); }
 }

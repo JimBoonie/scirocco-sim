@@ -3,6 +3,8 @@ using UnityEngine;
 // Front: functions of wheel travel t (m, + bump) and left-wheel steer angle (deg, + = points right). Right side mirrored.
 public class SuspensionTables : ScriptableObject
 {
+    // NOTE: field names are written by kinematics/export_unity.py into the baked asset (serialized) and are intentionally NOT renamed; the abbreviations are explained next to each group:
+    //   rb* = rear (twist) beam, fc* = front compliant model, kp* = kingpin geometry, rc = roll centre, cam = camber, Fx/Fy/Fz = longitudinal/lateral/vertical tyre force
     public float[] travel, frontCamberBody, frontBumpSteer, frontTrackChange, frontRcHeight, frontMotionRatio, rearMotionRatio;
     public float[] steerGrid;              // left-wheel steer angle at each solver rack position (ascending)
     public float[] frontCamberTravelSteer; // [travel.Length * steerGrid.Length], camber change vs body
@@ -25,33 +27,53 @@ public class SuspensionTables : ScriptableObject
     // steering: rack travel grid (m, + = rack to the left) and left-wheel road angle [travel x rack] (deg, + = points right, bump steer included; D)
     public float[] rackGrid, frontToeTravelRack;   // kingpin axis (unit) and contact patch / wheel centre relative to its ground point (left frame, D)
 
-    public static float S1(float[] xs, float[] ys, float x)
+    // @description - piecewise-linear interpolation y(x), clamped to the end values; 0 if the table is empty
+    // @param {float[]} xs - ascending sample positions
+    // @param {float[]} ys - sample values
+    // @param {float} x - position to evaluate
+    // @return {float} - interpolated value
+    public static float Interpolate1D(float[] xs, float[] ys, float x)
     {
         if (xs == null || xs.Length == 0) return 0f;
-        if (x <= xs[0]) return ys[0]; int n = xs.Length; if (x >= xs[n - 1]) return ys[n - 1];
-        int i = 1; while (x > xs[i]) i++; return Mathf.Lerp(ys[i - 1], ys[i], (x - xs[i - 1]) / (xs[i] - xs[i - 1]));
+        if (x <= xs[0]) return ys[0]; int count = xs.Length; if (x >= xs[count - 1]) return ys[count - 1];
+        int index = 1; while (x > xs[index]) index++; return Mathf.Lerp(ys[index - 1], ys[index], (x - xs[index - 1]) / (xs[index] - xs[index - 1]));
     }
-    public float FrontCamber(float t, float steerLeftDeg)
+
+    // @description - front camber change vs body from the baked [travel x steer] grid, bilinear interpolation
+    // @param {float} travel - wheel travel in m (+ bump)
+    // @param {float} steerLeftDeg - left-wheel steer angle in deg (+ = points right)
+    // @return {float} - camber change in deg
+    public float FrontCamber(float travel, float steerLeftDeg)
     {
-        int nt = travel.Length, ns = steerGrid.Length;
-        float ft = Idx(travel, t), fs = Idx(steerGrid, steerLeftDeg);
-        int i0 = Mathf.Min((int)ft, nt - 2), j0 = Mathf.Min((int)fs, ns - 2); float u = ft - i0, w = fs - j0;
-        float a = frontCamberTravelSteer[i0 * ns + j0], b = frontCamberTravelSteer[i0 * ns + j0 + 1];
-        float c = frontCamberTravelSteer[(i0 + 1) * ns + j0], d = frontCamberTravelSteer[(i0 + 1) * ns + j0 + 1];
-        return Mathf.Lerp(Mathf.Lerp(a, b, w), Mathf.Lerp(c, d, w), u);
+        int travelCount = this.travel.Length, steerCount = steerGrid.Length;
+        float travelIndex = GridIndex(this.travel, travel), steerIndex = GridIndex(steerGrid, steerLeftDeg);
+        int travelCell = Mathf.Min((int)travelIndex, travelCount - 2), steerCell = Mathf.Min((int)steerIndex, steerCount - 2); float travelFraction = travelIndex - travelCell, steerFraction = steerIndex - steerCell;
+        float lowLow = frontCamberTravelSteer[travelCell * steerCount + steerCell], lowHigh = frontCamberTravelSteer[travelCell * steerCount + steerCell + 1];
+        float highLow = frontCamberTravelSteer[(travelCell + 1) * steerCount + steerCell], highHigh = frontCamberTravelSteer[(travelCell + 1) * steerCount + steerCell + 1];
+        return Mathf.Lerp(Mathf.Lerp(lowLow, lowHigh, steerFraction), Mathf.Lerp(highLow, highHigh, steerFraction), travelFraction);
     }
-    public float FrontSteerLeft(float t, float rack)
+
+    // @description - left-wheel road angle (bump steer included) from the baked [travel x rack] grid, bilinear interpolation
+    // @param {float} travel - wheel travel in m (+ bump)
+    // @param {float} rack - rack travel in m (+ = rack to the left)
+    // @return {float} - road-wheel angle in deg (+ = points right)
+    public float FrontSteerLeft(float travel, float rack)
     {
-        int nt = travel.Length, nr = rackGrid.Length;
-        float ft = Idx(travel, t), fr = Idx(rackGrid, rack);
-        int i0 = Mathf.Min((int)ft, nt - 2), j0 = Mathf.Min((int)fr, nr - 2); float u = ft - i0, w = fr - j0;
-        float a = frontToeTravelRack[i0 * nr + j0], b = frontToeTravelRack[i0 * nr + j0 + 1];
-        float c = frontToeTravelRack[(i0 + 1) * nr + j0], d = frontToeTravelRack[(i0 + 1) * nr + j0 + 1];
-        return Mathf.Lerp(Mathf.Lerp(a, b, w), Mathf.Lerp(c, d, w), u);
+        int travelCount = this.travel.Length, rackCount = rackGrid.Length;
+        float travelIndex = GridIndex(this.travel, travel), rackIndex = GridIndex(rackGrid, rack);
+        int travelCell = Mathf.Min((int)travelIndex, travelCount - 2), rackCell = Mathf.Min((int)rackIndex, rackCount - 2); float travelFraction = travelIndex - travelCell, rackFraction = rackIndex - rackCell;
+        float lowLow = frontToeTravelRack[travelCell * rackCount + rackCell], lowHigh = frontToeTravelRack[travelCell * rackCount + rackCell + 1];
+        float highLow = frontToeTravelRack[(travelCell + 1) * rackCount + rackCell], highHigh = frontToeTravelRack[(travelCell + 1) * rackCount + rackCell + 1];
+        return Mathf.Lerp(Mathf.Lerp(lowLow, lowHigh, rackFraction), Mathf.Lerp(highLow, highHigh, rackFraction), travelFraction);
     }
-    static float Idx(float[] xs, float x)
+
+    // @description - fractional grid index of x in an ascending grid (clamped to 0 .. count-1)
+    // @param {float[]} grid - ascending grid positions
+    // @param {float} x - position
+    // @return {float} - index of the lower grid point plus the fraction towards the next
+    static float GridIndex(float[] grid, float x)
     {
-        int n = xs.Length; if (x <= xs[0]) return 0f; if (x >= xs[n - 1]) return n - 1;
-        int i = 1; while (x > xs[i]) i++; return i - 1 + (x - xs[i - 1]) / (xs[i] - xs[i - 1]);
+        int count = grid.Length; if (x <= grid[0]) return 0f; if (x >= grid[count - 1]) return count - 1;
+        int index = 1; while (x > grid[index]) index++; return index - 1 + (x - grid[index - 1]) / (grid[index] - grid[index - 1]);
     }
 }

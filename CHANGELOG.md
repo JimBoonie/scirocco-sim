@@ -9,6 +9,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [2026-10-14] (PT)
 
+### Changed (readability pass 3/6: steering linkage / torque / suspension tables, PT 20:10)
+
+- `SteeringLinkage.cs`, `SteeringTorque.cs`, `SuspensionTables.cs`: full-word identifiers, `@description/@param/@return` headers, equation comments. Serialized table field names deliberately unchanged. No behaviour change (117/117 edit-mode tests; 15 scenarios, 0 deviations in all CSV rows, bit-identical). Names in `docs/RENAMES.md`.
+
 ### Changed (readability pass 2/6: tires, PT 21:00)
 
 - `PacejkaTire.cs`, `ViscoTire.cs`, `TireThermal.cs`: full-word identifiers (constants, state, methods), `@description/@param/@return` headers, equation/unit comments (S/SD/D/E tags kept), `ViscoTire.Build` and `TireThermal.Step` split into small functions with identical arithmetic. Call sites (WheelCorner, DebugHUD, SmokeTest, tests) updated. No behaviour change (tests + diagnostics compared with the pre-change baseline). Names in `docs/RENAMES.md`.
