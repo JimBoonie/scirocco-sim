@@ -186,6 +186,32 @@ public class DrivelineShuffleTests
         return maximum - minimum;
     }
 
+    // @description - step-size convergence at high rpm with the firing ripple on: 5500 rpm in 2nd gear, throttle step; halving the micro-step phase limit (0.1 to 0.05 rad) must change the
+    //   mean wheel torque and the crank-speed ripple by less than 3 percent, and the coarse 0.2 rad run must stay within 10 percent (reported)
+    // @return {Void}
+    [Test] public void MicrostepConvergenceAtHighRpmWithFiringPulses()
+    {
+        float[] meanA = HighRpmMetrics(0.2f), meanB = HighRpmMetrics(0.1f), meanC = HighRpmMetrics(0.05f);
+        float torqueChange = Mathf.Abs(meanC[0] - meanB[0]) / Mathf.Abs(meanC[0]), rippleChange = Mathf.Abs(meanC[1] - meanB[1]) / Mathf.Max(meanC[1], 1e-6f);
+        report.AppendLine($"high-rpm convergence (5500 rpm, ripple on): mean wheel torque {meanA[0]:0.0}/{meanB[0]:0.0}/{meanC[0]:0.0} N m, crank-speed ripple {meanA[1]:0.000}/{meanB[1]:0.000}/{meanC[1]:0.000} rad/s at 0.20/0.10/0.05 rad per micro-step; 0.10 vs 0.05 changes {100 * torqueChange:0.00} % and {100 * rippleChange:0.00} %");
+        Assert.Less(torqueChange, 0.03f); Assert.Less(rippleChange, 0.03f);
+        Assert.Less(Mathf.Abs(meanA[0] - meanC[0]) / Mathf.Abs(meanC[0]), 0.10f, "the coarse step must stay within 10 percent");
+    }
+
+    // @description - mean wheel torque and peak-to-peak crank speed ripple (detrended) in the last 0.3 s of a high-rpm throttle step
+    // @param {float} phaseLimitRadians - micro-step phase limit in rad
+    // @return {float[]} - {mean wheel torque in N m, crank speed ripple in rad/s}
+    static float[] HighRpmMetrics(float phaseLimitRadians)
+    {
+        var model = Build(out var carParams, out var parameters, out var engine, out var drivetrain, out var left, out var right); parameters.maximumPhaseAdvancePerMicrostepRadians = phaseLimitRadians; model = new ExperimentalDriveline(engine, carParams, parameters);
+        drivetrain.SelectGear(2); drivetrain.Tick(1f); float wheelSpeed = 5500f * Mathf.PI / 30f / drivetrain.TotalRatio; left.angularVelocity = right.angularVelocity = wheelSpeed; rigVehicleSpeed = wheelSpeed * carParams.wheelRadius;
+        engine.SetRunning(true); engine.EndExternalCrankInterval(wheelSpeed * drivetrain.TotalRatio);
+        var speeds = new System.Collections.Generic.List<float>(); double torqueSum = 0.0; int torqueCount = 0;
+        Run(model, engine, drivetrain, left, right, 0.8f, 0.7f, 0f, time => { if (time > 0.5f) { speeds.Add((float)model.Chain.CrankAngularVelocity); torqueSum += left.driveTorque; torqueCount++; } });
+        var detrended = Detrend(speeds); float low = float.MaxValue, high = float.MinValue; foreach (float value in detrended) { low = Mathf.Min(low, value); high = Mathf.Max(high, value); }
+        return new[] { (float)(torqueSum / torqueCount), high - low };
+    }
+
     // @description - the Wiebe burn must put 50 percent burned at the configured angle and the peak pressure must sit after TDC in the expected range
     // @return {Void}
     [Test] public void WiebeBurnPhasingAndPeakPressure()
