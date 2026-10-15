@@ -7,8 +7,8 @@ public static class AmbientLighting
     static readonly Color Sky = new Color(0.50f, 0.58f, 0.72f), Equator = new Color(0.46f, 0.45f, 0.40f), Ground = new Color(0.33f, 0.30f, 0.23f);
     const float FillFraction = 0.12f;   // fill intensity = 12 % of the sun x brightness, no shadows
     static float applied = -1f; static Light fill;
-    // @description - Apply (see the body for details).
-    // @param {float} brightness - brightness
+    // @description - Sets the tri-light ambient colours (sky, equator, ground) scaled by the brightness and keeps a weak shadowless fill light opposite the sun, so shaded sides are not black. Visual only; skipped when the brightness is unchanged.
+    // @param {float} brightness - ambient brightness multiplier, clamped to 0.5..2 (1 = reference)
     // @return {Void} - nothing
     public static void Apply(float brightness)
     {
@@ -17,13 +17,13 @@ public static class AmbientLighting
         applied = brightness;
         RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Trilight;
         RenderSettings.ambientSkyColor = Sky * brightness; RenderSettings.ambientEquatorColor = Equator * brightness; RenderSettings.ambientGroundColor = Ground * brightness;
-        Light sun = RenderSettings.sun; if (!sun) foreach (var l in Object.FindObjectsOfType<Light>()) if (l.type == LightType.Directional && l != fill) { sun = l; break; }
+        Light sun = RenderSettings.sun; if (!sun) foreach (var candidateLight in Object.FindObjectsOfType<Light>()) if (candidateLight.type == LightType.Directional && candidateLight != fill) { sun = candidateLight; break; }
         if (!fill)
         {
-            var go = new GameObject("FillLight (ambient)"); fill = go.AddComponent<Light>(); fill.type = LightType.Directional; fill.shadows = LightShadows.None;
+            var fillObject = new GameObject("FillLight (ambient)"); fill = fillObject.AddComponent<Light>(); fill.type = LightType.Directional; fill.shadows = LightShadows.None;
             fill.color = new Color(0.80f, 0.85f, 1.0f);   // skylight-tinted
         }
-        if (sun) { var d = sun.transform.forward; var h = new Vector3(-d.x, 0f, -d.z); if (h.sqrMagnitude < 1e-4f) h = Vector3.forward; fill.transform.rotation = Quaternion.LookRotation(h.normalized * Mathf.Cos(30f * Mathf.Deg2Rad) + Vector3.down * Mathf.Sin(30f * Mathf.Deg2Rad)); }
+        if (sun) { var sunDirection = sun.transform.forward; var horizontalDirection = new Vector3(-sunDirection.x, 0f, -sunDirection.z); if (horizontalDirection.sqrMagnitude < 1e-4f) horizontalDirection = Vector3.forward; fill.transform.rotation = Quaternion.LookRotation(horizontalDirection.normalized * Mathf.Cos(30f * Mathf.Deg2Rad) + Vector3.down * Mathf.Sin(30f * Mathf.Deg2Rad)); }
         fill.intensity = (sun ? sun.intensity : 1f) * FillFraction * brightness;
         DynamicGI.UpdateEnvironment();
     }

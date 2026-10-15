@@ -37,72 +37,72 @@ public class GamepadSteering
     // speed band over which the grip limit fades in (m/s): below ~2 m/s the travel angle is undefined (slip-regularisation floor); by 6 m/s
     // the kinematic angle at full lock already exceeds the peak slip angle, so the blend is invisible at parking speed and complete before it matters
     public const float BlendLo = 2f, BlendHi = 6f;
-    // @description - Gamepad steering.
-    // @param {GamepadSteerSettings} settings - settings
-    // @return {Void} - nothing
+    // @description - Creates the steering assist with a set of user preferences (deadzone, response curve, speed sensitivity, countersteer factor, ...).
+    // @param {GamepadSteerSettings} settings - user preferences saved in the bindings file; the object is kept by reference, so menu edits take effect immediately
+    // @return {Void} - the new instance
     public GamepadSteering(GamepadSteerSettings settings) { s = settings; }
-    // @description - Shape.
-    // @param {float} stick - stick
-    // @param {float} deadzone - deadzone
-    // @param {float} gamma - gamma
-    // @return {float} - the shape
+    // @description - Turns raw stick deflection into a shaped steering demand: removes the deadzone, rescales the rest to 0..1 and applies the response exponent |s|^gamma (gamma > 1 gives fine control near centre).
+    // @param {float} stick - raw stick deflection, -1..1 (+ = right)
+    // @param {float} deadzone - fraction of deflection ignored around centre, 0..1
+    // @param {float} gamma - response exponent, dimensionless (1 = linear; clamped to >= 0.1)
+    // @return {float} - shaped demand, -1..1 (same sign as the stick)
     public static float Shape(float stick, float deadzone, float gamma)
     {
-        float m = Mathf.Abs(stick); if (m <= deadzone) return 0f;
-        float r = Mathf.Clamp01((m - deadzone) / Mathf.Max(1e-4f, 1f - deadzone));
-        return Mathf.Sign(stick) * Mathf.Pow(r, Mathf.Max(0.1f, gamma));
+        float stickMagnitude = Mathf.Abs(stick); if (stickMagnitude <= deadzone) return 0f;
+        float rescaledMagnitude = Mathf.Clamp01((stickMagnitude - deadzone) / Mathf.Max(1e-4f, 1f - deadzone));
+        return Mathf.Sign(stick) * Mathf.Pow(rescaledMagnitude, Mathf.Max(0.1f, gamma));
     }
-    // @description - Target.
-    // @param {float} shaped - shaped
-    // @param {in GamepadSteerContext} c - value of type GamepadSteerContext
-    // @return {float} - the target
-    public float Target(float shaped, in GamepadSteerContext c)
+    // @description - Converts the shaped demand into a target mean road-wheel angle. The reachable range shrinks from full mechanical lock towards the front tire peak-grip slip angle as speed rises (so a full stick at speed cannot over-steer the tires), and the front-axle travel direction is added back in proportion to the caster-follow setting (released stick lets the wheels self-align).
+    // @param {float} shaped - shaped stick demand, -1..1
+    // @param {GamepadSteerContext} context - current vehicle state (speed, lock angle, travel angles, peak slip angle)
+    // @return {float} - target mean road-wheel angle in deg (+ = points right), limited to the mechanical lock
+    public float Target(float shaped, in GamepadSteerContext context)
     {
-        float w = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(BlendLo, BlendHi, c.speed));
-        float range = Mathf.Lerp(c.lockRoadDeg, Mathf.Min(c.lockRoadDeg, s.gripLimit * c.peakSlipDeg), w * Mathf.Clamp01(s.speedSensitivity));
-        float t = shaped * range + w * Mathf.Clamp01(s.casterFollow) * c.frontTravelDeg;
-        return Mathf.Clamp(t, -c.lockRoadDeg, c.lockRoadDeg);
+        float speedBlend = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(BlendLo, BlendHi, context.speed));
+        float range = Mathf.Lerp(context.lockRoadDeg, Mathf.Min(context.lockRoadDeg, s.gripLimit * context.peakSlipDeg), speedBlend * Mathf.Clamp01(s.speedSensitivity));
+        float targetAngleDeg = shaped * range + speedBlend * Mathf.Clamp01(s.casterFollow) * context.frontTravelDeg;
+        return Mathf.Clamp(targetAngleDeg, -context.lockRoadDeg, context.lockRoadDeg);
     }
-    // @description - one step; returns the commanded mean road-wheel angle (deg)
-    // @param {float} deltaTime - delta time
-    // @param {float} stick - stick
-    // @param {in GamepadSteerContext} c - value of type GamepadSteerContext
-    // @return {float} - the step
-    public float Step(float deltaTime, float stick, in GamepadSteerContext c)
+    // @description - Advances the assist by one frame: low-pass filters the stick, finds the target angle and moves the commanded angle towards it at the steering speed (faster when unwinding or catching a rear slide).
+    // @param {float} deltaTime - frame time in s
+    // @param {float} stick - raw stick deflection, -1..1 (+ = right)
+    // @param {GamepadSteerContext} context - current vehicle state
+    // @return {float} - commanded mean road-wheel angle in deg (+ = points right)
+    public float Step(float deltaTime, float stick, in GamepadSteerContext context)
     {
-        float shaped = Shape(stick, s.deadzone, s.gamma);
-        filtered = s.smoothing > 0f ? filtered + (shaped - filtered) * (1f - Mathf.Exp(-deltaTime / s.smoothing)) : shaped;
-        float target = lastTarget = Target(filtered, c);
-        float d = target - roadDeg;
+        float shapedDemand = Shape(stick, s.deadzone, s.gamma);
+        filtered = s.smoothing > 0f ? filtered + (shapedDemand - filtered) * (1f - Mathf.Exp(-deltaTime / s.smoothing)) : shapedDemand;
+        float target = lastTarget = Target(filtered, context);
+        float angleError = target - roadDeg;
         bool unwinding = Mathf.Abs(target) < Mathf.Abs(roadDeg) || target * roadDeg < 0f;
-        bool intoSlide = Mathf.Abs(c.rearTravelDeg) > c.peakSlipDeg && d * c.rearTravelDeg > 0f && c.speed > BlendHi;
+        bool intoSlide = Mathf.Abs(context.rearTravelDeg) > context.peakSlipDeg && angleError * context.rearTravelDeg > 0f && context.speed > BlendHi;
         countersteering = unwinding || intoSlide;
         float rate = s.steerSpeed * (countersteering ? Mathf.Max(1f, s.countersteer) : 1f);
-        roadDeg = Mathf.Clamp(Mathf.MoveTowards(roadDeg, target, rate * deltaTime), -c.lockRoadDeg, c.lockRoadDeg);
+        roadDeg = Mathf.Clamp(Mathf.MoveTowards(roadDeg, target, rate * deltaTime), -context.lockRoadDeg, context.lockRoadDeg);
         return roadDeg;
     }
-    // @description - vehicle state for the assist, read from the simulated tires (travel angle = wheel steer angle + its slip angle, see WheelCorner)
-    // @param {CarController} car - car
-    // @return {GamepadSteerContext} - the context
+    // @description - Reads the vehicle state the assist needs from the simulated car. Travel angle of an axle = wheel steer angle + tire slip angle, i.e. the direction the axle actually moves relative to the body.
+    // @param {CarController} car - the car to sample
+    // @return {GamepadSteerContext} - speed (m/s), lock angle (deg), front and rear travel angles (deg) and the front peak slip angle (deg)
     public static GamepadSteerContext Context(CarController car)
     {
-        var p = car.carParams; var rb = car.GetComponent<Rigidbody>();
-        float Tr(WheelCorner w) => w.steerDeg + w.slipAngle * Mathf.Rad2Deg;
+        var carParams = car.carParams; var body = car.GetComponent<Rigidbody>();
+        float TravelAngleDeg(WheelCorner wheel) => wheel.steerDeg + wheel.slipAngle * Mathf.Rad2Deg;
         return new GamepadSteerContext
         {
-            speed = rb ? Vector3.Dot(rb.velocity, car.transform.forward) : 0f, lockRoadDeg = p.MeanLockDeg,
-            frontTravelDeg = 0.5f * (Tr(car.frontLeftWheel) + Tr(car.frontRightWheel)), rearTravelDeg = 0.5f * (Tr(car.rearLeftWheel) + Tr(car.rearRightWheel)),
-            peakSlipDeg = PeakSlipDeg(p, 0.5f * (car.frontLeftWheel.verticalLoad + car.frontRightWheel.verticalLoad)),
+            speed = body ? Vector3.Dot(body.velocity, car.transform.forward) : 0f, lockRoadDeg = carParams.MeanLockDeg,
+            frontTravelDeg = 0.5f * (TravelAngleDeg(car.frontLeftWheel) + TravelAngleDeg(car.frontRightWheel)), rearTravelDeg = 0.5f * (TravelAngleDeg(car.rearLeftWheel) + TravelAngleDeg(car.rearRightWheel)),
+            peakSlipDeg = PeakSlipDeg(carParams, 0.5f * (car.frontLeftWheel.verticalLoad + car.frontRightWheel.verticalLoad)),
         };
     }
-    // @description - peak lateral-force slip angle (deg) of the tire model at load Fz (scan 0..20 deg at 0.1 deg)
-    // @param {CarParams} carParams - car params
-    // @param {float} verticalLoad - vertical load
-    // @return {float} - the peak slip deg
+    // @description - Finds the slip angle at which the tire model produces its largest lateral force, by scanning 0..20 deg in 0.1 deg steps at the given load.
+    // @param {CarParams} carParams - tire parameters
+    // @param {float} verticalLoad - wheel vertical load in N (clamped to at least 200 N)
+    // @return {float} - slip angle of peak lateral force in deg
     public static float PeakSlipDeg(CarParams carParams, float verticalLoad)
     {
-        float best = 0f, at = 0f; verticalLoad = Mathf.Max(verticalLoad, 200f);
-        for (int i = 1; i <= 200; i++) { float a = i * 0.1f; float f = Mathf.Abs(PacejkaTire.PureLat(carParams, a * Mathf.Deg2Rad, verticalLoad, 0f)); if (f > best) { best = f; at = a; } }
-        return at;
+        float peakForce = 0f, peakAngleDeg = 0f; verticalLoad = Mathf.Max(verticalLoad, 200f);
+        for (int i = 1; i <= 200; i++) { float slipAngleDeg = i * 0.1f; float lateralForce = Mathf.Abs(PacejkaTire.PureLat(carParams, slipAngleDeg * Mathf.Deg2Rad, verticalLoad, 0f)); if (lateralForce > peakForce) { peakForce = lateralForce; peakAngleDeg = slipAngleDeg; } }
+        return peakAngleDeg;
     }
 }

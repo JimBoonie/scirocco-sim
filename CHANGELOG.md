@@ -9,6 +9,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [2026-10-14] (PT)
 
+### Changed (second pass part 1: overrides keys, retired enum slot, sync_tools, hand-written headers, PT 2026-10-14)
+
+- `-overrides` keys now use `carParams.<field>` (was `p.<field>`); `tools/visco_smoke.py` and docs updated. Note: `visco_smoke.py` BASE builds from before this change still expect the old `p.` keys.
+- Removed the retired `InAction.RetiredProfileToggle` enum slot and its skip logic; `BindingProfile.CurrentVersion` is now 10. Old settings files are discarded and defaults are used (breaking, no migration).
+- `tools/sync_tools.sh` is now a dry run unless `--apply` is passed, copies only `suspension_params.json`, and no longer overwrites the renamed `export_unity.py` / `solve_kinematics.py` / notes (reports them as guarded). The dev-box copies still use the old names and must be updated before syncing back.
+- Hand-written header descriptions with units, and full-word locals, for Cockpit, FollowCam, FfbController, GamepadSteering, HidReportFilter, AmbientLighting, SurfaceTag, TrackInfo. FfbController fields renamed (`clipHistory`, `clippingPercent`, ...), DebugHUD updated.
+- No behaviour change: tests, all 15 scenarios row-identical, skidpad 1.834 deg/g, 0.785 g.
+
 ### Changed (readability pass 6/6 part 3: audio, SmokeTest, track, editor scripts, tests, PT 22:30)
 
 - Every remaining method in `Assets/Scripts` and `Assets/Tests` now has an `// @description / @param / @return` header (audio: `CarAudio`, `TireScrub`; `SmokeTest`, `TrackManager`, `TrackInfo`, `SurfaceTag`, `AmbientLighting`, `CarParams`, editor scripts, all test files). `/// @description` headers from earlier passes were normalised to `//`. `SuspensionTablesData.cs` header is mirrored in `tools/kinematics/export_unity.py`. No behaviour change.

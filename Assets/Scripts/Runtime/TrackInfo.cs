@@ -11,31 +11,31 @@ public class TrackInfo : MonoBehaviour
     [System.NonSerialized] List<Vector3> pts; [System.NonSerialized] List<Vector2> halfW;
     public List<Vector3> Centreline { get { Parse(); return pts; } }
     public List<Vector2> HalfWidths { get { Parse(); return halfW; } }   // x = left, y = right (m)
-    // @description - Parse (see the body for details).
-    // @return {Void} - nothing
+    // @description - Parses the centreline CSV once (columns East, North, height, half-width left, half-width right; metres). Converts to the Unity frame: x = East, y = height, z = North.
+    // @return {Void} - nothing; fills the centreline and half-width lists
     void Parse()
     {
         if (pts != null) return; pts = new List<Vector3>(); halfW = new List<Vector2>(); if (!centrelineCsv) return;
-        var inv = System.Globalization.CultureInfo.InvariantCulture;
+        var invariantCulture = System.Globalization.CultureInfo.InvariantCulture;
         foreach (var line in centrelineCsv.text.Split('\n'))
         {
-            var l = line.Trim(); if (l.Length == 0 || l[0] == '#') continue; var f = l.Split(',');
-            pts.Add(new Vector3(float.Parse(f[0], inv), float.Parse(f[2], inv), float.Parse(f[1], inv)));   // E,N,z -> x=E, y=z, z=N
-            halfW.Add(new Vector2(float.Parse(f[3], inv), float.Parse(f[4], inv)));
+            var trimmedLine = line.Trim(); if (trimmedLine.Length == 0 || trimmedLine[0] == '#') continue; var columns = trimmedLine.Split(',');
+            pts.Add(new Vector3(float.Parse(columns[0], invariantCulture), float.Parse(columns[2], invariantCulture), float.Parse(columns[1], invariantCulture)));   // E,N,z -> x=E, y=z, z=N
+            halfW.Add(new Vector2(float.Parse(columns[3], invariantCulture), float.Parse(columns[4], invariantCulture)));
         }
     }
-    // @description - Lap length.
-    // @return {float} - the lap length
-    public float LapLength() { var c = Centreline; float s = 0f; for (int i = 0; i < c.Count; i++) { var a = c[i]; var b = c[(i + 1) % c.Count]; a.y = b.y = 0f; s += Vector3.Distance(a, b); } return s; }
-    // @description - nearest centreline index and signed lateral offset (+ = right of race direction) of a world position
-    // @param {Vector3} p - value of type Vector3
-    // @param {out float} lateral - lateral
-    // @return {int} - the nearest
-    public int Nearest(Vector3 p, out float lateral)
+    // @description - Length of the closed centreline measured in the horizontal plane.
+    // @return {float} - lap length in m
+    public float LapLength() { var points = Centreline; float length = 0f; for (int i = 0; i < points.Count; i++) { var from = points[i]; var to = points[(i + 1) % points.Count]; from.y = to.y = 0f; length += Vector3.Distance(from, to); } return length; }
+    // @description - Finds the centreline point closest to a world position (horizontal distance) and the signed lateral offset from the line there.
+    // @param {Vector3} position - world position in m
+    // @param {float} lateral - receives the offset in m (+ = right of the race direction)
+    // @return {int} - index of the nearest centreline point
+    public int Nearest(Vector3 position, out float lateral)
     {
-        var c = Centreline; int best = 0; float bd = float.MaxValue;
-        for (int i = 0; i < c.Count; i++) { float dx = c[i].x - p.x, dz = c[i].z - p.z, d = dx * dx + dz * dz; if (d < bd) { bd = d; best = i; } }
-        var a = c[best]; var fwd = c[(best + 1) % c.Count] - a; fwd.y = 0f; fwd.Normalize(); var rel = p - a; rel.y = 0f;
-        lateral = Vector3.Dot(rel, new Vector3(fwd.z, 0f, -fwd.x)); return best;
+        var points = Centreline; int best = 0; float bestDistanceSquared = float.MaxValue;
+        for (int i = 0; i < points.Count; i++) { float deltaX = points[i].x - position.x, deltaZ = points[i].z - position.z, distanceSquared = deltaX * deltaX + deltaZ * deltaZ; if (distanceSquared < bestDistanceSquared) { bestDistanceSquared = distanceSquared; best = i; } }
+        var nearestPoint = points[best]; var forward = points[(best + 1) % points.Count] - nearestPoint; forward.y = 0f; forward.Normalize(); var relative = position - nearestPoint; relative.y = 0f;
+        lateral = Vector3.Dot(relative, new Vector3(forward.z, 0f, -forward.x)); return best;
     }
 }

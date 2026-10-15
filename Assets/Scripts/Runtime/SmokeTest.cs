@@ -21,7 +21,7 @@ public class SmokeTest : MonoBehaviour
         int o = System.Array.IndexOf(a, "-overrides"); if (o >= 0 && o + 1 < a.Length) ApplyOverrides(a[o + 1]);
         int j = System.Array.IndexOf(a, "-pedal"); if (j >= 0 && j + 1 < a.Length) pedal = float.Parse(a[j + 1], System.Globalization.CultureInfo.InvariantCulture);
     }
-    // @description - -overrides <file>: lines "p.field=value" or "kin.field=v1;v2;..." (CarParams / SuspensionTables; float, float[], bool, enum). Used by the sensitivity study and fallback-mode runs; never changes the CarParams.cs defaults.
+    // @description - -overrides <file>: lines "carParams.field=value" or "suspensionTables.field=v1;v2;..." (CarParams / SuspensionTables; float, float[], bool, enum). Used by the sensitivity study and fallback-mode runs; never changes the CarParams.cs defaults.
     // @param {string} path - path
     // @return {Void} - nothing
     void ApplyOverrides(string path)
@@ -31,7 +31,7 @@ public class SmokeTest : MonoBehaviour
         {
             var line = raw.Trim(); if (line.Length == 0 || line.StartsWith("#")) continue;
             int eq = line.IndexOf('='); string lhs = line.Substring(0, eq).Trim(), val = line.Substring(eq + 1).Trim();
-            object target = lhs.StartsWith("kin.") ? (object)car.carParams.suspensionTables : car.carParams; string fname = lhs.Substring(lhs.IndexOf('.') + 1);
+            object target = lhs.StartsWith("suspensionTables.") ? (object)car.carParams.suspensionTables : car.carParams; string fname = lhs.Substring(lhs.IndexOf('.') + 1);
             var f = target.GetType().GetField(fname); if (f == null) { Debug.LogError("override: no field " + lhs); continue; }
             object v;
             if (f.FieldType == typeof(float)) v = float.Parse(val, inv);

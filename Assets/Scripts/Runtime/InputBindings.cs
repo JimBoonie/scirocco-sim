@@ -5,7 +5,7 @@
 using System; using System.Collections.Generic; using UnityEngine;
 using UnityEngine.InputSystem; using UnityEngine.InputSystem.Controls; using UnityEngine.InputSystem.LowLevel;
 
-public enum InAction { Steer, Throttle, Brake, Clutch, Handbrake, ShiftUp, ShiftDown, Gear1, Gear2, Gear3, Gear4, Gear5, GearR, Reset, RetiredProfileToggle, Menu, LookX, LookY, Recenter, CameraToggle, HudToggle, MenuUp, MenuDown, MenuLeft, MenuRight, MenuSelect, Ignition, Starter, MenuTabNext, MenuTabPrev, ResetToStart }   // append only (saved as ints); RetiredProfileToggle keeps slot 14 (old P-key handling-profile toggle, removed 2026-10-13)
+public enum InAction { Steer, Throttle, Brake, Clutch, Handbrake, ShiftUp, ShiftDown, Gear1, Gear2, Gear3, Gear4, Gear5, GearR, Reset, Menu, LookX, LookY, Recenter, CameraToggle, HudToggle, MenuUp, MenuDown, MenuLeft, MenuRight, MenuSelect, Ignition, Starter, MenuTabNext, MenuTabPrev, ResetToStart }   // saved as ints in the settings file; changing the order or removing a member requires bumping BindingProfile.CurrentVersion
 public enum AxisHalf { Full, Positive, Negative }      // Positive/Negative: use one half of a combined pedal axis (centre -> max / centre -> min)
 public enum SteerSource { Wheel, Stick }               // Wheel: absolute angle (user's wheel = steering column). Stick/keys: target lock, rate-limited like the keyboard
 public enum SteerMapping { RealColumn1to1, ScaleToCarLock }
@@ -68,7 +68,7 @@ public enum SteerMapping { RealColumn1to1, ScaleToCarLock }
 [Serializable] public class ActionSlots { public InAction action; public List<Binding> slots = new List<Binding>(); }
 [Serializable] public class BindingProfile
 {
-    public const int CurrentVersion = 9;   // bump when a field is renamed or its meaning changes; files of any other version are discarded (no migration)
+    public const int CurrentVersion = 10;   // bump when a field is renamed or its meaning changes; files of any other version are discarded (no migration)
     public int version = CurrentVersion;
     public GamepadSteerSettings gamepadSteer = new GamepadSteerSettings();   // v7: gamepad/keyboard steering assist preferences (input layer)
     public bool startEngineOff = false, starterInterlock = false, autoClutch = true;
@@ -532,7 +532,6 @@ public class InputMapper
     // @description - Tests whether retired.
     // @param {InAction} action - action
     // @return {bool} - the is retired
-    public static bool IsRetired(InAction action) => action == InAction.RetiredProfileToggle;
     public static string DefaultPath => System.IO.Path.Combine(Application.persistentDataPath, "input_bindings.json");
     // @description - Save (see the body for details).
     // @param {BindingProfile} profile - profile
@@ -545,7 +544,7 @@ public class InputMapper
     public static BindingProfile LoadOrDefault(string path = null)
     {
         path = path ?? DefaultPath;
-        try { if (System.IO.File.Exists(path)) { var p = JsonUtility.FromJson<BindingProfile>(System.IO.File.ReadAllText(path)); if (p != null && p.actions.Count > 0 && p.version == BindingProfile.CurrentVersion) { p.Get(InAction.RetiredProfileToggle).Clear(); return p; } Debug.LogWarning("input bindings: " + path + " has settings version " + (p != null ? p.version : -1) + ", expected " + BindingProfile.CurrentVersion + "; using defaults"); } }
+        try { if (System.IO.File.Exists(path)) { var p = JsonUtility.FromJson<BindingProfile>(System.IO.File.ReadAllText(path)); if (p != null && p.actions.Count > 0 && p.version == BindingProfile.CurrentVersion) return p; Debug.LogWarning("input bindings: " + path + " has settings version " + (p != null ? p.version : -1) + ", expected " + BindingProfile.CurrentVersion + "; using defaults"); } }
         catch (Exception e) { Debug.LogWarning("input bindings: could not load " + path + ": " + e.Message); }
         return Defaults();
     }

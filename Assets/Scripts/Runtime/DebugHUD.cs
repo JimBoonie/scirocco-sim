@@ -47,7 +47,7 @@ public class DebugHUD : MonoBehaviour
         if (f && info)
         {
             float x = UiSurface.Width - 238f, y = 70f; var pr = car.router && car.router.map != null ? car.router.map.profile : null; float cap = pr != null ? pr.forceFeedbackMaxOutputPercent * 0.01f : 1f;
-            string ft = $"FFB {f.status}\ncol {f.totalTorque,5:0.0} Nm (tire {car.columnTorque,4:0.0} stop {f.stopTorque,3:0.0})\ncmd {f.command * 100f,4:0}%  clip {f.clipPct,3:0}%"; var sz = mono.CalcSize(new GUIContent(ft));
+            string ft = $"FFB {f.status}\ncol {f.totalTorque,5:0.0} Nm (tire {car.columnTorque,4:0.0} stop {f.stopTorque,3:0.0})\ncmd {f.command * 100f,4:0}%  clip {f.clippingPercent,3:0}%"; var sz = mono.CalcSize(new GUIContent(ft));
             GUI.Box(new Rect(x, y, 230f, sz.y + 18f), GUIContent.none); GUI.Label(new Rect(x + 4f, y + 2f, 224f, sz.y), ft, mono); y += sz.y + 6f;
             float n = pr != null && pr.wheelbaseMaxTorqueNm > 0f ? Mathf.Clamp(f.totalTorque / pr.wheelbaseMaxTorqueNm * pr.forceFeedbackStrengthPercent * 0.01f, -1.5f, 1.5f) : 0f;   // clipping meter
             float cx = x + 115f, bw = 100f; GUI.color = Color.gray; GUI.DrawTexture(new Rect(x + 10f, y, 210f, 7f), Texture2D.whiteTexture);

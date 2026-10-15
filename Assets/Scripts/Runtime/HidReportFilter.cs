@@ -16,7 +16,7 @@ public static class HidReportFilter
     static bool installed; static readonly FourCC HidFormat = new FourCC('H', 'I', 'D');
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
-    // @description - Install.
+    // @description - Hooks the Input System event stream (once, before the first scene loads) so foreign HID reports can be dropped, and logs the connected devices at startup and whenever a device is added, removed or reconnected.
     // @return {Void} - nothing
     public static void Install()
     {
@@ -25,78 +25,78 @@ public static class HidReportFilter
         InputSystem.onDeviceChange += (d, c) => { if (c == InputDeviceChange.Added || c == InputDeviceChange.Removed || c == InputDeviceChange.Reconnected) { infos.Remove(d.deviceId); LogDevices($"device {c}: {d.displayName}"); } };
         LogDevices("startup");
     }
-    // @description - Uninstall.
+    // @description - Unhooks the event filter and forgets all cached device information (used by tests).
     // @return {Void} - nothing
     public static void Uninstall() { if (!installed) return; installed = false; InputSystem.onEvent -= OnEvent; infos.Clear(); }
 
-    // @description - Analyse a HID descriptor: returns the report ID to keep (joystick X axis report), or -1 if the device has only one input report.
-    // @param {string} capabilitiesJson - capabilities json
-    // @return {Info} - the analyse
+    // @description - Reads a HID report descriptor (JSON from the Input System) and decides which input report to keep. Devices with several input report IDs (for example force-feedback wheels that also send PID state reports) must only keep the report that carries the joystick X axis.
+    // @param {string} capabilitiesJson - HID descriptor as JSON (InputDeviceDescription.capabilities); may be null or empty
+    // @return {Info} - filter information: expected report ID (-1 = do not filter), all input report IDs and a human-readable note
     public static Info Analyse(string capabilitiesJson)
     {
         var info = new Info();
         if (string.IsNullOrEmpty(capabilitiesJson)) { info.note = "no HID descriptor"; return info; }
-        HID.HIDDeviceDescriptor desc; try { desc = HID.HIDDeviceDescriptor.FromJson(capabilitiesJson); } catch (Exception e) { info.note = "descriptor parse failed: " + e.Message; return info; }
-        if (desc.elements == null) { info.note = "no elements"; return info; }
-        var ids = new SortedSet<int>(); int xId = -1, firstId = -1;
-        foreach (var el in desc.elements)
+        HID.HIDDeviceDescriptor descriptor; try { descriptor = HID.HIDDeviceDescriptor.FromJson(capabilitiesJson); } catch (Exception parseException) { info.note = "descriptor parse failed: " + parseException.Message; return info; }
+        if (descriptor.elements == null) { info.note = "no elements"; return info; }
+        var inputReportIds = new SortedSet<int>(); int xAxisReportId = -1, firstReportId = -1;
+        foreach (var element in descriptor.elements)
         {
-            if (el.reportType != HID.HIDReportType.Input) continue;
-            ids.Add(el.reportId); if (firstId < 0) firstId = el.reportId;
-            if (xId < 0 && el.usagePage == HID.UsagePage.GenericDesktop && el.usage == (int)HID.GenericDesktop.X) xId = el.reportId;
+            if (element.reportType != HID.HIDReportType.Input) continue;
+            inputReportIds.Add(element.reportId); if (firstReportId < 0) firstReportId = element.reportId;
+            if (xAxisReportId < 0 && element.usagePage == HID.UsagePage.GenericDesktop && element.usage == (int)HID.GenericDesktop.X) xAxisReportId = element.reportId;
         }
-        info.inputIds = new int[ids.Count]; ids.CopyTo(info.inputIds);
-        if (ids.Count > 1) { info.expectedId = xId >= 0 ? xId : firstId; info.note = $"{ids.Count} input reports -> keeping report {info.expectedId} only"; }
+        info.inputIds = new int[inputReportIds.Count]; inputReportIds.CopyTo(info.inputIds);
+        if (inputReportIds.Count > 1) { info.expectedId = xAxisReportId >= 0 ? xAxisReportId : firstReportId; info.note = $"{inputReportIds.Count} input reports -> keeping report {info.expectedId} only"; }
         else info.note = "single input report";
         return info;
     }
-    // @description - Get (see the body for details).
-    // @param {InputDevice} d - value of type InputDevice
-    // @return {Info} - the get
-    public static Info Get(InputDevice d)
+    // @description - Returns the cached filter information for a device, analysing its HID descriptor on first use. Only generic HID layouts are analysed; devices with a specific layout are never filtered.
+    // @param {InputDevice} device - the input device
+    // @return {Info} - filter information for the device
+    public static Info Get(InputDevice device)
     {
-        if (infos.TryGetValue(d.deviceId, out var i)) return i;
-        i = d.description.interfaceName == "HID" && !IsSpecificLayout(d) ? Analyse(d.description.capabilities) : new Info { note = d.description.interfaceName == "HID" ? "device-specific layout (not filtered)" : "not HID" };
-        infos[d.deviceId] = i; return i;
+        if (infos.TryGetValue(device.deviceId, out var info)) return info;
+        info = device.description.interfaceName == "HID" && !IsSpecificLayout(device) ? Analyse(device.description.capabilities) : new Info { note = device.description.interfaceName == "HID" ? "device-specific layout (not filtered)" : "not HID" };
+        infos[device.deviceId] = info; return info;
     }
-    // @description - Layouts written for a specific device (DualShock, Xbox HID, ...) handle report IDs themselves; only the auto-generated ones need this.
-    // @param {InputDevice} device - device
-    // @return {bool} - the is specific layout
+    // @description - Tells whether a device uses a layout written for that specific device (DualShock, Xbox HID, ...). Those layouts handle report IDs themselves; only auto-generated HID layouts need the filter.
+    // @param {InputDevice} device - the input device
+    // @return {bool} - true if the layout is device-specific
     static bool IsSpecificLayout(InputDevice device) => !(device.layout.StartsWith("HID::") || device.layout.Contains("::"));
 
-    // @description - Handles the event.
-    // @param {InputEventPtr} inputEvent - input event
-    // @param {InputDevice} device - device
+    // @description - Input System event callback: drops (marks as handled) any state event whose HID report ID differs from the expected one, so foreign reports never reach the device state. Values are never altered.
+    // @param {InputEventPtr} inputEvent - the incoming input event
+    // @param {InputDevice} device - the device the event belongs to, or null
     // @return {Void} - nothing
     static unsafe void OnEvent(InputEventPtr inputEvent, InputDevice device)
     {
         if (device == null || !inputEvent.IsA<StateEvent>()) return;
-        var se = StateEvent.From(inputEvent); if (se->stateFormat != HidFormat || se->stateSizeInBytes < 1) return;
+        var stateEvent = StateEvent.From(inputEvent); if (stateEvent->stateFormat != HidFormat || stateEvent->stateSizeInBytes < 1) return;
         var info = Get(device); if (info.expectedId < 0) return;
-        byte id = *(byte*)se->state;
-        if (id == info.expectedId) info.passed++; else { info.dropped++; inputEvent.handled = true; }   // foreign report (e.g. PID state): never touches the state
+        byte reportId = *(byte*)stateEvent->state;
+        if (reportId == info.expectedId) info.passed++; else { info.dropped++; inputEvent.handled = true; }   // foreign report (e.g. PID state): never touches the state
     }
 
-    // @description - Device report.
-    // @return {string} - the device report
+    // @description - Builds a multi-line text listing every connected non-pointer device: id, name, layout, interface, product, manufacturer, input report IDs, filter note, pass/drop counters and a warning for duplicated product names.
+    // @return {string} - the report text (one device per line)
     public static string DeviceReport()
     {
-        var sb = new StringBuilder(); var products = new Dictionary<string, int>();
-        foreach (var d in InputSystem.devices) { var p = d.description.product ?? ""; products[p] = products.TryGetValue(p, out var n) ? n + 1 : 1; }
-        foreach (var d in InputSystem.devices)
+        var report = new StringBuilder(); var products = new Dictionary<string, int>();
+        foreach (var device in InputSystem.devices) { var productName = device.description.product ?? ""; products[productName] = products.TryGetValue(productName, out var previousCount) ? previousCount + 1 : 1; }
+        foreach (var device in InputSystem.devices)
         {
-            if (d is Mouse || d is Pointer || d is Sensor) continue;
-            var i = Get(d); var desc = d.description;
-            sb.Append($"#{d.deviceId} '{d.displayName}' layout={d.layout} iface={desc.interfaceName} product='{desc.product}' mfr='{desc.manufacturer}'");
-            if (i.inputIds.Length > 0) sb.Append($" inputReports=[{string.Join(",", i.inputIds)}]");
-            sb.Append($" {i.note}"); if (i.expectedId >= 0) sb.Append($" passed={i.passed} dropped={i.dropped}");
-            if (!string.IsNullOrEmpty(desc.product) && products[desc.product] > 1) sb.Append("  [DUPLICATE product name: same physical device may appear more than once]");
-            sb.Append('\n');
+            if (device is Mouse || device is Pointer || device is Sensor) continue;
+            var info = Get(device); var description = device.description;
+            report.Append($"#{device.deviceId} '{device.displayName}' layout={device.layout} iface={description.interfaceName} product='{description.product}' mfr='{description.manufacturer}'");
+            if (info.inputIds.Length > 0) report.Append($" inputReports=[{string.Join(",", info.inputIds)}]");
+            report.Append($" {info.note}"); if (info.expectedId >= 0) report.Append($" passed={info.passed} dropped={info.dropped}");
+            if (!string.IsNullOrEmpty(description.product) && products[description.product] > 1) report.Append("  [DUPLICATE product name: same physical device may appear more than once]");
+            report.Append('\n');
         }
-        return sb.ToString();
+        return report.ToString();
     }
-    // @description - Log devices.
-    // @param {string} why - why
+    // @description - Writes the device report to the Unity log.
+    // @param {string} why - short reason shown in the log line, e.g. "startup"
     // @return {Void} - nothing
     public static void LogDevices(string why) { Debug.Log($"[Input] devices ({why}):\n{DeviceReport()}"); }
 }

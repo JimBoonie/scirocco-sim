@@ -47,7 +47,7 @@ public class CarParams : ScriptableObject
     public enum TireCompound { Default, ExperimentalViscoelastic }
     public TireCompound tireCompound = TireCompound.Default;   // Quick menu "Tyre compound"; Default = sourced Pacejka/thermal model, untouched
     // Experimental (viscoelastic) compound physics switches (ViscoTire.cs). All on in the game; the smoke harness turns single ones off
-    // (-overrides p.<flagName>=false) for ablation tests. Ignored by the Default compound.
+    // (-overrides carParams.<flagName>=false) for ablation tests. Ignored by the Default compound.
     public bool viscoHysteresisEnabled = true, viscoAdhesionEnabled = true, viscoWilliamsLandelFerryEnabled = true, viscoFlashTemperatureEnabled = true, viscoPayneEffectEnabled = true;
     public bool viscoRateStiffnessEnabled = true, viscoLoadRelaxationEnabled = true, viscoRollingResistanceEnabled = true, viscoBulkHeatEnabled = true;
     public enum TirePreset { ModernSummer, PeriodMXV }

@@ -8,10 +8,10 @@ import os, sys, subprocess, itertools
 OUT, BASE, NEW = sys.argv[1:4]
 SCEN = ['skidpad', 'stepsteer', 'brakethr', 'liftoff', 'lagunatherm']
 FLAGS = ['viscoHysteresisEnabled', 'viscoAdhesionEnabled', 'viscoWilliamsLandelFerryEnabled', 'viscoFlashTemperatureEnabled', 'viscoPayneEffectEnabled', 'viscoRateStiffnessEnabled', 'viscoLoadRelaxationEnabled', 'viscoRollingResistanceEnabled', 'viscoBulkHeatEnabled']
-EXP = ['p.tireCompound=ExperimentalViscoelastic']
-CFG = {'base_off': (BASE, []), 'base_th': (BASE, ['p.tireThermal=true']), 'new_off': (NEW, []), 'new_th': (NEW, ['p.tireThermal=true']),
-       'exp_off': (NEW, EXP), 'exp_th': (NEW, EXP + ['p.tireThermal=true'])}
-for f in FLAGS: CFG['abl_' + f] = (NEW, EXP + ['p.tireThermal=true', f'p.{f}=false'])
+EXP = ['carParams.tireCompound=ExperimentalViscoelastic']
+CFG = {'base_off': (BASE, []), 'base_th': (BASE, ['carParams.tireThermal=true']), 'new_off': (NEW, []), 'new_th': (NEW, ['carParams.tireThermal=true']),
+       'exp_off': (NEW, EXP), 'exp_th': (NEW, EXP + ['carParams.tireThermal=true'])}
+for f in FLAGS: CFG['abl_' + f] = (NEW, EXP + ['carParams.tireThermal=true', f'carParams.{f}=false'])
 only = os.environ.get('ONLY'); cfgs = [c for c in CFG if not only or c in only.split(',')]
 jobs = []
 for c in cfgs:
